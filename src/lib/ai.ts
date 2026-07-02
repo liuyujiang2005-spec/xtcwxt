@@ -20,7 +20,7 @@ export async function aiChat(
         { role: 'user', content: userPrompt },
       ],
       temperature: 0.1,
-      max_tokens: 4096,
+      max_tokens: 8192,
     }),
   });
 
