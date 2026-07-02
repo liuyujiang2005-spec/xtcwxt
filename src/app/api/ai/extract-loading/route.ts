@@ -11,18 +11,10 @@ export async function POST(request: NextRequest) {
   const user = await validateSession(sessionToken);
   if (!user || user.role === 'viewer') return NextResponse.json({ error: '无权限' }, { status: 403 });
 
-  const { rawRows, customerId, customerName } = await request.json();
+  const { rawRows } = await request.json();
 
   if (!rawRows || !Array.isArray(rawRows) || rawRows.length === 0) {
     return NextResponse.json({ error: '缺少 rawRows 或为空' }, { status: 400 });
-  }
-
-  let priceMatrix: Record<string, number> = {};
-  if (customerId) {
-    const cust = await db.select().from(customers).where(eq(customers.id, customerId)).get();
-    if (cust?.priceMatrix) {
-      try { priceMatrix = JSON.parse(cust.priceMatrix); } catch {}
-    }
   }
 
   const rowSample = rawRows.slice(0, 6).map((row: unknown, i: number) =>
@@ -38,6 +30,7 @@ export async function POST(request: NextRequest) {
 1. **识别列对应关系**：分析第一行（表头）中各列列名的含义，确定每个标准字段对应的列索引。后续每行是一个数组，按列索引提取数据。标准字段：
    - markNo：唛头号（可能的列名：唛头、唛头号、Mark、唛头编号）
    - 品名：货物名称（可能的列名：品名、货物名称、货物品名、Item）
+   - 客户：客户名称（可能的列名：客户、客户名称、客户名、Customer）
    - 尺寸_长：长，厘米（可能的列名：长、尺寸_长、长(cm)、Length、L）
    - 尺寸_宽：宽，厘米（可能的列名：宽、尺寸_宽、宽(cm)、Width、W）
    - 尺寸_高：高，厘米（可能的列名：高、尺寸_高、高(cm)、Height、H）
@@ -54,7 +47,6 @@ export async function POST(request: NextRequest) {
    特殊处理：
    - 如果尺寸在一个单元格里（如 "55×33×26" 或 "553326"），分别解析为长/宽/高。连续数字无分隔符时按以下规则拆分：3位×3位×2位（如 553326→55×33×26），或 2位×2位×2位（如 403050→40×30×50）
    - 如果只有"箱数"没有"单箱数量"和"pcs数量"，则 单箱数量=1，pcs数量=箱数
-   - 如果表格中有"总重量"无"单箱重量"，总重量/箱数=单箱重量（忽略此项，不影响提取）
 
 2. **提取数据**：对数据行（跳过表头行），按列索引提取对应值，返回如下格式：
    \`\`\`json
@@ -62,6 +54,7 @@ export async function POST(request: NextRequest) {
      "rowIndex": 行号（从1开始）,
      "markNo": "提取的唛头号",
      "品名": "提取的品名",
+     "客户": "提取的客户名称",
      "尺寸_长": 数字（缺失填 0）,
      "尺寸_宽": 数字（缺失填 0）,
      "尺寸_高": 数字（缺失填 0）,
@@ -94,14 +87,13 @@ export async function POST(request: NextRequest) {
 严格按以下 JSON 返回（不要 markdown 代码块包裹）：
 
 {
-  "items": [{ "rowIndex": 1, "markNo": "...", ... "verdict": "通过", "reason": "" }, ...],
+  "items": [{ "rowIndex": 1, "markNo": "...", "客户": "...", ... "verdict": "通过", "reason": "" }, ...],
   "summary": { "totalItems": 0, "abnormalCount": 0 }
 }
 
 注意：货型统一标准化为：普货、商检货、敏货、特货。运输方式统一：海运、陆运、空运。数字字段转为 number 类型。`;
 
-  const userPrompt = `客户：${customerName || '未知'}
-总行数：${rawRows.length}（第一行为表头，剩余 ${rawRows.length - 1} 行为数据行）
+  const userPrompt = `总行数：${rawRows.length}（第一行为表头，剩余 ${rawRows.length - 1} 行为数据行）
 二维数组样本（前6行，含表头）：
 ${rowSample}
 
@@ -111,6 +103,21 @@ ${rowSample}
     const raw = await aiChat(systemPrompt, userPrompt);
     const jsonStr = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
     const data = JSON.parse(jsonStr);
+
+    // 从 AI 提取结果中取第一个非空客户名，查数据库匹配 priceMatrix
+    let priceMatrix: Record<string, number> = {};
+    const customerName = (data.items || [])
+      .map((item: any) => item.客户)
+      .find((name: string) => name && name.trim());
+
+    if (customerName) {
+      const cust = await db.select().from(customers)
+        .where(eq(customers.name, customerName.trim()))
+        .get();
+      if (cust?.priceMatrix) {
+        try { priceMatrix = JSON.parse(cust.priceMatrix); } catch {}
+      }
+    }
 
     // 根据客户 price_matrix 自动匹配单价和计算应收
     const items = (data.items || []).map((item: any) => {
