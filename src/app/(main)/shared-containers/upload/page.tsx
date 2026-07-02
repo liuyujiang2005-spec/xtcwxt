@@ -28,7 +28,7 @@ interface ScSummary {
   abnormalCount: number;
 }
 
-const BATCH_SIZE = 50;
+const BATCH_SIZE = 20;
 
 export default function UploadSharedContainerPage() {
   const router = useRouter();
