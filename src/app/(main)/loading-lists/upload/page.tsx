@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, CheckCircle, Loader2, Upload, Brain } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 interface LdItem {
   rowIndex: number;
@@ -59,15 +60,13 @@ export default function UploadLoadingListPage() {
     setPreview([]);
 
     try {
-      const XLSX = (window as any).XLSX;
-      if (!XLSX) { setResult({ passed: false, msg: '请先加载 xlsx 库' }); setPhase('idle'); return; }
-
       const reader = new FileReader();
       reader.onload = async (ev) => {
         try {
           const wb = XLSX.read(ev.target?.result, { type: 'array' });
           const ws = wb.Sheets[wb.SheetNames[0]];
           const rawRows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+          console.log('SheetJS 读取结果:', JSON.stringify(rawRows).slice(0, 500));
 
           if (rawRows.length === 0) {
             setResult({ passed: false, msg: '表格没有数据' });

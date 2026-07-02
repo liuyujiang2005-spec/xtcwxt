@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, CheckCircle, Loader2, Upload, Brain } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 interface ScItem {
   rowIndex: number;
@@ -43,19 +44,17 @@ export default function UploadSharedContainerPage() {
     setPreview([]);
 
     try {
-      const XLSX = (window as any).XLSX;
-      if (!XLSX) { setResult({ passed: false, msg: '请先加载 xlsx 库' }); setPhase('idle'); return; }
-
       const reader = new FileReader();
       reader.onload = async (ev) => {
         try {
           const wb = XLSX.read(ev.target?.result, { type: 'array' });
           const ws = wb.Sheets[wb.SheetNames[0]];
           const rawRows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+          console.log('SheetJS 读取结果:', JSON.stringify(rawRows).slice(0, 500));
 
           // 过滤掉全是空值的行
-          const filtered = rawRows.filter((row: unknown[]) =>
-            row.some((cell: unknown) => cell !== '' && cell !== null && cell !== undefined),
+          const filtered = (rawRows as unknown[][]).filter((row) =>
+            row.some((cell) => String(cell).trim() !== ''),
           );
 
           if (filtered.length === 0) {
