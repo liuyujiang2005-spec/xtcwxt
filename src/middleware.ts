@@ -1,48 +1,21 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const PROTECTED_PREFIXES = [
-  '/shipments',
-  '/revenue',
-  '/expenses',
-  '/accounts',
-  '/reports',
-  '/invoices',
-  '/customers',
-  '/suppliers',
-  '/shared-containers',
-  '/loading-lists',
-  '/costs',
-  '/direct-income',
-  '/marks',
-  '/bills',
-  '/users',
-  '/api',
-];
-
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const sessionToken = request.cookies.get('session')?.value;
 
-  // /login and /api/auth are always allowed
-  if (pathname.startsWith('/login') || pathname.startsWith('/api/auth')) {
-    if (sessionToken && pathname.startsWith('/login')) {
-      return NextResponse.redirect(new URL('/', request.url));
-    }
+  // Always allow these paths
+  if (
+    pathname.startsWith('/login') ||
+    pathname.startsWith('/api/auth') ||
+    pathname.startsWith('/_next')
+  ) {
     return NextResponse.next();
   }
 
-  // Homepage redirect for unauthenticated users
-  if (pathname === '/' || pathname === '') {
-    if (!sessionToken) {
-      return NextResponse.redirect(new URL('/login', request.url));
-    }
-    return NextResponse.next();
-  }
-
-  // Protect all other routes
-  const isProtected = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p));
-  if (isProtected && !sessionToken) {
+  // Everything else requires auth
+  if (!sessionToken) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('redirect', pathname);
     return NextResponse.redirect(loginUrl);
@@ -52,5 +25,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.svg$).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };
