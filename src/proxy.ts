@@ -15,6 +15,7 @@ const PROTECTED_PREFIXES = [
   '/costs',
   '/direct-income',
   '/marks',
+  '/bills',
   '/users',
   '/api',
 ];

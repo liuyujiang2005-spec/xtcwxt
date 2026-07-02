@@ -29,6 +29,9 @@ export default function RootLayout({
       lang="zh-CN"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" />
+      </head>
       <body className="min-h-full flex flex-col">
         <TooltipProvider>
           {children}
