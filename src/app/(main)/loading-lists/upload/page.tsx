@@ -64,11 +64,29 @@ export default function UploadLoadingListPage() {
       reader.onload = async (ev) => {
         try {
           const wb = XLSX.read(ev.target?.result, { type: 'array' });
-          const ws = wb.Sheets[wb.SheetNames[0]];
-          const rawRows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+          let ws: XLSX.WorkSheet | null = null;
+          for (const name of wb.SheetNames) {
+            const test: unknown[][] = XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1 });
+            if (test.some((r: unknown[]) => r.some((c: unknown) => String(c).trim() !== ''))) {
+              ws = wb.Sheets[name];
+              break;
+            }
+          }
+          if (!ws) {
+            setResult({ passed: false, msg: '所有 sheet 均为空' });
+            setPhase('idle');
+            return;
+          }
+
+          const rawRows = XLSX.utils.sheet_to_json(ws, { header: 1 });
           console.log('SheetJS 读取结果:', JSON.stringify(rawRows).slice(0, 500));
 
-          if (rawRows.length === 0) {
+          const filtered = (rawRows as unknown[][]).filter((row) =>
+            row.some((cell) => String(cell).trim() !== ''),
+          );
+
+          if (filtered.length === 0) {
             setResult({ passed: false, msg: '表格没有数据' });
             setPhase('idle');
             return;
@@ -79,7 +97,7 @@ export default function UploadLoadingListPage() {
           const aiRes = await fetch('/api/ai/extract-loading', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ rawRows, customerId: selectedCustomerId, customerName }),
+            body: JSON.stringify({ rawRows: filtered, customerId: selectedCustomerId, customerName }),
           });
 
           if (!aiRes.ok) {
