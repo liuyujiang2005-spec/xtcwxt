@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -44,18 +44,12 @@ const BATCH_SIZE = 50;
 export default function UploadSharedContainerPage() {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
-  const [customers, setCustomers] = useState<{ id: number; name: string }[]>([]);
-  const [selectedCustomerId, setSelectedCustomerId] = useState<number>(0);
 
   const [phase, setPhase] = useState<'idle' | 'parsing' | 'preview' | 'importing'>('idle');
   const [preview, setPreview] = useState<ScItem[]>([]);
   const [summary, setSummary] = useState<ScSummary>({ totalItems: 0, abnormalCount: 0 });
   const [result, setResult] = useState<{ passed: boolean; msg: string } | null>(null);
   const [progress, setProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 });
-
-  useEffect(() => {
-    fetch('/api/customers').then(r => r.json()).then(setCustomers);
-  }, []);
 
   const handleExtract = async () => {
     if (!file) return;
@@ -195,7 +189,7 @@ export default function UploadSharedContainerPage() {
         运输方式: item.运输方式 || '',
         客户应收_cents: Math.round((item.需支付总价 || 0) * 100),
         结算状态: item.结算状态 || '',
-        customerId: selectedCustomerId,
+        customerId: 0,
         ai_verified: item.verdict === '通过' ? 1 : 0,
         ai_verify_msg: item.reason || '',
       }));
@@ -263,20 +257,6 @@ export default function UploadSharedContainerPage() {
               </div>
             )}
 
-            <div className="space-y-2">
-              <Label>选择客户</Label>
-              <select
-                className="h-8 w-48 rounded-lg border border-input bg-transparent px-2.5 text-sm"
-                value={selectedCustomerId}
-                onChange={(e) => setSelectedCustomerId(Number(e.target.value))}
-              >
-                <option value={0}>-- 请选择 --</option>
-                {customers.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-            </div>
-
             <div className="border rounded-lg overflow-auto max-h-80">
               <Table>
                 <TableHeader>
@@ -332,7 +312,7 @@ export default function UploadSharedContainerPage() {
 
             <div className="flex gap-3">
               <Button variant="outline" onClick={handleReset} className="flex-1">重新选择文件</Button>
-              <Button onClick={handleConfirmImport} disabled={phase === 'importing' || !selectedCustomerId} className="flex-1">
+              <Button onClick={handleConfirmImport} disabled={phase === 'importing'} className="flex-1">
                 {phase === 'importing' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
                 {phase === 'importing' ? '导入中...' : `确认导入（${preview.length} 条）`}
               </Button>
@@ -353,20 +333,6 @@ export default function UploadSharedContainerPage() {
             <div className="space-y-2">
               <Label>选择 Excel 文件（.xlsx）</Label>
               <Input type="file" accept=".xlsx,.xls" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-            </div>
-
-            <div className="space-y-2">
-              <Label>选择客户</Label>
-              <select
-                className="h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base"
-                value={selectedCustomerId}
-                onChange={(e) => setSelectedCustomerId(Number(e.target.value))}
-              >
-                <option value={0}>-- 请选择客户 --</option>
-                {customers.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
             </div>
 
             {result && (
