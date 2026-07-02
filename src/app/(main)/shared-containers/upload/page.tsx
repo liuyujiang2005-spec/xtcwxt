@@ -15,10 +15,21 @@ interface ScItem {
   rowIndex: number;
   markNo: string;
   品名: string;
+  尺寸_长: number;
+  尺寸_宽: number;
+  尺寸_高: number;
+  单箱体积: number;
   总体积: number;
   成本单价: number;
+  国内单号: string;
+  单箱数量: number;
+  总重量: number;
+  箱数: number;
+  pcs数量: number;
   货型: string;
   运输方式: string;
+  需支付总价: number;
+  结算状态: string;
   verdict: string;
   reason: string;
 }
@@ -166,10 +177,22 @@ export default function UploadSharedContainerPage() {
       const items = preview.map((item) => ({
         markNo: item.markNo,
         品名: item.品名,
-        总体积: item.总体积,
+        尺寸_长: item.尺寸_长 || 0,
+        尺寸_宽: item.尺寸_宽 || 0,
+        尺寸_高: item.尺寸_高 || 0,
+        单箱体积: item.单箱体积 || 0,
+        总体积: item.总体积 || 0,
+        国内单号: item.国内单号 || '',
+        单箱数量: item.单箱数量 || 0,
+        总重量: item.总重量 || 0,
+        箱数: item.箱数 || 0,
+        pcs数量: item.pcs数量 || 0,
         成本单价_cents: Math.round((item.成本单价 || 0) * 100),
-        货型: item.货型,
-        运输方式: item.运输方式,
+        需支付总价_cents: Math.round((item.需支付总价 || 0) * 100),
+        货型: item.货型 || '',
+        运输方式: item.运输方式 || '',
+        客户应收_cents: Math.round((item.需支付总价 || 0) * 100),
+        结算状态: item.结算状态 || '',
         customerId: 0,
         ai_verified: item.verdict === '通过' ? 1 : 0,
         ai_verify_msg: item.reason || '',
@@ -248,7 +271,7 @@ export default function UploadSharedContainerPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {preview.slice(0, 100).map((item, i) => (
+                  {preview.map((item, i) => (
                     <TableRow key={i}>
                       <TableCell className="text-xs text-muted-foreground">{item.rowIndex || i + 1}</TableCell>
                       <TableCell>{item.markNo || '-'}</TableCell>
