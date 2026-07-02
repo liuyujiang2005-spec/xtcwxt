@@ -25,15 +25,17 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const rowSample = rawRows.slice(0, 5).map((row: unknown, i: number) =>
+  const rowSample = rawRows.slice(0, 6).map((row: unknown, i: number) =>
     `第${i + 1}行: ${JSON.stringify(row)}`
   ).join('\n');
 
-  const systemPrompt = `你是一个专业的装柜清单 Excel 数据提取助手。用户会提供一份装柜清单的原始 JSON 行数据，列名可能是中文或英文。
+  const systemPrompt = `你是一个专业的装柜清单 Excel 数据提取助手。用户会提供一份装柜清单的原始 JSON 数据。
+
+注意：原始数据是二维数组，第一行可能是表头，后续行是数据行，请根据内容自行识别列名和对应关系。列名可能是中文或英文。
 
 ## 任务
 
-1. **识别列对应关系**：分析每行的 key（列名），映射到以下标准字段：
+1. **识别列对应关系**：分析第一行（表头）中各列列名的含义，确定每个标准字段对应的列索引。后续每行是一个数组，按列索引提取数据。标准字段：
    - markNo：唛头号（可能的列名：唛头、唛头号、Mark、唛头编号）
    - 品名：货物名称（可能的列名：品名、货物名称、货物品名、Item）
    - 尺寸_长：长，厘米（可能的列名：长、尺寸_长、长(cm)、Length、L）
@@ -54,7 +56,7 @@ export async function POST(request: NextRequest) {
    - 如果只有"箱数"没有"单箱数量"和"pcs数量"，则 单箱数量=1，pcs数量=箱数
    - 如果表格中有"总重量"无"单箱重量"，总重量/箱数=单箱重量（忽略此项，不影响提取）
 
-2. **提取数据**：对每一行，按识别的列名提取值，返回如下格式：
+2. **提取数据**：对数据行（跳过表头行），按列索引提取对应值，返回如下格式：
    \`\`\`json
    {
      "rowIndex": 行号（从1开始）,
@@ -99,11 +101,11 @@ export async function POST(request: NextRequest) {
 注意：货型统一标准化为：普货、商检货、敏货、特货。运输方式统一：海运、陆运、空运。数字字段转为 number 类型。`;
 
   const userPrompt = `客户：${customerName || '未知'}
-总行数：${rawRows.length}
-原始数据（前5行样本）：
+总行数：${rawRows.length}（第一行为表头，剩余 ${rawRows.length - 1} 行为数据行）
+二维数组样本（前6行，含表头）：
 ${rowSample}
 
-剩余 ${rawRows.length - 5} 行格式相同，请同样提取。返回完整的 items 数组（所有行）和 summary。`;
+请返回完整的 items 数组（所有数据行）和 summary。`;
 
   try {
     const raw = await aiChat(systemPrompt, userPrompt);
