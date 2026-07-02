@@ -15,6 +15,7 @@ interface ScItem {
   rowIndex: number;
   markNo: string;
   品名: string;
+  客户: string;
   尺寸_长: number;
   尺寸_宽: number;
   尺寸_高: number;
@@ -264,6 +265,7 @@ export default function UploadSharedContainerPage() {
                     <TableHead className="w-10 sticky top-0 bg-muted">#</TableHead>
                     <TableHead className="sticky top-0 bg-muted">唛头</TableHead>
                     <TableHead className="sticky top-0 bg-muted">品名</TableHead>
+                    <TableHead className="sticky top-0 bg-muted">客户</TableHead>
                     <TableHead className="sticky top-0 bg-muted">尺寸</TableHead>
                     <TableHead className="sticky top-0 bg-muted text-right">单箱体积</TableHead>
                     <TableHead className="sticky top-0 bg-muted text-right">总体积</TableHead>
@@ -286,6 +288,7 @@ export default function UploadSharedContainerPage() {
                       <TableCell className="text-xs text-muted-foreground">{item.rowIndex || i + 1}</TableCell>
                       <TableCell>{item.markNo || '-'}</TableCell>
                       <TableCell>{item.品名 || '-'}</TableCell>
+                      <TableCell>{item.客户 || '-'}</TableCell>
                       <TableCell className="whitespace-nowrap text-xs">{fmtSize(item)}</TableCell>
                       <TableCell className="text-right">{item.单箱体积 || '-'}</TableCell>
                       <TableCell className="text-right">{item.总体积 || '-'}</TableCell>
