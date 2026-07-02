@@ -116,6 +116,31 @@ ${JSON.stringify(rawRows)}
   } catch (error) {
     console.error('extract-sc 解析失败:', error);
     console.log('AI原始响应:', JSON.stringify(raw).slice(0, 2000));
-    return NextResponse.json({ error: 'AI 解析失败，请重试' }, { status: 500 });
+
+    // 截断修复：从最后一个 } 截断，补上缺失的闭合符
+    try {
+      const cleaned = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+      const lastBrace = cleaned.lastIndexOf('}');
+      if (lastBrace === -1) throw new Error('无可恢复的截断点');
+
+      let recovered = cleaned.substring(0, lastBrace + 1);
+
+      let data: any;
+      try {
+        data = JSON.parse(recovered);
+      } catch {
+        recovered += ']}}';
+        data = JSON.parse(recovered);
+      }
+
+      console.log('截断修复成功，恢复条数:', data.items?.length || 0);
+      return NextResponse.json({
+        items: data.items || [],
+        summary: data.summary || { totalItems: 0, abnormalCount: 0 },
+      });
+    } catch {
+      console.error('截断修复也失败');
+      return NextResponse.json({ error: 'AI 解析失败，请重试' }, { status: 500 });
+    }
   }
 }
