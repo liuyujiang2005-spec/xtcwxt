@@ -103,8 +103,9 @@ ${JSON.stringify(rawRows)}
 
 请返回完整的 items 数组（所有数据行）和 summary。`;
 
+  let raw = '';
   try {
-    const raw = await aiChat(systemPrompt, userPrompt);
+    raw = await aiChat(systemPrompt, userPrompt);
     const jsonStr = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
     const data = JSON.parse(jsonStr);
 
@@ -113,6 +114,8 @@ ${JSON.stringify(rawRows)}
       summary: data.summary || { totalItems: 0, abnormalCount: 0 },
     });
   } catch (error) {
+    console.error('extract-sc 解析失败:', error);
+    console.log('AI原始响应:', JSON.stringify(raw).slice(0, 2000));
     return NextResponse.json({ error: 'AI 解析失败，请重试' }, { status: 500 });
   }
 }
