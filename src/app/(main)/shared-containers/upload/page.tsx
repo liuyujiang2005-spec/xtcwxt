@@ -48,7 +48,24 @@ export default function UploadSharedContainerPage() {
       reader.onload = async (ev) => {
         try {
           const wb = XLSX.read(ev.target?.result, { type: 'array' });
-          const ws = wb.Sheets[wb.SheetNames[0]];
+
+          let ws: XLSX.WorkSheet | null = null;
+          let targetSheet = '';
+          for (const name of wb.SheetNames) {
+            const test: unknown[][] = XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1 });
+            if (test.some((r: unknown[]) => r.some((c: unknown) => String(c).trim() !== ''))) {
+              ws = wb.Sheets[name];
+              targetSheet = name;
+              break;
+            }
+          }
+          if (!ws) {
+            setResult({ passed: false, msg: '所有 sheet 均为空' });
+            setPhase('idle');
+            return;
+          }
+          console.log('使用 sheet:', targetSheet);
+
           const rawRows = XLSX.utils.sheet_to_json(ws, { header: 1 });
           console.log('SheetJS 读取结果:', JSON.stringify(rawRows).slice(0, 500));
 
