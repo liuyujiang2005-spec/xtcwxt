@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -30,20 +30,14 @@ interface ScSummary {
 export default function UploadSharedContainerPage() {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
-  const [customers, setCustomers] = useState<{ id: number; name: string }[]>([]);
-  const [selectedCustomerId, setSelectedCustomerId] = useState<number>(0);
 
   const [phase, setPhase] = useState<'idle' | 'parsing' | 'preview' | 'importing'>('idle');
   const [preview, setPreview] = useState<ScItem[]>([]);
   const [summary, setSummary] = useState<ScSummary>({ totalItems: 0, abnormalCount: 0 });
   const [result, setResult] = useState<{ passed: boolean; msg: string } | null>(null);
 
-  useEffect(() => {
-    fetch('/api/customers').then(r => r.json()).then(setCustomers);
-  }, []);
-
   const handleExtract = async () => {
-    if (!file || !selectedCustomerId) return;
+    if (!file) return;
     setPhase('parsing');
     setResult(null);
     setPreview([]);
@@ -65,12 +59,10 @@ export default function UploadSharedContainerPage() {
             return;
           }
 
-          const customerName = customers.find(c => c.id === selectedCustomerId)?.name || '';
-
           const aiRes = await fetch('/api/ai/extract-sc', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ rawRows, customerName }),
+            body: JSON.stringify({ rawRows }),
           });
 
           if (!aiRes.ok) {
@@ -105,7 +97,7 @@ export default function UploadSharedContainerPage() {
   };
 
   const handleConfirmImport = async () => {
-    if (!file || !selectedCustomerId || preview.length === 0) return;
+    if (!file || preview.length === 0) return;
     setPhase('importing');
 
     try {
@@ -118,7 +110,7 @@ export default function UploadSharedContainerPage() {
         成本单价_cents: Math.round((item.成本单价 || 0) * 100),
         货型: item.货型,
         运输方式: item.运输方式,
-        customerId: selectedCustomerId,
+        customerId: 0,
         ai_verified: item.verdict === '通过' ? 1 : 0,
         ai_verify_msg: item.reason || '',
       }));
@@ -241,20 +233,6 @@ export default function UploadSharedContainerPage() {
               <Input type="file" accept=".xlsx,.xls" onChange={(e) => setFile(e.target.files?.[0] || null)} />
             </div>
 
-            <div className="space-y-2">
-              <Label>选择客户</Label>
-              <select
-                className="h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base"
-                value={selectedCustomerId}
-                onChange={(e) => setSelectedCustomerId(Number(e.target.value))}
-              >
-                <option value={0}>-- 请选择客户 --</option>
-                {customers.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-            </div>
-
             {result && (
               <div className={`p-3 rounded-lg flex items-center gap-2 ${result.passed ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
                 {result.passed ? <CheckCircle className="h-5 w-5" /> : <AlertTriangle className="h-5 w-5" />}
@@ -262,7 +240,7 @@ export default function UploadSharedContainerPage() {
               </div>
             )}
 
-            <Button onClick={handleExtract} disabled={phase === 'parsing' || !file || !selectedCustomerId} className="w-full">
+            <Button onClick={handleExtract} disabled={phase === 'parsing' || !file} className="w-full">
               {phase === 'parsing' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Brain className="h-4 w-4 mr-2" />}
               {phase === 'parsing' ? 'AI 提取中...' : 'AI 识别并提取数据'}
             </Button>
