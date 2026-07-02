@@ -20,10 +20,11 @@ const PROTECTED_PREFIXES = [
   '/api',
 ];
 
-export function proxy(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const sessionToken = request.cookies.get('session')?.value;
 
+  // /login and /api/auth are always allowed
   if (pathname.startsWith('/login') || pathname.startsWith('/api/auth')) {
     if (sessionToken && pathname.startsWith('/login')) {
       return NextResponse.redirect(new URL('/', request.url));
@@ -31,6 +32,7 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Homepage redirect for unauthenticated users
   if (pathname === '/' || pathname === '') {
     if (!sessionToken) {
       return NextResponse.redirect(new URL('/login', request.url));
@@ -38,6 +40,7 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Protect all other routes
   const isProtected = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p));
   if (isProtected && !sessionToken) {
     const loginUrl = new URL('/login', request.url);
