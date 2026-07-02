@@ -14,15 +14,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: '缺少 rawRows 或为空' }, { status: 400 });
   }
 
-  const rowSample = rawRows.slice(0, 5).map((row: unknown, i: number) =>
+  const rowSample = rawRows.slice(0, 6).map((row: unknown, i: number) =>
     `第${i + 1}行: ${JSON.stringify(row)}`
   ).join('\n');
 
-  const systemPrompt = `你是一个专业的物流拼柜 Excel 数据提取 + 验价助手。用户会提供一份拼柜表格的原始 JSON 行数据，列名可能是中文或英文。
+  const systemPrompt = `你是一个专业的物流拼柜 Excel 数据提取 + 验价助手。用户会提供一份拼柜表格的原始 JSON 数据。
+
+注意：原始数据是二维数组，第一行可能是表头，后续行是数据行，请根据内容自行识别列名和对应关系。列名可能是中文或英文。
 
 ## 任务
 
-1. **识别列对应关系**：分析每行的 key（列名），映射到以下标准字段：
+1. **识别列对应关系**：分析第一行（表头）中各列列名的含义，确定每个标准字段对应的列索引。后续每行是一个数组，按列索引提取数据。标准字段：
    - markNo：唛头号（可能的列名：唛头、唛头号、Mark、唛头编号）
    - 品名：货物名称（可能的列名：品名、货物名称、货物品名、Item）
    - 总体积：立方米（可能的列名：总体积、体积、体积(m³)、Volume、CBM）
@@ -31,7 +33,7 @@ export async function POST(request: NextRequest) {
    - 运输方式：（可能的列名：运输方式、运输、物流方式、Mode）
    - 总价/需支付总价：（可能的列名：总价、需支付总价、总金额、Total、Amount）用于验价
 
-2. **提取数据**：对每一行数据，按上一步识别的列名提取对应值，返回如下格式：
+2. **提取数据**：对数据行（跳过表头行），按列索引提取对应值，返回如下格式：
    \`\`\`json
    {
      "rowIndex": 行号（从1开始）,
@@ -75,11 +77,11 @@ export async function POST(request: NextRequest) {
 体积和单价都转为数字类型。`;
 
   const userPrompt = `客户：${customerName || '未知'}
-总行数：${rawRows.length}
-原始数据（前5行样本）：
+总行数：${rawRows.length}（第一行为表头，剩余 ${rawRows.length - 1} 行为数据行）
+二维数组样本（前6行，含表头）：
 ${rowSample}
 
-剩余 ${rawRows.length - 5} 行格式相同，请同样提取。请返回完整的 items 数组（所有行）和 summary。`;
+请返回完整的 items 数组（所有数据行）和 summary。`;
 
   try {
     const raw = await aiChat(systemPrompt, userPrompt);

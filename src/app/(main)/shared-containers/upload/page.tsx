@@ -51,9 +51,14 @@ export default function UploadSharedContainerPage() {
         try {
           const wb = XLSX.read(ev.target?.result, { type: 'array' });
           const ws = wb.Sheets[wb.SheetNames[0]];
-          const rawRows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+          const rawRows = XLSX.utils.sheet_to_json(ws, { header: 1 });
 
-          if (rawRows.length === 0) {
+          // 过滤掉全是空值的行
+          const filtered = rawRows.filter((row: unknown[]) =>
+            row.some((cell: unknown) => cell !== '' && cell !== null && cell !== undefined),
+          );
+
+          if (filtered.length === 0) {
             setResult({ passed: false, msg: '表格没有数据' });
             setPhase('idle');
             return;
@@ -62,7 +67,7 @@ export default function UploadSharedContainerPage() {
           const aiRes = await fetch('/api/ai/extract-sc', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ rawRows }),
+            body: JSON.stringify({ rawRows: filtered }),
           });
 
           if (!aiRes.ok) {
