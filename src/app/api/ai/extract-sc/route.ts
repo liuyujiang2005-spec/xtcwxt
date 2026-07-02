@@ -129,7 +129,7 @@ ${JSON.stringify(rawRows)}
       try {
         data = JSON.parse(recovered);
       } catch {
-        recovered += ']}}';
+        recovered += ']}';
         data = JSON.parse(recovered);
       }
 
