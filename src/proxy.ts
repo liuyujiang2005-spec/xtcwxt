@@ -10,6 +10,11 @@ const PROTECTED_PREFIXES = [
   '/invoices',
   '/customers',
   '/suppliers',
+  '/shared-containers',
+  '/loading-lists',
+  '/costs',
+  '/direct-income',
+  '/marks',
   '/users',
   '/api',
 ];

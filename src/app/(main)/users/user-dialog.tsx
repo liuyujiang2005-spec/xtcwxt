@@ -107,7 +107,7 @@ export default function UserDialog({ mode, user }: Props) {
             <div className="space-y-2">
               <Label>角色</Label>
               <Select value={role} onValueChange={(v) => setRole(v || '')}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger><SelectValue>{ROLE_LABELS[role] || role}</SelectValue></SelectTrigger>
                 <SelectContent>
                   {ROLES.map((r) => (
                     <SelectItem key={r} value={r}>{ROLE_LABELS[r]}</SelectItem>

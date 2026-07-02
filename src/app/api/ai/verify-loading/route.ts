@@ -1,0 +1,82 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/db/index';
+import { loadingItems, customers } from '@/db/schema';
+import { validateSession } from '@/lib/auth';
+import { aiChat } from '@/lib/ai';
+import { eq } from 'drizzle-orm';
+
+export async function POST(request: NextRequest) {
+  const sessionToken = request.cookies.get('session')?.value;
+  if (!sessionToken) return NextResponse.json({ error: '未登录' }, { status: 401 });
+  const user = await validateSession(sessionToken);
+  if (!user || user.role === 'viewer') return NextResponse.json({ error: '无权限' }, { status: 403 });
+
+  try {
+    const { batchId } = await request.json();
+
+    const items = await db.select().from(loadingItems)
+      .where(eq(loadingItems.batchId, batchId)).all();
+
+    if (items.length === 0) {
+      return NextResponse.json({ error: '批次无数据' }, { status: 400 });
+    }
+
+    const customerIds = [...new Set(items.map((i) => i.customerId))];
+    const customerRecords = customerIds.length > 0
+      ? await db.select().from(customers)
+          .where(eq(customers.id, customerIds[0])).all()
+      : [];
+    const customerName = customerRecords[0]?.name || '未知客户';
+
+    const itemsForAi = items.map((item, i) => ({
+      序号: i + 1,
+      itemId: item.id,
+      品名: item.品名 || '-',
+      体积: item.总体积,
+      货型: item.货型 || '-',
+      运输方式: item.运输方式 || '-',
+      单价: item.单价_cents ? (item.单价_cents / 100).toFixed(2) : '未填',
+      应收: item.需支付总价_cents ? (item.需支付总价_cents / 100).toFixed(2) : '未填',
+    }));
+
+    const systemPrompt = `你是一个货运财务系统的 AI 验价助手。你的任务是检查装柜导入数据的合理性。
+
+检查规则：
+1. 单价是否与客户价格模板匹配（海运普货、海运商检货、陆运普货、陆运商检货等）
+2. 体积是否为合理的正数
+3. 应收金额（单价 × 体积）计算是否正确
+4. 是否有明显的数据缺失或异常
+
+对每条数据给出 verdict（"通过"或"异常"）和简要原因。
+
+请以 JSON 格式返回：
+{
+  "overall": "全部通过" | "部分异常" | "全部异常",
+  "details": [
+    { "itemId": 数字, "verdict": "通过"|"异常", "reason": "原因说明" }
+  ]
+}`;
+
+    const userPrompt = `客户：${customerName}\n装柜明细（共 ${itemsForAi.length} 条）：\n${JSON.stringify(itemsForAi, null, 2)}`;
+
+    const aiResult = await aiChat(systemPrompt, userPrompt);
+
+    let parsed;
+    try {
+      const jsonStart = aiResult.indexOf('{');
+      const jsonEnd = aiResult.lastIndexOf('}');
+      parsed = JSON.parse(aiResult.slice(jsonStart, jsonEnd + 1));
+    } catch {
+      return NextResponse.json({ error: 'AI 返回格式异常', raw: aiResult }, { status: 500 });
+    }
+
+    return NextResponse.json({
+      overall: parsed.overall,
+      totalItems: items.length,
+      abnormalCount: (parsed.details || []).filter((d: any) => d.verdict === '异常').length,
+      details: parsed.details,
+    });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message || '验价失败' }, { status: 500 });
+  }
+}

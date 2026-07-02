@@ -16,6 +16,7 @@ import {
   LogOut,
   ChevronLeft,
   Shield,
+  HandCoins,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -41,10 +42,15 @@ const navigation = [
     ],
   },
   {
-    title: '业务管理',
+    title: '拼柜管理',
     items: [
-      { name: '票货管理', href: '/shipments', icon: Package },
-      { name: '发票管理', href: '/invoices', icon: Receipt },
+      { name: '拼柜批次', href: '/shared-containers', icon: Package },
+    ],
+  },
+  {
+    title: '装柜管理',
+    items: [
+      { name: '装柜批次', href: '/loading-lists', icon: Truck },
     ],
   },
   {
@@ -52,18 +58,22 @@ const navigation = [
     items: [
       { name: '客户账期', href: '/accounts/customers', icon: Users },
       { name: '供应商应付', href: '/accounts/suppliers', icon: Truck },
+      { name: '费用管理', href: '/costs', icon: HandCoins },
+      { name: '直接收入', href: '/direct-income', icon: TrendingUp },
     ],
   },
   {
     title: '报表',
     items: [
       { name: '月度报表', href: '/reports/monthly', icon: BarChart3 },
+      { name: '账单管理', href: '/bills', icon: Receipt },
     ],
   },
   {
     title: '基础数据',
     items: [
       { name: '客户管理', href: '/customers', icon: Users },
+      { name: '唛头管理', href: '/marks', icon: FileText },
       { name: '供应商管理', href: '/suppliers', icon: Truck },
     ],
   },
@@ -84,7 +94,7 @@ export function Sidebar({ user }: SidebarProps) {
     items: section.items.filter(item => {
       if (section.title === '系统管理' && user.role !== 'admin') return false;
       if (user.role === 'viewer') {
-        const allowedItems = ['仪表盘', '收入总表', '支出总表', '票货管理', '客户账期', '供应商应付', '月度报表'];
+        const allowedItems = ['仪表盘', '收入总表', '支出总表', '客户账期', '供应商应付', '月度报表'];
         return allowedItems.includes(item.name);
       }
       if (user.role === 'operator') {

@@ -14,11 +14,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     await db.insert(paymentsMade).values({
       supplierId: body.supplierId,
+      expenseId: body.expenseId || null,
       amountCents: body.amountCents,
       currency: body.currency || 'CNY',
       paidDate: body.paidDate,
-      shipmentId: body.shipmentId || null,
-      costType: body.costType || null,
       remark: body.remark || null,
     });
 

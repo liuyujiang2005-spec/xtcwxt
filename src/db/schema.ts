@@ -33,43 +33,127 @@ export const suppliers = sqliteTable('suppliers', {
   remark: text('remark'),
 });
 
-export const shipments = sqliteTable('shipments', {
+export const marks = sqliteTable('marks', {
   id: integer('id').primaryKey(),
-  shipmentNo: text('shipment_no').notNull().unique(),
-  customerId: integer('customer_id').references(() => customers.id),
-  shipmentType: text('shipment_type').notNull(),
-  goodsType: text('goods_type').notNull(),
-  volume: real('volume').notNull(),
-  unitPriceCents: integer('unit_price_cents').notNull(),
-  totalReceivableCents: integer('total_receivable_cents').notNull(),
-  currency: text('currency').default('CNY'),
-  status: text('status').default('运输中').$type<'运输中' | '已到仓' | '已签收' | '已结算' | '部分已收'>(),
+  markNo: text('mark_no').notNull().unique(),
+  customerId: integer('customer_id').references(() => customers.id).notNull(),
+  mode: text('mode').notNull(),
   monthTag: text('month_tag').notNull(),
-  blNo: text('bl_no'),
-  containerNo: text('container_no'),
-  etd: text('etd'),
-  etaBkk: text('eta_bkk'),
   remark: text('remark'),
-  createdAt: text('created_at'),
+  createdAt: text('created_at').default('datetime(\'now\')'),
 }, (table) => ({
-  monthTagIdx: index('shipments_month_tag_idx').on(table.monthTag),
-  customerIdIdx: index('shipments_customer_id_idx').on(table.customerId),
+  monthTagIdx: index('marks_month_tag_idx').on(table.monthTag),
+  customerIdIdx: index('marks_customer_id_idx').on(table.customerId),
 }));
 
-export const shipmentCosts = sqliteTable('shipment_costs', {
+export const sharedContainerBatches = sqliteTable('shared_container_batches', {
   id: integer('id').primaryKey(),
-  shipmentId: integer('shipment_id').references(() => shipments.id),
-  costType: text('cost_type').notNull(),
+  batchNo: text('batch_no').notNull().unique(),
+  totalVolumeUploaded: real('total_volume_uploaded').notNull(),
+  status: text('status').default('待验证'),
+  originalFilename: text('original_filename'),
+  createdAt: text('created_at').default('datetime(\'now\')'),
+});
+
+export const sharedContainerItems = sqliteTable('shared_container_items', {
+  id: integer('id').primaryKey(),
+  batchId: integer('batch_id').references(() => sharedContainerBatches.id).notNull(),
+  markId: integer('mark_id').references(() => marks.id).notNull(),
+  customerId: integer('customer_id').references(() => customers.id).notNull(),
+  品名: text('品名'),
+  尺寸_长: real('尺寸_长'),
+  尺寸_宽: real('尺寸_宽'),
+  尺寸_高: real('尺寸_高'),
+  单箱体积: real('单箱体积'),
+  总体积: real('总体积').notNull(),
+  国内单号: text('国内单号'),
+  单箱数量: integer('单箱数量'),
+  总重量: real('总重量'),
+  箱数: integer('箱数'),
+  pcs数量: integer('pcs数量'),
+  成本单价_cents: integer('成本单价_cents'),
+  需支付总价_cents: integer('需支付总价_cents'),
+  货型: text('货型'),
+  运输方式: text('运输方式'),
+  客户应收_cents: integer('客户应收_cents'),
+  cost_status: text('cost_status').default('待支出'),
+  ai_verified: integer('ai_verified').default(0),
+  ai_verify_msg: text('ai_verify_msg'),
+  createdAt: text('created_at').default('datetime(\'now\')'),
+}, (table) => ({
+  batchIdIdx: index('sci_batch_id_idx').on(table.batchId),
+  markIdIdx: index('sci_mark_id_idx').on(table.markId),
+  customerIdIdx: index('sci_customer_id_idx').on(table.customerId),
+}));
+
+export const loadingBatches = sqliteTable('loading_batches', {
+  id: integer('id').primaryKey(),
+  batchNo: text('batch_no').notNull().unique(),
+  originalFilename: text('original_filename'),
+  createdAt: text('created_at').default('datetime(\'now\')'),
+});
+
+export const loadingItems = sqliteTable('loading_items', {
+  id: integer('id').primaryKey(),
+  batchId: integer('batch_id').references(() => loadingBatches.id).notNull(),
+  markId: integer('mark_id').references(() => marks.id).notNull(),
+  customerId: integer('customer_id').references(() => customers.id).notNull(),
+  品名: text('品名'),
+  尺寸_长: real('尺寸_长'),
+  尺寸_宽: real('尺寸_宽'),
+  尺寸_高: real('尺寸_高'),
+  单箱体积: real('单箱体积'),
+  总体积: real('总体积').notNull(),
+  国内单号: text('国内单号'),
+  单箱数量: integer('单箱数量'),
+  总重量: real('总重量'),
+  箱数: integer('箱数'),
+  pcs数量: integer('pcs数量'),
+  单价_cents: integer('单价_cents'),
+  需支付总价_cents: integer('需支付总价_cents'),
+  货型: text('货型'),
+  运输方式: text('运输方式'),
+  payment_status: text('payment_status').default('待支付'),
+  createdAt: text('created_at').default('datetime(\'now\')'),
+}, (table) => ({
+  batchIdIdx: index('li_batch_id_idx').on(table.batchId),
+  markIdIdx: index('li_mark_id_idx').on(table.markId),
+}));
+
+export const directIncome = sqliteTable('direct_income', {
+  id: integer('id').primaryKey(),
+  markId: integer('mark_id').references(() => marks.id),
+  customerId: integer('customer_id').references(() => customers.id).notNull(),
+  amountCents: integer('amount_cents').notNull(),
+  currency: text('currency').default('CNY'),
+  volume: real('volume'),
+  incomeDate: text('income_date').notNull(),
+  remark: text('remark'),
+  createdAt: text('created_at').default('datetime(\'now\')'),
+}, (table) => ({
+  customerIdIdx: index('di_customer_id_idx').on(table.customerId),
+  incomeDateIdx: index('di_income_date_idx').on(table.incomeDate),
+}));
+
+export const expenses = sqliteTable('expenses', {
+  id: integer('id').primaryKey(),
+  loadingBatchId: integer('loading_batch_id').references(() => loadingBatches.id),
+  expenseType: text('expense_type').notNull(),
   amountCents: integer('amount_cents').notNull(),
   currency: text('currency').default('CNY'),
   supplierId: integer('supplier_id').references(() => suppliers.id),
+  status: text('status').default('待支付'),
+  paidDate: text('paid_date'),
   remark: text('remark'),
+  createdAt: text('created_at').default('datetime(\'now\')'),
 }, (table) => ({
-  shipmentIdIdx: index('shipment_costs_shipment_id_idx').on(table.shipmentId),
+  expenseTypeIdx: index('exp_type_idx').on(table.expenseType),
+  statusIdx: index('exp_status_idx').on(table.status),
 }));
 
 export const paymentsReceived = sqliteTable('payments_received', {
   id: integer('id').primaryKey(),
+  markId: integer('mark_id').references(() => marks.id),
   customerId: integer('customer_id').references(() => customers.id),
   amountCents: integer('amount_cents').notNull(),
   currency: text('currency').default('CNY'),
@@ -79,47 +163,38 @@ export const paymentsReceived = sqliteTable('payments_received', {
   customerIdIdx: index('payments_received_customer_id_idx').on(table.customerId),
 }));
 
-export const paymentShipmentAllocations = sqliteTable('payment_shipment_allocations', {
-  id: integer('id').primaryKey(),
-  paymentReceivedId: integer('payment_received_id').references(() => paymentsReceived.id),
-  shipmentId: integer('shipment_id').references(() => shipments.id),
-  amountCents: integer('amount_cents').notNull(),
-}, (table) => ({
-  shipmentIdIdx: index('payment_alloc_shipment_id_idx').on(table.shipmentId),
-}));
-
 export const paymentsMade = sqliteTable('payments_made', {
   id: integer('id').primaryKey(),
   supplierId: integer('supplier_id').references(() => suppliers.id),
+  expenseId: integer('expense_id').references(() => expenses.id),
   amountCents: integer('amount_cents').notNull(),
   currency: text('currency').default('CNY'),
   paidDate: text('paid_date').notNull(),
-  shipmentId: integer('shipment_id').references(() => shipments.id),
-  costType: text('cost_type'),
   remark: text('remark'),
 });
 
-export const invoices = sqliteTable('invoices', {
+export const bills = sqliteTable('bills', {
   id: integer('id').primaryKey(),
-  invoiceNo: text('invoice_no').notNull().unique(),
-  customerId: integer('customer_id').references(() => customers.id),
-  type: text('type'),
-  status: text('status').default('待开'),
+  billNo: text('bill_no').notNull().unique(),
+  customerId: integer('customer_id').references(() => customers.id).notNull(),
+  monthTag: text('month_tag').notNull(),
   totalAmountCents: integer('total_amount_cents').notNull(),
   currency: text('currency').default('CNY'),
-  issueDate: text('issue_date'),
-  dueDate: text('due_date'),
-  remark: text('remark'),
+  status: text('status').default('待生成'),
+  createdAt: text('created_at').default('datetime(\'now\')'),
 }, (table) => ({
-  customerIdIdx: index('invoices_customer_id_idx').on(table.customerId),
+  customerMonthIdx: index('bills_customer_month_idx').on(table.customerId, table.monthTag),
 }));
 
-export const invoiceItems = sqliteTable('invoice_items', {
+export const billItems = sqliteTable('bill_items', {
   id: integer('id').primaryKey(),
-  invoiceId: integer('invoice_id').references(() => invoices.id),
-  shipmentId: integer('shipment_id').references(() => shipments.id),
+  billId: integer('bill_id').references(() => bills.id).notNull(),
+  markId: integer('mark_id').references(() => marks.id).notNull(),
+  mode: text('mode').notNull(),
   amountCents: integer('amount_cents').notNull(),
-});
+}, (table) => ({
+  billIdIdx: index('bi_bill_id_idx').on(table.billId),
+}));
 
 export const customerMetrics = sqliteTable('customer_metrics', {
   id: integer('id').primaryKey(),
