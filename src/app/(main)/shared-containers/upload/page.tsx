@@ -28,6 +28,8 @@ interface ScSummary {
   abnormalCount: number;
 }
 
+const BATCH_SIZE = 50;
+
 export default function UploadSharedContainerPage() {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
@@ -36,12 +38,14 @@ export default function UploadSharedContainerPage() {
   const [preview, setPreview] = useState<ScItem[]>([]);
   const [summary, setSummary] = useState<ScSummary>({ totalItems: 0, abnormalCount: 0 });
   const [result, setResult] = useState<{ passed: boolean; msg: string } | null>(null);
+  const [progress, setProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 });
 
   const handleExtract = async () => {
     if (!file) return;
     setPhase('parsing');
     setResult(null);
     setPreview([]);
+    setProgress({ current: 0, total: 0 });
 
     try {
       const reader = new FileReader();
@@ -66,36 +70,70 @@ export default function UploadSharedContainerPage() {
           }
           console.log('使用 sheet:', targetSheet);
 
-          const rawRows = XLSX.utils.sheet_to_json(ws, { header: 1 });
-          console.log('SheetJS 读取结果:', JSON.stringify(rawRows).slice(0, 500));
+          const rawRows = XLSX.utils.sheet_to_json(ws, { header: 1 }) as unknown[][];
 
           // 过滤掉全是空值的行
-          const filtered = (rawRows as unknown[][]).filter((row) =>
+          const filtered = rawRows.filter((row) =>
             row.some((cell) => String(cell).trim() !== ''),
           );
 
-          if (filtered.length === 0) {
-            setResult({ passed: false, msg: '表格没有数据' });
+          if (filtered.length < 2) {
+            setResult({ passed: false, msg: '表格至少需要表头和一行数据' });
             setPhase('idle');
             return;
           }
 
-          const aiRes = await fetch('/api/ai/extract-sc', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ rawRows: filtered }),
+          // 去掉全空的列
+          const colCount = Math.max(...filtered.map((r) => r.length));
+          const nonEmptyCols: number[] = [];
+          for (let c = 0; c < colCount; c++) {
+            if (filtered.some((row) => String(row[c] || '').trim() !== '')) {
+              nonEmptyCols.push(c);
+            }
+          }
+          const compact = filtered.map((row) =>
+            nonEmptyCols.map((c) => row[c] ?? ''),
+          );
+          const header = compact[0];
+          const dataRows = compact.slice(1);
+          console.log('去除空列后 — 表头:', header, '数据行数:', dataRows.length);
+
+          // 分组：每组 [表头, ...最多 BATCH_SIZE 行数据]
+          const totalBatches = Math.ceil(dataRows.length / BATCH_SIZE);
+          let allItems: ScItem[] = [];
+
+          for (let i = 0; i < totalBatches; i++) {
+            const start = i * BATCH_SIZE;
+            const batchRows = dataRows.slice(start, start + BATCH_SIZE);
+            const batch = [header, ...batchRows];
+
+            const aiRes = await fetch('/api/ai/extract-sc', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ rawRows: batch }),
+            });
+
+            if (!aiRes.ok) {
+              const err = await aiRes.json().catch(() => ({ error: 'AI 解析失败' }));
+              setResult({ passed: false, msg: err.error || `第 ${i + 1}/${totalBatches} 组解析失败` });
+              setPhase('idle');
+              return;
+            }
+
+            const aiData = await aiRes.json();
+            allItems = [...allItems, ...(aiData.items || [])];
+
+            setProgress({ current: i + 1, total: totalBatches });
+          }
+
+          // 重新编号 rowIndex
+          allItems = allItems.map((item, idx) => ({ ...item, rowIndex: idx + 1 }));
+
+          setPreview(allItems);
+          setSummary({
+            totalItems: allItems.length,
+            abnormalCount: allItems.filter((i) => i.verdict === '异常').length,
           });
-
-          if (!aiRes.ok) {
-            const err = await aiRes.json().catch(() => ({ error: 'AI 解析失败' }));
-            setResult({ passed: false, msg: err.error || 'AI 解析失败' });
-            setPhase('idle');
-            return;
-          }
-
-          const aiData = await aiRes.json();
-          setPreview(aiData.items || []);
-          setSummary(aiData.summary || { totalItems: 0, abnormalCount: 0 });
           setPhase('preview');
         } catch {
           setResult({ passed: false, msg: '解析 Excel 失败' });
@@ -114,6 +152,7 @@ export default function UploadSharedContainerPage() {
     setPreview([]);
     setSummary({ totalItems: 0, abnormalCount: 0 });
     setResult(null);
+    setProgress({ current: 0, total: 0 });
     setPhase('idle');
   };
 
@@ -263,7 +302,11 @@ export default function UploadSharedContainerPage() {
 
             <Button onClick={handleExtract} disabled={phase === 'parsing' || !file} className="w-full">
               {phase === 'parsing' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Brain className="h-4 w-4 mr-2" />}
-              {phase === 'parsing' ? 'AI 提取中...' : 'AI 识别并提取数据'}
+              {phase === 'parsing'
+                ? progress.total > 0
+                  ? `AI 提取中 ${progress.current}/${progress.total}...`
+                  : 'AI 提取中...'
+                : 'AI 识别并提取数据'}
             </Button>
           </CardContent>
         </Card>
