@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import BillDownloadCard from './bill-download-card';
+import BillGenerateCard from './bill-generate-card';
 
 export default async function BillsPage() {
   const user = await getCurrentUser();
@@ -22,6 +23,8 @@ export default async function BillsPage() {
       <h1 className="text-2xl font-bold">账单管理</h1>
 
       <BillDownloadCard />
+
+      <BillGenerateCard />
 
       <Card>
         <CardContent className="p-0">
