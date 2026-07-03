@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -47,21 +47,16 @@ const BATCH_SIZE = 50;
 export default function UploadLoadingListPage() {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
-  const [customers, setCustomers] = useState<{ id: number; name: string }[]>([]);
-  const [selectedCustomerId, setSelectedCustomerId] = useState<number>(0);
 
   const [phase, setPhase] = useState<'idle' | 'parsing' | 'preview' | 'importing'>('idle');
   const [preview, setPreview] = useState<LdItem[]>([]);
   const [summary, setSummary] = useState<LdSummary>({ totalItems: 0, abnormalCount: 0 });
   const [result, setResult] = useState<{ passed: boolean; msg: string } | null>(null);
   const [progress, setProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 });
-
-  useEffect(() => {
-    fetch('/api/customers').then(r => r.json()).then(setCustomers);
-  }, []);
+  const [customerId, setCustomerId] = useState<number>(0);
 
   const handleExtract = async () => {
-    if (!file || !selectedCustomerId) return;
+    if (!file) return;
     setPhase('parsing');
     setResult(null);
     setPreview([]);
@@ -157,12 +152,10 @@ export default function UploadLoadingListPage() {
             const batchRows = finalRows.slice(start, start + BATCH_SIZE);
             const batch = [header, ...batchRows];
 
-            const customerName = customers.find(c => c.id === selectedCustomerId)?.name || '';
-
             const aiRes = await fetch('/api/ai/extract-loading', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ rawRows: batch, customerId: selectedCustomerId, customerName }),
+              body: JSON.stringify({ rawRows: batch }),
             });
 
             if (!aiRes.ok) {
@@ -179,6 +172,19 @@ export default function UploadLoadingListPage() {
           }
 
           allItems = allItems.map((item, idx) => ({ ...item, rowIndex: idx + 1 }));
+
+          // 从提取结果取客户名，查库匹配 customerId
+          const custName = allItems.find((item) => item.客户 && item.客户.trim())?.客户;
+          if (custName) {
+            try {
+              const res = await fetch('/api/customers');
+              const list = await res.json();
+              const match = (Array.isArray(list) ? list : []).find(
+                (c: any) => c.name === custName.trim()
+              );
+              if (match) setCustomerId(match.id);
+            } catch {}
+          }
 
           setPreview(allItems);
           setSummary({
@@ -204,6 +210,7 @@ export default function UploadLoadingListPage() {
     setSummary({ totalItems: 0, abnormalCount: 0 });
     setResult(null);
     setProgress({ current: 0, total: 0 });
+    setCustomerId(0);
     setPhase('idle');
   };
 
@@ -216,7 +223,7 @@ export default function UploadLoadingListPage() {
 
       const items = preview.map((item) => ({
         markNo: item.markNo,
-        customerId: selectedCustomerId,
+        customerId,
         品名: item.品名,
         尺寸_长: item.尺寸_长 || 0,
         尺寸_宽: item.尺寸_宽 || 0,
@@ -382,20 +389,6 @@ export default function UploadLoadingListPage() {
               <Input type="file" accept=".xlsx,.xls" onChange={(e) => setFile(e.target.files?.[0] || null)} />
             </div>
 
-            <div className="space-y-2">
-              <Label>选择客户</Label>
-              <select
-                className="h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base"
-                value={selectedCustomerId}
-                onChange={(e) => setSelectedCustomerId(Number(e.target.value))}
-              >
-                <option value={0}>-- 请选择客户 --</option>
-                {customers.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-            </div>
-
             {result && (
               <div className={`p-3 rounded-lg flex items-center gap-2 ${result.passed ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
                 {result.passed ? <CheckCircle className="h-5 w-5" /> : <AlertTriangle className="h-5 w-5" />}
@@ -403,7 +396,7 @@ export default function UploadLoadingListPage() {
               </div>
             )}
 
-            <Button onClick={handleExtract} disabled={phase === 'parsing' || !file || !selectedCustomerId} className="w-full">
+            <Button onClick={handleExtract} disabled={phase === 'parsing' || !file} className="w-full">
               {phase === 'parsing' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Brain className="h-4 w-4 mr-2" />}
               {phase === 'parsing'
                 ? progress.total > 0
