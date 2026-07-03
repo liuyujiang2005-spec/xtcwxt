@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
   const user = await validateSession(sessionToken);
   if (!user || user.role === 'viewer') return NextResponse.json({ error: '无权限' }, { status: 403 });
 
-  const { rawRows, customerName } = await request.json();
+  const { rawRows } = await request.json();
 
   if (!rawRows || !Array.isArray(rawRows) || rawRows.length === 0) {
     return NextResponse.json({ error: '缺少 rawRows 或为空' }, { status: 400 });
@@ -98,8 +98,7 @@ export async function POST(request: NextRequest) {
 尺寸可能在一个单元格里（如 55×33×26），需要解析成长宽高三个数字。
 体积、单价、尺寸等数字字段都转为数字类型。`;
 
-  const userPrompt = `客户：${customerName || '未知'}
-总行数：${rawRows.length}（第一行为表头，剩余 ${rawRows.length - 1} 行为数据行）
+  const userPrompt = `总行数：${rawRows.length}（第一行为表头，剩余 ${rawRows.length - 1} 行为数据行）
 完整数据：
 ${JSON.stringify(rawRows)}
 

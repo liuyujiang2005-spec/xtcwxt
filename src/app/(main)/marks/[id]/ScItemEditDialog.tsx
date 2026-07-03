@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,6 +15,7 @@ export function ScItemEditDialog({
   成本单价_cents: number;
   客户应收_cents: number;
 }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [cost, setCost] = useState(String(成本单价_cents / 100));
   const [receivable, setReceivable] = useState(String(客户应收_cents / 100));
@@ -32,7 +34,7 @@ export function ScItemEditDialog({
 
     setSaving(false);
     setOpen(false);
-    window.location.reload();
+    router.refresh();
   };
 
   if (!open) {

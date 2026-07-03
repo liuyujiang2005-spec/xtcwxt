@@ -7,8 +7,9 @@ import { formatCents } from '@/lib/format';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus } from 'lucide-react';
+import { Plus, Trash2, Pencil } from 'lucide-react';
 import Link from 'next/link';
+import { DeleteIncomeButton } from './delete-button';
 
 export default async function DirectIncomePage() {
   const user = await getCurrentUser();
@@ -42,6 +43,7 @@ export default async function DirectIncomePage() {
                 <TableHead className="text-right">体积</TableHead>
                 <TableHead>日期</TableHead>
                 <TableHead>备注</TableHead>
+                <TableHead className="text-right">操作</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -53,10 +55,16 @@ export default async function DirectIncomePage() {
                   <TableCell className="text-right">{i.volume ? `${i.volume.toFixed(2)}m³` : '-'}</TableCell>
                   <TableCell className="text-sm">{i.incomeDate}</TableCell>
                   <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">{i.remark || '-'}</TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      {!isViewer && <Link href={`/direct-income/${i.id}/edit`}><Button variant="ghost" size="icon" className="h-7 w-7"><Pencil className="h-3.5 w-3.5" /></Button></Link>}
+                      {!isViewer && <DeleteIncomeButton id={i.id} />}
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))}
               {allIncome.length === 0 && (
-                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">暂无收入记录</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">暂无收入记录</TableCell></TableRow>
               )}
             </TableBody>
           </Table>

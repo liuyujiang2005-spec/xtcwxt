@@ -1,7 +1,7 @@
 import { getCurrentUser } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { db } from '@/db/index';
-import { directIncome, expenses, paymentsReceived, paymentsMade, customerMetrics, customers } from '@/db/schema';
+import { directIncome, expenses, paymentsReceived, paymentsMade, customerMetrics, customers, sharedContainerItems, loadingItems } from '@/db/schema';
 import { desc } from 'drizzle-orm';
 import { formatCents } from '@/lib/format';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,15 +22,21 @@ export default async function DashboardPage() {
   const allExpenses = await db.select().from(expenses).all();
   const allReceived = await db.select().from(paymentsReceived).all();
   const allPaid = await db.select().from(paymentsMade).all();
+  const allScItems = await db.select().from(sharedContainerItems).all();
+  const allLdItems = await db.select().from(loadingItems).all();
 
   const monthRevenueCNY = allIncome
     .filter((i) => i.incomeDate?.startsWith(currentMonth) && i.currency !== 'THB')
-    .reduce((s, i) => s + i.amountCents, 0);
+    .reduce((s, i) => s + i.amountCents, 0)
+    + allScItems.filter((i) => i.cost_status !== '待支出' && i.createdAt?.startsWith(currentMonth)).reduce((s, i) => s + (i.客户应收_cents || 0), 0)
+    + allLdItems.filter((i) => i.payment_status === '已支付' && i.createdAt?.startsWith(currentMonth)).reduce((s, i) => s + (i.需支付总价_cents || 0), 0);
   const monthRevenueTHB = allIncome
     .filter((i) => i.incomeDate?.startsWith(currentMonth) && i.currency === 'THB')
     .reduce((s, i) => s + i.amountCents, 0);
 
-  const monthCostCNY = allExpenses.filter((e) => e.currency !== 'THB' && e.paidDate?.startsWith(currentMonth)).reduce((s, e) => s + e.amountCents, 0);
+  const monthCostCNY = allExpenses.filter((e) => e.currency !== 'THB' && e.paidDate?.startsWith(currentMonth)).reduce((s, e) => s + e.amountCents, 0)
+    + allScItems.filter((i) => i.createdAt?.startsWith(currentMonth)).reduce((s, i) => s + (i.需支付总价_cents || 0), 0)
+    + allLdItems.filter((i) => i.createdAt?.startsWith(currentMonth)).reduce((s, i) => s + (i.需支付总价_cents || 0), 0);
   const monthCostTHB = allExpenses.filter((e) => e.currency === 'THB' && e.paidDate?.startsWith(currentMonth)).reduce((s, e) => s + e.amountCents, 0);
 
   const profitCNY = monthRevenueCNY - monthCostCNY;

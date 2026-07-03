@@ -1,7 +1,7 @@
 import { getCurrentUser } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { db } from '@/db/index';
-import { expenses, suppliers } from '@/db/schema';
+import { expenses, suppliers, sharedContainerItems, loadingItems } from '@/db/schema';
 import { formatCents } from '@/lib/format';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -12,7 +12,16 @@ export default async function ExpensesPage() {
 
   const allExpenses = await db.select().from(expenses).all();
   const allSuppliers = await db.select().from(suppliers).all();
+  const allScItems = await db.select().from(sharedContainerItems).all();
+  const allLdItems = await db.select().from(loadingItems).all();
   const supplierMap = new Map(allSuppliers.map((s) => [s.id, s.name]));
+
+  const scPending = allScItems.filter((i) => i.cost_status === '待支出').reduce((s, i) => s + (i.需支付总价_cents || 0), 0);
+  const ldPending = allLdItems.filter((i) => i.payment_status === '待支付').reduce((s, i) => s + (i.需支付总价_cents || 0), 0);
+  const importPending = scPending + ldPending;
+  const scPaid = allScItems.filter((i) => i.cost_status !== '待支出').reduce((s, i) => s + (i.需支付总价_cents || 0), 0);
+  const ldPaid = allLdItems.filter((i) => i.payment_status === '已支付').reduce((s, i) => s + (i.需支付总价_cents || 0), 0);
+  const importPaid = scPaid + ldPaid;
 
   const byType = new Map<string, { count: number; CNY: number; THB: number }>();
   allExpenses.forEach((e) => {
@@ -64,6 +73,17 @@ export default async function ExpensesPage() {
           </Table>
         </CardContent>
       </Card>
+      {(importPending > 0 || importPaid > 0) && (
+        <Card>
+          <div className="p-4 border-b"><h2 className="font-semibold">导入成本（拼柜+装柜）</h2></div>
+          <CardContent className="py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="text-center p-3 bg-muted rounded-lg"><p className="text-sm text-muted-foreground">待支付</p><p className="text-lg font-bold text-orange-600">{formatCents(importPending)}</p></div>
+              <div className="text-center p-3 bg-muted rounded-lg"><p className="text-sm text-muted-foreground">已支付</p><p className="text-lg font-bold text-green-600">{formatCents(importPaid)}</p></div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

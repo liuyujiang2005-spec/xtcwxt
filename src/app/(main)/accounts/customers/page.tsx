@@ -1,7 +1,7 @@
 import { getCurrentUser } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { db } from '@/db/index';
-import { customers, paymentsReceived, customerMetrics, marks } from '@/db/schema';
+import { customers, paymentsReceived, customerMetrics, marks, sharedContainerItems, loadingItems } from '@/db/schema';
 import { formatCents } from '@/lib/format';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,13 +15,18 @@ export default async function CustomerAccountsPage() {
   const allPayments = await db.select().from(paymentsReceived).all();
   const allMetrics = await db.select().from(customerMetrics).all();
   const allMarks = await db.select().from(marks).all();
+  const allScItems = await db.select().from(sharedContainerItems).all();
+  const allLdItems = await db.select().from(loadingItems).all();
+  const volumeByCustomer = new Map<number, number>();
+  allScItems.forEach((i) => volumeByCustomer.set(i.customerId, (volumeByCustomer.get(i.customerId) || 0) + (i.总体积 || 0)));
+  allLdItems.forEach((i) => volumeByCustomer.set(i.customerId, (volumeByCustomer.get(i.customerId) || 0) + (i.总体积 || 0)));
 
   const data = allCustomers.map((c) => {
     const custPayments = allPayments.filter((p) => p.customerId === c.id);
     const received = custPayments.reduce((sum, p) => sum + p.amountCents, 0);
     const metric = allMetrics.find((m) => m.customerId === c.id);
     const custMarks = allMarks.filter((m) => m.customerId === c.id);
-    const totalVolume = custMarks.reduce((s, m) => s + 0, 0);
+    const totalVolume = volumeByCustomer.get(c.id) || 0;
 
     return {
       customerId: c.id,

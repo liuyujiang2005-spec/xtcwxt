@@ -35,6 +35,9 @@ export async function POST(request: NextRequest) {
           const matrix = JSON.parse(cust.priceMatrix);
           const mode = item.运输方式 === '海运' ? 'sea' : 'land';
           const type = item.货型 === '普货' ? 'regular' : item.货型 === '商检货' ? 'inspection' : 'sensitive';
+          if (!item.运输方式 || !item.货型) {
+            console.log(`客户 ${cust?.name || item.customerId} 运输方式="${item.运输方式 || '空'}" 或货型="${item.货型 || '空'}"，默认取 sea_${type}`);
+          }
           const key = `${mode}_${type}`;
           unitPriceCents = Math.round((matrix[key] || 0) * 100);
         } catch {}

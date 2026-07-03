@@ -111,6 +111,10 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  if (rows.length === 0) {
+    return NextResponse.json({ error: '该客户在所选月份没有业务数据' }, { status: 404 });
+  }
+
   const buffer = await generateBillXlsx(
     '深圳新泓瀚国际物流有限公司',
     customer.name,

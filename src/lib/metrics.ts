@@ -1,6 +1,6 @@
 import { db } from '@/db/index';
-import { marks, paymentsReceived, customerMetrics } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { marks, paymentsReceived, customerMetrics, sharedContainerItems, loadingItems } from '@/db/schema';
+import { eq, and, gte } from 'drizzle-orm';
 
 export async function refreshCustomerMetrics(customerId: number) {
   const allMarks = await db.select().from(marks).where(eq(marks.customerId, customerId)).all();
@@ -24,7 +24,17 @@ export async function refreshCustomerMetrics(customerId: number) {
   const now = new Date();
   const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
   const recentMarks = allMarks.filter((m) => m.createdAt && new Date(m.createdAt) >= sixMonthsAgo);
-  const monthlyVolume = recentMarks.length > 0 ? 10 : 0;
+  const recentMarkIds = recentMarks.map((m) => m.id);
+  let totalVolume = 0;
+  if (recentMarkIds.length > 0) {
+    const sixMonthsAgoStr = sixMonthsAgo.toISOString().substring(0, 10);
+    const scVol = await db.select().from(sharedContainerItems)
+      .where(and(eq(sharedContainerItems.customerId, customerId), gte(sharedContainerItems.createdAt, sixMonthsAgoStr))).all();
+    const ldVol = await db.select().from(loadingItems)
+      .where(and(eq(loadingItems.customerId, customerId), gte(loadingItems.createdAt, sixMonthsAgoStr))).all();
+    totalVolume = [...scVol, ...ldVol].reduce((s, i) => s + (i.总体积 || 0), 0);
+  }
+  const monthlyVolume = recentMarks.length > 0 ? (totalVolume / 6) : 0;
 
   let overallRating = 'C';
   if (avgPaymentDays < 15) overallRating = 'A';
