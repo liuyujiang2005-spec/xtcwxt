@@ -12,7 +12,6 @@ export default function EditDirectIncomePage({ params }: { params: { id: string 
   const router = useRouter();
   const id = parseInt(String(params?.id || ''));
   const [loading, setLoading] = useState(false);
-  const [fetching, setFetching] = useState(true);
   const [customers, setCustomers] = useState<{ id: number; name: string }[]>([]);
   const [customerId, setCustomerId] = useState<number>(0);
   const [amount, setAmount] = useState('');
@@ -23,7 +22,10 @@ export default function EditDirectIncomePage({ params }: { params: { id: string 
 
   useEffect(() => {
     fetch('/api/customers').then(r => r.json()).then(setCustomers);
-    fetch(`/api/direct-income/${id}`).then(r => r.json()).then((data) => {
+    fetch(`/api/direct-income/${id}`).then(r => {
+      if (!r.ok) throw new Error('加载失败');
+      return r.json();
+    }).then((data) => {
       setCustomerId(data.customerId);
       setAmount(String(data.amountCents / 100));
       setCurrency(data.currency || 'CNY');
