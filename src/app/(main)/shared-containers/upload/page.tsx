@@ -123,25 +123,28 @@ export default function UploadSharedContainerPage() {
 
           // 过滤汇总行：箱数 > 100 且大于其他所有行箱数之和的视为汇总行
           const boxColIdx = header.findIndex((h) => String(h).includes('箱数') || String(h).includes('件数'));
+          let finalRows = dataRows;
           if (boxColIdx !== -1) {
             const boxes = dataRows.map((r) => parseFloat(String(r[boxColIdx])) || 0);
-            const rowsAfterFilter: unknown[][] = [];
+            const filtered: unknown[][] = [];
             for (let i = 0; i < dataRows.length; i++) {
               const myBox = boxes[i];
               const othersSum = boxes.reduce((sum, b, j) => j !== i ? sum + b : sum, 0);
               if (myBox > 100 && myBox > othersSum) continue;
-              rowsAfterFilter.push(dataRows[i]);
+              filtered.push(dataRows[i]);
             }
-            if (rowsAfterFilter.length < dataRows.length) {
-              console.log(`过滤汇总行: ${dataRows.length - rowsAfterFilter.length} 行被移除`);
+            if (filtered.length < dataRows.length) {
+              console.log(`过滤汇总行: ${dataRows.length - filtered.length} 行被移除`);
             }
+            finalRows = filtered;
+          }
 
-          const totalBatches = Math.ceil(rowsAfterFilter.length / BATCH_SIZE);
+          const totalBatches = Math.ceil(finalRows.length / BATCH_SIZE);
           let allItems: ScItem[] = [];
 
           for (let i = 0; i < totalBatches; i++) {
             const start = i * BATCH_SIZE;
-            const batchRows = rowsAfterFilter.slice(start, start + BATCH_SIZE);
+            const batchRows = finalRows.slice(start, start + BATCH_SIZE);
             const batch = [header, ...batchRows];
 
             const aiRes = await fetch('/api/ai/extract-sc', {
