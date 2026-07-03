@@ -104,43 +104,8 @@ ${JSON.stringify(rawRows)}
     const jsonStr = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
     const data = JSON.parse(jsonStr);
 
-    // 优先用传进来的 customerId 查 priceMatrix，其次从 AI 提取的客户名匹配
-    let priceMatrix: Record<string, number> = {};
-    if (customerId) {
-      const cust = await db.select().from(customers).where(eq(customers.id, customerId)).get();
-      if (cust?.priceMatrix) {
-        try { priceMatrix = JSON.parse(cust.priceMatrix); } catch {}
-      }
-    }
-    if (Object.keys(priceMatrix).length === 0) {
-      const cName = customerName || (data.items || [])
-        .map((item: any) => item.客户)
-        .find((name: string) => name && name.trim());
-      if (cName) {
-        const cust = await db.select().from(customers)
-          .where(eq(customers.name, cName.trim()))
-          .get();
-        if (cust?.priceMatrix) {
-          try { priceMatrix = JSON.parse(cust.priceMatrix); } catch {}
-        }
-      }
-    }
-
-    const items = (data.items || []).map((item: any) => {
-      const mode = item.运输方式 === '海运' ? 'sea' : item.运输方式 === '陆运' ? 'land' : 'sea';
-      const type = item.货型 === '普货' ? 'regular' : item.货型 === '商检货' ? 'inspection' : item.货型 === '敏货' ? 'sensitive' : 'regular';
-      const totalVol = Number(item.总体积) || 0;
-
-      const key = `${mode}_${type}`;
-      const unitPrice = priceMatrix[key] || 0;
-      const receivable = Math.round(unitPrice * totalVol * 100) / 100;
-
-      return {
-        ...item,
-        单价: unitPrice,
-        应收: receivable,
-      };
-    });
+    const priceMatrix = await loadPriceMatrix(customerId, customerName, data.items);
+    const items = applyPriceMatrix(data.items, priceMatrix);
 
     return NextResponse.json({
       items,
@@ -165,36 +130,8 @@ ${JSON.stringify(rawRows)}
         data = JSON.parse(recovered);
       }
 
-      let priceMatrix: Record<string, number> = {};
-      if (customerId) {
-        const cust = await db.select().from(customers).where(eq(customers.id, customerId)).get();
-        if (cust?.priceMatrix) {
-          try { priceMatrix = JSON.parse(cust.priceMatrix); } catch {}
-        }
-      }
-      if (Object.keys(priceMatrix).length === 0) {
-        const cName = customerName || (data.items || [])
-          .map((item: any) => item.客户)
-          .find((name: string) => name && name.trim());
-        if (cName) {
-          const cust = await db.select().from(customers)
-            .where(eq(customers.name, cName.trim()))
-            .get();
-          if (cust?.priceMatrix) {
-            try { priceMatrix = JSON.parse(cust.priceMatrix); } catch {}
-          }
-        }
-      }
-
-      const items = (data.items || []).map((item: any) => {
-        const mode = item.运输方式 === '海运' ? 'sea' : item.运输方式 === '陆运' ? 'land' : 'sea';
-        const type = item.货型 === '普货' ? 'regular' : item.货型 === '商检货' ? 'inspection' : item.货型 === '敏货' ? 'sensitive' : 'regular';
-        const totalVol = Number(item.总体积) || 0;
-        const key = `${mode}_${type}`;
-        const unitPrice = priceMatrix[key] || 0;
-        const receivable = Math.round(unitPrice * totalVol * 100) / 100;
-        return { ...item, 单价: unitPrice, 应收: receivable };
-      });
+      const priceMatrix = await loadPriceMatrix(customerId, customerName, data.items);
+      const items = applyPriceMatrix(data.items, priceMatrix);
 
       console.log('截断修复成功，恢复条数:', data.items?.length || 0);
       return NextResponse.json({ items, summary: data.summary || { totalItems: 0, abnormalCount: 0 } });
@@ -203,4 +140,37 @@ ${JSON.stringify(rawRows)}
       return NextResponse.json({ error: 'AI 解析失败，请重试' }, { status: 500 });
     }
   }
+}
+
+async function loadPriceMatrix(
+  customerId: number | undefined,
+  customerName: string | undefined,
+  items: any[],
+): Promise<Record<string, number>> {
+  if (customerId) {
+    const cust = await db.select().from(customers).where(eq(customers.id, customerId)).get();
+    if (cust?.priceMatrix) {
+      try { return JSON.parse(cust.priceMatrix); } catch {}
+    }
+  }
+  const cName = customerName || (items || []).map((item: any) => item.客户).find((name: string) => name && name.trim());
+  if (cName) {
+    const cust = await db.select().from(customers).where(eq(customers.name, cName.trim())).get();
+    if (cust?.priceMatrix) {
+      try { return JSON.parse(cust.priceMatrix); } catch {}
+    }
+  }
+  return {};
+}
+
+function applyPriceMatrix(items: any[], priceMatrix: Record<string, number>) {
+  return (items || []).map((item: any) => {
+    const mode = item.运输方式 === '海运' ? 'sea' : item.运输方式 === '陆运' ? 'land' : 'sea';
+    const type = item.货型 === '普货' ? 'regular' : item.货型 === '商检货' ? 'inspection' : item.货型 === '敏货' ? 'sensitive' : 'regular';
+    const totalVol = Number(item.总体积) || 0;
+    const key = `${mode}_${type}`;
+    const unitPrice = priceMatrix[key] || 0;
+    const receivable = Math.round(unitPrice * totalVol * 100) / 100;
+    return { ...item, 单价: unitPrice, 应收: receivable };
+  });
 }

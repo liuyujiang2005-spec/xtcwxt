@@ -25,8 +25,8 @@ export default async function MonthlyReportPage() {
         const monthIncome = allIncome.filter((i) => i.incomeDate?.startsWith(month));
         const revenueCNY = monthIncome.filter((i) => i.currency !== 'THB').reduce((s, i) => s + i.amountCents, 0);
         const revenueTHB = monthIncome.filter((i) => i.currency === 'THB').reduce((s, i) => s + i.amountCents, 0);
-        const costCNY = allExpenses.filter((e) => e.currency !== 'THB' && e.paidDate?.startsWith(month)).reduce((s, e) => s + e.amountCents, 0);
-        const costTHB = allExpenses.filter((e) => e.currency === 'THB' && e.paidDate?.startsWith(month)).reduce((s, e) => s + e.amountCents, 0);
+        const costCNY = allExpenses.filter((e) => e.currency !== 'THB' && (e.paidDate?.startsWith(month) || (!e.paidDate && e.createdAt?.startsWith(month)))).reduce((s, e) => s + e.amountCents, 0);
+        const costTHB = allExpenses.filter((e) => e.currency === 'THB' && (e.paidDate?.startsWith(month) || (!e.paidDate && e.createdAt?.startsWith(month)))).reduce((s, e) => s + e.amountCents, 0);
 
         const byCustomer = new Map<number, { CNY: number; THB: number }>();
         monthIncome.forEach((i) => {

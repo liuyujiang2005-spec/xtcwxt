@@ -20,7 +20,7 @@ export default async function UsersPage() {
   if (!user) redirect('/login');
   if (user.role !== 'admin') redirect('/');
 
-  const allUsers = await db.select().from(users).all();
+  const allUsers = (await db.select().from(users).all()).map(({ passwordHash, ...safe }) => safe);
 
   return (
     <div className="space-y-6">

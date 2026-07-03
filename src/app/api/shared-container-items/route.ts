@@ -25,6 +25,7 @@ export async function POST(request: NextRequest) {
           monthTag,
         });
         mark = await db.select().from(marks).where(eq(marks.id, Number(result.lastInsertRowid))).get();
+        if (!mark) throw new Error(`创建唛头失败: ${item.markNo}`);
       }
 
       await db.insert(sharedContainerItems).values({

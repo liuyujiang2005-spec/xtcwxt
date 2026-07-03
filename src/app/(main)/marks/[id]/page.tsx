@@ -23,7 +23,7 @@ export default async function MarkDetailPage({ params }: { params: Promise<{ id:
   const ldItems = await db.select().from(loadingItems).where(eq(loadingItems.markId, mark.id)).all();
   const diItems = await db.select().from(directIncome).where(eq(directIncome.markId, mark.id)).all();
 
-  const costTotal = [...scItems, ...ldItems].reduce((s: number, i: any) => s + (i.需支付总价_cents || i.成本单价_cents || 0), 0);
+  const costTotal = [...scItems, ...ldItems].reduce((s: number, i: any) => s + (i.需支付总价_cents || i.成本单价_cents || i.单价_cents || 0), 0);
   const receivableTotal = [...scItems, ...ldItems].reduce((s: number, i: any) => s + (i.客户应收_cents || 0), 0);
   const directTotal = diItems.reduce((s, i) => s + i.amountCents, 0);
 

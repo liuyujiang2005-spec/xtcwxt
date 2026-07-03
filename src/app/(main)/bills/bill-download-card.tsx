@@ -22,7 +22,7 @@ export default function BillDownloadCard() {
     setLoading(true);
     try {
       const res = await fetch(`/api/bills/download?customerId=${customerId}&month=${month}`);
-      if (!res.ok) { alert('生成失败'); return; }
+      if (!res.ok) { alert('生成失败'); setLoading(false); return; }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');

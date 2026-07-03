@@ -30,8 +30,8 @@ export default async function DashboardPage() {
     .filter((i) => i.incomeDate?.startsWith(currentMonth) && i.currency === 'THB')
     .reduce((s, i) => s + i.amountCents, 0);
 
-  const monthCostCNY = allExpenses.filter((e) => e.currency !== 'THB').reduce((s, e) => s + e.amountCents, 0);
-  const monthCostTHB = allExpenses.filter((e) => e.currency === 'THB').reduce((s, e) => s + e.amountCents, 0);
+  const monthCostCNY = allExpenses.filter((e) => e.currency !== 'THB' && e.paidDate?.startsWith(currentMonth)).reduce((s, e) => s + e.amountCents, 0);
+  const monthCostTHB = allExpenses.filter((e) => e.currency === 'THB' && e.paidDate?.startsWith(currentMonth)).reduce((s, e) => s + e.amountCents, 0);
 
   const profitCNY = monthRevenueCNY - monthCostCNY;
   const profitTHB = monthRevenueTHB - monthCostTHB;
