@@ -124,27 +124,24 @@ export default function UploadLoadingListPage() {
           const boxColIdx = header.findIndex((h) => String(h).includes('箱数') || String(h).includes('件数'));
           if (boxColIdx !== -1) {
             const boxes = dataRows.map((r) => parseFloat(String(r[boxColIdx])) || 0);
-            const filteredRows: unknown[][] = [];
+            const rowsAfterFilter: unknown[][] = [];
             for (let i = 0; i < dataRows.length; i++) {
               const myBox = boxes[i];
               const othersSum = boxes.reduce((sum, b, j) => j !== i ? sum + b : sum, 0);
               if (myBox > 100 && myBox > othersSum) continue;
-              filteredRows.push(dataRows[i]);
+              rowsAfterFilter.push(dataRows[i]);
             }
-            if (filteredRows.length < dataRows.length) {
-              console.log(`过滤汇总行: ${dataRows.length - filteredRows.length} 行被移除`);
+            if (rowsAfterFilter.length < dataRows.length) {
+              console.log(`过滤汇总行: ${dataRows.length - rowsAfterFilter.length} 行被移除`);
             }
-            dataRows.length = 0;
-            dataRows.push(...filteredRows);
-          }
 
           // 分批处理
-          const totalBatches = Math.ceil(dataRows.length / BATCH_SIZE);
+          const totalBatches = Math.ceil(rowsAfterFilter.length / BATCH_SIZE);
           let allItems: LdItem[] = [];
 
           for (let i = 0; i < totalBatches; i++) {
             const start = i * BATCH_SIZE;
-            const batchRows = dataRows.slice(start, start + BATCH_SIZE);
+            const batchRows = rowsAfterFilter.slice(start, start + BATCH_SIZE);
             const batch = [header, ...batchRows];
 
             const aiRes = await fetch('/api/ai/extract-loading', {
