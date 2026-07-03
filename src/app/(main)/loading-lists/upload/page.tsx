@@ -133,8 +133,9 @@ export default function UploadLoadingListPage() {
             }
             if (filteredRows.length < dataRows.length) {
               console.log(`过滤汇总行: ${dataRows.length - filteredRows.length} 行被移除`);
-              dataRows.splice(0, dataRows.length, ...filteredRows);
             }
+            dataRows.length = 0;
+            dataRows.push(...filteredRows);
           }
 
           // 分批处理
