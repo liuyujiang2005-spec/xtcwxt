@@ -1,21 +1,22 @@
-import ExcelJS from 'exceljs';
+import { createReadStream } from 'fs';
+import { unlink } from 'fs/promises';
+import FormData from 'form-data';
 
 const PARSER_URL = process.env.TABLE_PARSER_URL || 'http://localhost:8800';
 
 /**
- * 将二维数组 rawRows 写回 Excel 文件，POST 到 Python 解析服务，返回解析结果
+ * 将上传到服务器的 Excel 文件转发给 Python 解析服务
  */
-export async function parseViaPythonService(rawRows: unknown[][]): Promise<any> {
+export async function parseViaPythonService(filePath: string): Promise<any> {
   try {
-    const buffer = rowsToExcelBuffer(rawRows);
-    const formData = new FormData();
-    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    formData.append('file', blob, 'upload.xlsx');
-    formData.append('classify', 'false');
+    const form = new FormData();
+    form.append('file', createReadStream(filePath));
+    form.append('classify', 'false');
 
     const res = await fetch(`${PARSER_URL}/api/table/parse`, {
       method: 'POST',
-      body: formData,
+      body: form as any,
+      headers: form.getHeaders(),
     });
 
     if (!res.ok) {
@@ -24,40 +25,25 @@ export async function parseViaPythonService(rawRows: unknown[][]): Promise<any> 
     }
 
     return await res.json();
-  } catch (e: any) {
-    console.error('Python 解析服务调用失败:', e.message);
-    throw e;
+  } finally {
+    unlink(filePath).catch(() => {});
   }
 }
 
 /**
- * 将二维数组转为 ExcelJS workbook 的 buffer
- */
-function rowsToExcelBuffer(rows: unknown[][]): ArrayBuffer {
-  const wb = new ExcelJS.Workbook();
-  const ws = wb.addWorksheet('Sheet1');
-  rows.forEach((row) => ws.addRow(row));
-  return wb.xlsx.writeBuffer() as unknown as ArrayBuffer;
-}
-
-/**
  * 将 Python 解析结果映射为 extract-sc/extract-loading 返回格式
- * Python 输出格式: { "订单": [{ "订单号": "...", "产品明细": [{ 列名: 值, ... }], ... }] }
- * 目标格式:        { items: [{ rowIndex, markNo, 品名, ... }], summary: { totalItems, abnormalCount } }
  */
 export function mapPythonResult(pyData: any): { items: any[]; summary: { totalItems: number; abnormalCount: number } } {
   const orders = pyData?.订单 || [];
-  let allItems: any[] = [];
+  const allItems: any[] = [];
 
-  for (let i = 0; i < orders.length; i++) {
-    const order = orders[i];
-    const details = order.产品明细 || [order]; // fallback to order itself if no detail
-    for (let j = 0; j < details.length; j++) {
-      const row = { ...order, ...details[j] };
-      // Remove 产品明细 to flatten
+  for (const order of orders) {
+    const details = order.产品明细 || [order];
+    for (const detail of details) {
+      const row = { ...order, ...detail };
       delete row.产品明细;
       allItems.push({
-        rowIndex: allItems.length + 1,
+        rowIndex: 0,
         markNo: row.唛头号 || row.唛头 || row.markNo || row.订单号 || row.国内单号 || '',
         品名: row.品名 || row.名称 || row.货物名称 || row.Item || '',
         客户: row.客户 || row.客户名称 || row.Customer || '',
@@ -82,7 +68,8 @@ export function mapPythonResult(pyData: any): { items: any[]; summary: { totalIt
     }
   }
 
-  const items = allItems.map(item => {
+  const items = allItems.map((item, idx) => {
+    item.rowIndex = idx + 1;
     if (item.总体积 <= 0 && item.需支付总价 <= 0) {
       item.verdict = '异常';
       item.reason = '未识别到体积和金额';

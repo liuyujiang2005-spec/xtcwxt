@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateSession } from '@/lib/auth';
+import { writeFile } from 'fs/promises';
+import { join } from 'path';
+import { randomUUID } from 'crypto';
 import { parseViaPythonService, mapPythonResult } from '@/lib/table-parser-client';
 
 export async function POST(request: NextRequest) {
@@ -8,14 +11,16 @@ export async function POST(request: NextRequest) {
   const user = await validateSession(sessionToken);
   if (!user || user.role === 'viewer') return NextResponse.json({ error: '无权限' }, { status: 403 });
 
-  const { rawRows } = await request.json();
-
-  if (!rawRows || !Array.isArray(rawRows) || rawRows.length === 0) {
-    return NextResponse.json({ error: '缺少 rawRows 或为空' }, { status: 400 });
-  }
-
   try {
-    const pyData = await parseViaPythonService(rawRows);
+    const formData = await request.formData();
+    const file = formData.get('file') as File | null;
+    if (!file) return NextResponse.json({ error: '缺少上传文件' }, { status: 400 });
+
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const filePath = join('/tmp', `sc_${randomUUID()}.xlsx`);
+    await writeFile(filePath, buffer);
+
+    const pyData = await parseViaPythonService(filePath);
     const result = mapPythonResult(pyData);
     return NextResponse.json(result);
   } catch (error) {

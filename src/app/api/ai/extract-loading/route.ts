@@ -3,6 +3,9 @@ import { db } from '@/db/index';
 import { customers } from '@/db/schema';
 import { validateSession } from '@/lib/auth';
 import { eq } from 'drizzle-orm';
+import { writeFile } from 'fs/promises';
+import { join } from 'path';
+import { randomUUID } from 'crypto';
 import { parseViaPythonService, mapPythonResult } from '@/lib/table-parser-client';
 
 export async function POST(request: NextRequest) {
@@ -11,14 +14,19 @@ export async function POST(request: NextRequest) {
   const user = await validateSession(sessionToken);
   if (!user || user.role === 'viewer') return NextResponse.json({ error: '无权限' }, { status: 403 });
 
-  const { rawRows, customerId, customerName } = await request.json();
-
-  if (!rawRows || !Array.isArray(rawRows) || rawRows.length === 0) {
-    return NextResponse.json({ error: '缺少 rawRows 或为空' }, { status: 400 });
-  }
-
   try {
-    const pyData = await parseViaPythonService(rawRows);
+    const formData = await request.formData();
+    const file = formData.get('file') as File | null;
+    const customerId = parseInt(String(formData.get('customerId') || '0'));
+    const customerName = String(formData.get('customerName') || '');
+
+    if (!file) return NextResponse.json({ error: '缺少上传文件' }, { status: 400 });
+
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const filePath = join('/tmp', `ld_${randomUUID()}.xlsx`);
+    await writeFile(filePath, buffer);
+
+    const pyData = await parseViaPythonService(filePath);
     const parsed = mapPythonResult(pyData);
 
     const priceMatrix = await loadPriceMatrix(customerId, customerName, parsed.items);
@@ -32,8 +40,8 @@ export async function POST(request: NextRequest) {
 }
 
 async function loadPriceMatrix(
-  customerId: number | undefined,
-  customerName: string | undefined,
+  customerId: number,
+  customerName: string,
   items: any[],
 ): Promise<Record<string, number>> {
   if (customerId) {
