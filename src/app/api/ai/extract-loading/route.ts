@@ -17,10 +17,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: '缺少 rawRows 或为空' }, { status: 400 });
   }
 
-  const rowSample = rawRows.slice(0, 6).map((row: unknown, i: number) =>
-    `第${i + 1}行: ${JSON.stringify(row)}`
-  ).join('\n');
-
   const systemPrompt = `你是一个专业的装柜清单 Excel 数据提取助手。用户会提供一份装柜清单的原始 JSON 数据。
 
 注意：原始数据是二维数组，第一行可能是表头，后续行是数据行，请根据内容自行识别列名和对应关系。列名可能是中文或英文。
@@ -102,8 +98,8 @@ export async function POST(request: NextRequest) {
 注意：货型统一标准化为：普货、商检货、敏货、特货。运输方式统一：海运、陆运、空运。数字字段转为 number 类型。`;
 
   const userPrompt = `总行数：${rawRows.length}（第一行为表头，剩余 ${rawRows.length - 1} 行为数据行）
-二维数组样本（前6行，含表头）：
-${rowSample}
+完整数据：
+${JSON.stringify(rawRows)}
 
 请返回完整的 items 数组（所有数据行）和 summary。`;
 
