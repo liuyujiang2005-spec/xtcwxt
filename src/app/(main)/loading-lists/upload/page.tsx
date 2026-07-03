@@ -58,13 +58,15 @@ export default function UploadLoadingListPage() {
   const [customerId, setCustomerId] = useState<number>(0);
   const abortRef = useRef<AbortController | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const processingRef = useRef(false);
 
   useEffect(() => {
     return () => { abortRef.current?.abort(); };
   }, []);
 
   const handleExtract = async () => {
-    if (!file) return;
+    if (!file || processingRef.current) return;
+    processingRef.current = true;
     setPhase('parsing');
     setResult(null);
     setPreview([]);
@@ -91,6 +93,7 @@ export default function UploadLoadingListPage() {
           if (!ws) {
             setResult({ passed: false, msg: '所有 sheet 均为空' });
             setPhase('idle');
+            processingRef.current = false;
             return;
           }
 
@@ -103,6 +106,7 @@ export default function UploadLoadingListPage() {
           if (filtered.length < 2) {
             setResult({ passed: false, msg: '表格至少需要表头和一行数据' });
             setPhase('idle');
+            processingRef.current = false;
             return;
           }
 
@@ -175,6 +179,7 @@ export default function UploadLoadingListPage() {
               const err = await aiRes.json().catch(() => ({ error: 'AI 解析失败' }));
               setResult({ passed: false, msg: err.error || `第 ${i + 1}/${totalBatches} 组解析失败` });
               setPhase('idle');
+              processingRef.current = false;
               return;
             }
 
@@ -205,15 +210,16 @@ export default function UploadLoadingListPage() {
             abnormalCount: allItems.filter((i) => i.verdict === '异常').length,
           });
           setPhase('preview');
+          processingRef.current = false;
         } catch (err: any) {
-          if (err?.name === 'AbortError') return;
+          if (err?.name === 'AbortError') { processingRef.current = false; return; }
           setResult({ passed: false, msg: '解析 Excel 失败' });
           setPhase('idle');
         }
       };
       reader.readAsArrayBuffer(file);
     } catch (err: any) {
-      if (err?.name === 'AbortError') return;
+      if (err?.name === 'AbortError') { processingRef.current = false; return; }
       setResult({ passed: false, msg: '读取文件失败' });
       setPhase('idle');
     }
@@ -231,7 +237,8 @@ export default function UploadLoadingListPage() {
   };
 
   const handleConfirmImport = async () => {
-    if (!file || preview.length === 0) return;
+    if (!file || preview.length === 0 || processingRef.current) return;
+    processingRef.current = true;
     setPhase('importing');
 
     abortRef.current?.abort();
