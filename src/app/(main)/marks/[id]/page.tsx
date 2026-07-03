@@ -7,7 +7,7 @@ import { formatCents } from '@/lib/format';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ScItemEditDialog } from './ScItemEditDialog';
+import { ScItemsTable } from './ScItemsTable';
 
 export default async function MarkDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
@@ -56,36 +56,7 @@ export default async function MarkDetailPage({ params }: { params: Promise<{ id:
         <Card>
           <CardHeader><CardTitle>拼柜明细</CardTitle></CardHeader>
           <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>品名</TableHead><TableHead className="text-right">体积</TableHead>
-                  <TableHead>货型</TableHead><TableHead>运输</TableHead>
-                  <TableHead className="text-right">成本</TableHead><TableHead className="text-right">应收</TableHead>
-                  <TableHead className="text-center">操作</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {scItems.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell>{item.品名 || '-'}</TableCell>
-                    <TableCell className="text-right">{item.总体积.toFixed(2)}</TableCell>
-                    <TableCell>{item.货型 || '-'}</TableCell>
-                    <TableCell>{item.运输方式 || '-'}</TableCell>
-                    <TableCell className="text-right text-red-600">{formatCents(item.需支付总价_cents || 0)}</TableCell>
-                    <TableCell className="text-right text-green-600">{formatCents(item.客户应收_cents || 0)}</TableCell>
-                    <TableCell className="text-center">
-                      <ScItemEditDialog
-                        itemId={item.id}
-                        volume={item.总体积}
-                        成本单价_cents={item.成本单价_cents || 0}
-                        客户应收_cents={item.客户应收_cents || 0}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <ScItemsTable items={scItems} />
           </CardContent>
         </Card>
       )}
