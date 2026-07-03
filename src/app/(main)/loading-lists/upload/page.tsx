@@ -108,6 +108,35 @@ export default function UploadLoadingListPage() {
           const header = compact[0];
           const dataRows = compact.slice(1);
 
+          // 前向填充：唛头列和运单号列
+          const markColIdx = header.findIndex((h) => String(h).includes('唛头'));
+          const trackingColIdx = header.findIndex((h) => String(h).includes('单号') || String(h).includes('运单'));
+          for (let i = 1; i < dataRows.length; i++) {
+            if (markColIdx !== -1 && !String(dataRows[i][markColIdx] || '').trim() && String(dataRows[i - 1][markColIdx] || '').trim()) {
+              dataRows[i][markColIdx] = dataRows[i - 1][markColIdx];
+            }
+            if (trackingColIdx !== -1 && !String(dataRows[i][trackingColIdx] || '').trim() && String(dataRows[i - 1][trackingColIdx] || '').trim()) {
+              dataRows[i][trackingColIdx] = dataRows[i - 1][trackingColIdx];
+            }
+          }
+
+          // 过滤汇总行：箱数 > 100 且大于其他所有行箱数之和的视为汇总行
+          const boxColIdx = header.findIndex((h) => String(h).includes('箱数') || String(h).includes('件数'));
+          if (boxColIdx !== -1) {
+            const boxes = dataRows.map((r) => parseFloat(String(r[boxColIdx])) || 0);
+            const filteredRows: unknown[][] = [];
+            for (let i = 0; i < dataRows.length; i++) {
+              const myBox = boxes[i];
+              const othersSum = boxes.reduce((sum, b, j) => j !== i ? sum + b : sum, 0);
+              if (myBox > 100 && myBox > othersSum) continue;
+              filteredRows.push(dataRows[i]);
+            }
+            if (filteredRows.length < dataRows.length) {
+              console.log(`过滤汇总行: ${dataRows.length - filteredRows.length} 行被移除`);
+              dataRows.splice(0, dataRows.length, ...filteredRows);
+            }
+          }
+
           // 分批处理
           const totalBatches = Math.ceil(dataRows.length / BATCH_SIZE);
           let allItems: LdItem[] = [];
