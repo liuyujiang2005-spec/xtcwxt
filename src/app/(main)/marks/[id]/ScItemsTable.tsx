@@ -22,7 +22,7 @@ interface ScItem {
   结算状态: string | null;
 }
 
-export function ScItemsTable({ items }: { items: ScItem[] }) {
+export function ScItemsTable({ items }: { items: any[] }) {
   const router = useRouter();
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [showModal, setShowModal] = useState(false);
