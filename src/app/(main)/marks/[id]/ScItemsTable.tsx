@@ -19,6 +19,7 @@ interface ScItem {
   需支付总价_cents: number | null;
   客户应收_cents: number | null;
   成本单价_cents: number | null;
+  结算状态: string | null;
 }
 
 export function ScItemsTable({ items }: { items: ScItem[] }) {
@@ -45,23 +46,27 @@ export function ScItemsTable({ items }: { items: ScItem[] }) {
     setSaving(true);
     const unit = parseFloat(unitPrice || '');
     const rec = parseFloat(receivablePrice || '');
+    const updates: any = {};
+    if (!isNaN(unit)) updates.成本单价_cents = Math.round(unit * 100);
+    if (!isNaN(rec)) updates.客户应收_cents = Math.round(rec * 100);
+    if (Object.keys(updates).length === 0) return;
+
     try {
-      for (const id of selected) {
-        const body: any = {};
-        if (!isNaN(unit)) body.成本单价_cents = Math.round(unit * 100);
-        if (!isNaN(rec)) body.客户应收_cents = Math.round(rec * 100);
-        if (Object.keys(body).length === 0) continue;
-        await fetch(`/api/shared-container-items/${id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        });
+      const res = await fetch('/api/shared-container-items/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: Array.from(selected), updates }),
+      });
+      if (res.ok) {
+        router.refresh();
+        setShowModal(false);
+        setSelected(new Set());
+      } else {
+        const err = await res.json().catch(() => ({ error: '失败' }));
+        alert(err.error || '批量保存失败');
       }
-      router.refresh();
-      setShowModal(false);
-      setSelected(new Set());
     } catch {
-      alert('批量保存失败');
+      alert('网络错误');
     }
     setSaving(false);
   };
