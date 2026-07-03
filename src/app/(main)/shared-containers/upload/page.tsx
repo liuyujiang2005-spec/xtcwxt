@@ -51,6 +51,7 @@ export default function UploadSharedContainerPage() {
   const [summary, setSummary] = useState<ScSummary>({ totalItems: 0, abnormalCount: 0 });
   const [result, setResult] = useState<{ passed: boolean; msg: string } | null>(null);
   const [progress, setProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 });
+  const [customerId, setCustomerId] = useState<number>(0);
 
   const handleExtract = async () => {
     if (!file) return;
@@ -137,6 +138,19 @@ export default function UploadSharedContainerPage() {
 
           allItems = allItems.map((item, idx) => ({ ...item, rowIndex: idx + 1 }));
 
+          // 从提取结果取客户名，查库匹配 customerId
+          const customerName = allItems.find((item) => item.客户 && item.客户.trim())?.客户;
+          if (customerName) {
+            try {
+              const res = await fetch('/api/customers');
+              const list = await res.json();
+              const match = (Array.isArray(list) ? list : []).find(
+                (c: any) => c.name === customerName.trim()
+              );
+              if (match) setCustomerId(match.id);
+            } catch {}
+          }
+
           setPreview(allItems);
           setSummary({
             totalItems: allItems.length,
@@ -161,6 +175,7 @@ export default function UploadSharedContainerPage() {
     setSummary({ totalItems: 0, abnormalCount: 0 });
     setResult(null);
     setProgress({ current: 0, total: 0 });
+    setCustomerId(0);
     setPhase('idle');
   };
 
@@ -190,7 +205,7 @@ export default function UploadSharedContainerPage() {
         运输方式: item.运输方式 || '',
         客户应收_cents: Math.round((item.需支付总价 || 0) * 100),
         结算状态: item.结算状态 || '',
-        customerId: 0,
+        customerId,
         ai_verified: item.verdict === '通过' ? 1 : 0,
         ai_verify_msg: item.reason || '',
       }));

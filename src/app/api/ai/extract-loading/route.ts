@@ -36,6 +36,7 @@ export async function POST(request: NextRequest) {
    - 尺寸_高：高，厘米（可能的列名：高、尺寸_高、高(cm)、Height、H）
    - 单箱体积：每箱立方米（可能的列名：单箱体积、每箱体积、单箱CBM）
    - 总体积：立方米（可能的列名：总体积、体积、体积(m³)、Volume、CBM）
+   - 成本单价：元（可能的列名：成本单价、单价、成本运费单价、Price、Unit）
    - 国内单号：国内运单号（可能的列名：国内单号、单号、国内运单号、运单号）
    - 单箱数量：数字（可能的列名：单箱数量、数量、Qty、Quantity）
    - 总重量：kg（可能的列名：总重量、重量、重量kg、Weight）
@@ -43,6 +44,8 @@ export async function POST(request: NextRequest) {
    - pcs数量：整数（可能的列名：pcs数量、pcs、件数、PCS、Pieces）
    - 货型：货物类型（可能的列名：货型、货物类型、货物属性、Type、Category）
    - 运输方式：（可能的列名：运输方式、运输、物流方式、Mode）
+   - 需支付总价：（可能的列名：总价、需支付总价、总金额、Total、Amount）
+   - 结算状态：（可能的列名：结算状态、状态、付款状态、Status）
 
    特殊处理：
    - 如果尺寸在一个单元格里（如 "55×33×26" 或 "553326"），分别解析为长/宽/高。连续数字无分隔符时按以下规则拆分：3位×3位×2位（如 553326→55×33×26），或 2位×2位×2位（如 403050→40×30×50）
@@ -60,6 +63,7 @@ export async function POST(request: NextRequest) {
      "尺寸_高": 数字（缺失填 0）,
      "单箱体积": 数字,
      "总体积": 数字,
+     "成本单价": 数字（缺失填 0）,
      "国内单号": "字符串",
      "单箱数量": 整数,
      "总重量": 数字,
@@ -67,6 +71,8 @@ export async function POST(request: NextRequest) {
      "pcs数量": 整数,
      "货型": "普货"|"商检货"|"敏货"|"特货"|"",
      "运输方式": "海运"|"陆运"|"空运"|"",
+     "需支付总价": 数字,
+     "结算状态": "字符串",
      "verdict": "通过"|"异常",
      "reason": "异常原因（通过时为空字符串）"
    }
@@ -76,9 +82,11 @@ export async function POST(request: NextRequest) {
    a. 唛头号为空 → verdict:"异常", reason:"缺少唛头号"
    b. 品名为空 → verdict:"异常", reason:"缺少品名"
    c. 总体积 <= 0 → verdict:"异常", reason:"体积无效（≤0）"
-   d. 运输方式不在 ["海运","陆运","空运"] 中 → verdict:"异常", reason:"运输方式无法识别"
-   e. 货型不在 ["普货","商检货","敏货","特货"] 中 → verdict:"异常", reason:"货型无法识别"
-   f. 以上都不触发 → verdict:"通过", reason:""
+   d. 成本单价 <= 0 → verdict:"异常", reason:"成本单价无效（≤0）"
+   e. 运输方式不在 ["海运","陆运","空运"] 中 → verdict:"异常", reason:"运输方式无法识别"
+   f. 货型不在 ["普货","商检货","敏货","特货"] 中 → verdict:"异常", reason:"货型无法识别"
+   g. 如果表格中存在"总价"列：计算 总价 ≈ 成本单价 × 总体积（允许舍入误差 ±1），如果差异过大（>总价的5% 或 >5元）→ verdict:"异常", reason:"总价与单价×体积不匹配（表格总价=X，计算值=Y）"
+   h. 以上都不触发 → verdict:"通过", reason:""
 
 4. **汇总**：统计所有行，返回 summary
 
@@ -87,7 +95,7 @@ export async function POST(request: NextRequest) {
 严格按以下 JSON 返回（不要 markdown 代码块包裹）：
 
 {
-  "items": [{ "rowIndex": 1, "markNo": "...", "客户": "...", ... "verdict": "通过", "reason": "" }, ...],
+  "items": [{ "rowIndex": 1, "markNo": "...", "客户": "...", "成本单价": 0, "需支付总价": 0, "结算状态": "", ... "verdict": "通过", "reason": "" }, ...],
   "summary": { "totalItems": 0, "abnormalCount": 0 }
 }
 
@@ -99,12 +107,12 @@ ${rowSample}
 
 请返回完整的 items 数组（所有数据行）和 summary。`;
 
+  let raw = '';
   try {
-    const raw = await aiChat(systemPrompt, userPrompt);
+    raw = await aiChat(systemPrompt, userPrompt);
     const jsonStr = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
     const data = JSON.parse(jsonStr);
 
-    // 从 AI 提取结果中取第一个非空客户名，查数据库匹配 priceMatrix
     let priceMatrix: Record<string, number> = {};
     const customerName = (data.items || [])
       .map((item: any) => item.客户)
@@ -119,7 +127,6 @@ ${rowSample}
       }
     }
 
-    // 根据客户 price_matrix 自动匹配单价和计算应收
     const items = (data.items || []).map((item: any) => {
       const mode = item.运输方式 === '海运' ? 'sea' : item.运输方式 === '陆运' ? 'land' : null;
       const type = item.货型 === '普货' ? 'regular' : item.货型 === '商检货' ? 'inspection' : item.货型 === '敏货' ? 'sensitive' : null;
@@ -146,6 +153,61 @@ ${rowSample}
       summary: data.summary || { totalItems: 0, abnormalCount: 0 },
     });
   } catch (error) {
-    return NextResponse.json({ error: 'AI 解析失败，请重试' }, { status: 500 });
+    console.error('extract-loading 解析失败:', error);
+    console.log('AI原始响应:', JSON.stringify(raw).slice(0, 2000));
+
+    try {
+      const cleaned = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+      const lastBrace = cleaned.lastIndexOf('}');
+      if (lastBrace === -1) throw new Error('无可恢复的截断点');
+
+      let recovered = cleaned.substring(0, lastBrace + 1);
+
+      let data: any;
+      try {
+        data = JSON.parse(recovered);
+      } catch {
+        recovered += ']}';
+        data = JSON.parse(recovered);
+      }
+
+      let priceMatrix: Record<string, number> = {};
+      const customerName = (data.items || [])
+        .map((item: any) => item.客户)
+        .find((name: string) => name && name.trim());
+
+      if (customerName) {
+        const cust = await db.select().from(customers)
+          .where(eq(customers.name, customerName.trim()))
+          .get();
+        if (cust?.priceMatrix) {
+          try { priceMatrix = JSON.parse(cust.priceMatrix); } catch {}
+        }
+      }
+
+      const items = (data.items || []).map((item: any) => {
+        const mode = item.运输方式 === '海运' ? 'sea' : item.运输方式 === '陆运' ? 'land' : null;
+        const type = item.货型 === '普货' ? 'regular' : item.货型 === '商检货' ? 'inspection' : item.货型 === '敏货' ? 'sensitive' : null;
+        const totalVol = Number(item.总体积) || 0;
+
+        let unitPrice = 0;
+        let receivable = 0;
+        if (mode && type) {
+          const key = `${mode}_${type}`;
+          unitPrice = priceMatrix[key] || 0;
+          receivable = Math.round(unitPrice * totalVol * 100) / 100;
+        }
+        return { ...item, 单价: unitPrice, 应收: receivable };
+      });
+
+      console.log('截断修复成功，恢复条数:', data.items?.length || 0);
+      return NextResponse.json({
+        items,
+        summary: data.summary || { totalItems: 0, abnormalCount: 0 },
+      });
+    } catch {
+      console.error('截断修复也失败');
+      return NextResponse.json({ error: 'AI 解析失败，请重试' }, { status: 500 });
+    }
   }
 }
