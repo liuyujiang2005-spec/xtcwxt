@@ -26,11 +26,15 @@ export function ScItemEditDialog({
     const costCents = Math.round(parseFloat(cost || '0') * 100);
     const receivableCents = Math.round(parseFloat(receivable || '0') * 100);
 
-    await fetch(`/api/shared-container-items/${itemId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 成本单价_cents: costCents, 客户应收_cents: receivableCents, 总体积: volume }),
-    });
+    try {
+      await fetch(`/api/shared-container-items/${itemId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 成本单价_cents: costCents, 客户应收_cents: receivableCents, 总体积: volume }),
+      });
+    } catch (e) {
+      alert('保存失败，请重试');
+    }
 
     setSaving(false);
     setOpen(false);

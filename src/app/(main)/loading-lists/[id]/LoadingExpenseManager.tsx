@@ -37,18 +37,22 @@ export function LoadingExpenseManager({
     const existing = expenseMap.get(expenseType);
 
     setSaving(true);
-    if (existing) {
-      await fetch(`/api/expenses/${existing.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amountCents, currency: entry.currency }),
-      });
-    } else if (amountCents > 0) {
-      await fetch('/api/expenses', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ loadingBatchId: batchId, expenseType, amountCents, currency: entry.currency }),
-      });
+    try {
+      if (existing) {
+        await fetch(`/api/expenses/${existing.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ amountCents, currency: entry.currency }),
+        });
+      } else if (amountCents > 0) {
+        await fetch('/api/expenses', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ loadingBatchId: batchId, expenseType, amountCents, currency: entry.currency }),
+        });
+      }
+    } catch {
+      alert('保存失败，请重试');
     }
     setSaving(false);
     window.location.reload();

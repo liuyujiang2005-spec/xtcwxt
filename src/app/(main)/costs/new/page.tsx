@@ -23,7 +23,7 @@ export default function NewCostPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetch('/api/suppliers').then((r) => r.json()).then(setSuppliers);
+    fetch('/api/suppliers').then((r) => r.json()).then(setSuppliers).catch(() => {});
   }, []);
 
   const handleSubmit = async () => {

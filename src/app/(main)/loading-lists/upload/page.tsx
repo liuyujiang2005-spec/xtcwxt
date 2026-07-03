@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, CheckCircle, Loader2, Upload, Brain, ArrowLeft } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { fetchWithRetry } from '@/lib/fetch-utils';
 
 interface LdItem {
   rowIndex: number;
@@ -263,15 +264,16 @@ export default function UploadLoadingListPage() {
         应收_cents: Math.round((item.应收 || 0) * 100),
       }));
 
-      const batchRes = await fetch('/api/loading-batches', {
+      const batchRes = await fetchWithRetry('/api/loading-batches', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ batchNo, originalFilename: file.name }),
         signal: controller.signal,
       });
-      const batchData = await batchRes.json();
+      const batchData = await batchRes.json().catch(() => ({}));
+      if (!batchData.id) throw new Error('批次创建失败');
 
-      const importRes = await fetch('/api/loading-items', {
+      const importRes = await fetchWithRetry('/api/loading-items', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ batchId: batchData.id, items }),

@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, CheckCircle, Loader2, Upload, Brain, ArrowLeft } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { fetchWithRetry } from '@/lib/fetch-utils';
 
 interface ScItem {
   rowIndex: number;
@@ -266,15 +267,16 @@ export default function UploadSharedContainerPage() {
 
       const totalVol = items.reduce((s, i) => s + (i.总体积 || 0), 0);
 
-      const batchRes = await fetch('/api/shared-containers', {
+      const batchRes = await fetchWithRetry('/api/shared-containers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ batchNo, totalVolumeUploaded: totalVol, originalFilename: file.name }),
         signal: controller.signal,
       });
-      const batchData = await batchRes.json();
+      const batchData = await batchRes.json().catch(() => ({}));
+      if (!batchData.id) throw new Error('批次创建失败');
 
-      const importRes = await fetch('/api/shared-container-items', {
+      const importRes = await fetchWithRetry('/api/shared-container-items', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ batchId: batchData.id, items }),

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Loader2, Download } from 'lucide-react';
+import { fetchWithRetry } from '@/lib/fetch-utils';
 
 export default function BillDownloadCard() {
   const [customers, setCustomers] = useState<{ id: number; name: string }[]>([]);
@@ -13,7 +14,7 @@ export default function BillDownloadCard() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetch('/api/customers').then(r => r.json()).then(setCustomers);
+    fetch('/api/customers').then(r => r.json()).then(setCustomers).catch(() => {});
     setMonth(new Date().toISOString().substring(0, 7));
   }, []);
 
@@ -21,7 +22,7 @@ export default function BillDownloadCard() {
     if (!customerId || !month) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/bills/download?customerId=${customerId}&month=${month}`);
+      const res = await fetchWithRetry(`/api/bills/download?customerId=${customerId}&month=${month}`);
       if (!res.ok) { alert('生成失败'); setLoading(false); return; }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);

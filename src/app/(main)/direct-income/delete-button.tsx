@@ -13,10 +13,12 @@ export function DeleteIncomeButton({ id }: { id: number }) {
     if (!confirm('确认删除这条收入记录？')) return;
     setDeleting(true);
     try {
-      await fetch(`/api/direct-income/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/direct-income/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('删除失败');
       router.refresh();
     } catch {
       alert('删除失败');
+    } finally {
       setDeleting(false);
     }
   };

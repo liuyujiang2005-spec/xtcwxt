@@ -22,7 +22,7 @@ export default function NewDirectIncomePage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetch('/api/customers').then((r) => r.json()).then(setCustomers);
+    fetch('/api/customers').then((r) => r.json()).then(setCustomers).catch(() => {});
   }, []);
 
   const handleSubmit = async () => {
