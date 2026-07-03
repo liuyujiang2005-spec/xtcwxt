@@ -1,14 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, CheckCircle, Loader2, Upload, Brain } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Loader2, Upload, Brain, ArrowLeft } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 interface LdItem {
@@ -54,6 +55,12 @@ export default function UploadLoadingListPage() {
   const [result, setResult] = useState<{ passed: boolean; msg: string } | null>(null);
   const [progress, setProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 });
   const [customerId, setCustomerId] = useState<number>(0);
+  const abortRef = useRef<AbortController | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    return () => { abortRef.current?.abort(); };
+  }, []);
 
   const handleExtract = async () => {
     if (!file) return;
@@ -61,6 +68,10 @@ export default function UploadLoadingListPage() {
     setResult(null);
     setPreview([]);
     setProgress({ current: 0, total: 0 });
+
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
 
     try {
       const reader = new FileReader();
@@ -156,6 +167,7 @@ export default function UploadLoadingListPage() {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ rawRows: batch }),
+              signal: controller.signal,
             });
 
             if (!aiRes.ok) {
@@ -177,7 +189,7 @@ export default function UploadLoadingListPage() {
           const custName = allItems.find((item) => item.客户 && item.客户.trim())?.客户;
           if (custName) {
             try {
-              const res = await fetch('/api/customers');
+              const res = await fetch('/api/customers', { signal: controller.signal });
               const list = await res.json();
               const match = (Array.isArray(list) ? list : []).find(
                 (c: any) => c.name === custName.trim()
@@ -192,13 +204,15 @@ export default function UploadLoadingListPage() {
             abnormalCount: allItems.filter((i) => i.verdict === '异常').length,
           });
           setPhase('preview');
-        } catch {
+        } catch (err: any) {
+          if (err?.name === 'AbortError') return;
           setResult({ passed: false, msg: '解析 Excel 失败' });
           setPhase('idle');
         }
       };
       reader.readAsArrayBuffer(file);
-    } catch {
+    } catch (err: any) {
+      if (err?.name === 'AbortError') return;
       setResult({ passed: false, msg: '读取文件失败' });
       setPhase('idle');
     }
@@ -211,12 +225,17 @@ export default function UploadLoadingListPage() {
     setResult(null);
     setProgress({ current: 0, total: 0 });
     setCustomerId(0);
+    if (fileInputRef.current) fileInputRef.current.value = '';
     setPhase('idle');
   };
 
   const handleConfirmImport = async () => {
     if (!file || preview.length === 0) return;
     setPhase('importing');
+
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
 
     try {
       const batchNo = `LB-${new Date().toISOString().substring(0, 10).replace(/-/g, '')}-${Date.now().toString().slice(-4)}`;
@@ -248,6 +267,7 @@ export default function UploadLoadingListPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ batchNo, originalFilename: file.name }),
+        signal: controller.signal,
       });
       const batchData = await batchRes.json();
 
@@ -255,6 +275,7 @@ export default function UploadLoadingListPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ batchId: batchData.id, items }),
+        signal: controller.signal,
       });
 
       if (importRes.ok) {
@@ -266,7 +287,8 @@ export default function UploadLoadingListPage() {
         setResult({ passed: false, msg: err.error || '导入失败' });
         setPhase('preview');
       }
-    } catch {
+    } catch (err: any) {
+      if (err?.name === 'AbortError') return;
       setResult({ passed: false, msg: '导入失败' });
       setPhase('preview');
     }
@@ -281,7 +303,14 @@ export default function UploadLoadingListPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">上传装柜清单</h1>
+      <div className="flex items-center gap-3">
+        <Link href="/loading-lists">
+          <Button variant="ghost" size="icon" className="h-8 w-8">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+        </Link>
+        <h1 className="text-2xl font-bold">上传装柜清单</h1>
+      </div>
 
       {phase === 'preview' || phase === 'importing' ? (
         <Card>
@@ -386,7 +415,7 @@ export default function UploadLoadingListPage() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label>选择 Excel 文件（.xlsx）</Label>
-              <Input type="file" accept=".xlsx,.xls" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+              <Input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={(e) => setFile(e.target.files?.[0] || null)} />
             </div>
 
             {result && (

@@ -1,6 +1,6 @@
 import ExcelJS from 'exceljs';
 
-interface BillRow {
+export interface BillRow {
   日期: string;
   唛头: string;
   入库仓位: string;
@@ -30,6 +30,7 @@ export async function generateBillXlsx(
   wb.creator = '货运财务系统';
   const ws = wb.addWorksheet(month);
 
+  // ── 列宽 ──
   ws.columns = [
     { width: 12 }, { width: 14 }, { width: 10 }, { width: 8 },
     { width: 16 }, { width: 14 }, { width: 14 }, { width: 16 },
@@ -39,10 +40,10 @@ export async function generateBillXlsx(
     { width: 10 }, { width: 14 },
   ];
 
+  // ── 样式 ──
   const titleFont = { name: '微软雅黑', size: 16, bold: true };
   const headerFont = { name: '微软雅黑', size: 10, bold: true };
   const dataFont = { name: '微软雅黑', size: 9 };
-  const centerAlign = { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true };
   const border = {
     top: { style: 'thin' as const },
     left: { style: 'thin' as const },
@@ -51,6 +52,7 @@ export async function generateBillXlsx(
   };
   const headerFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFD9E1F2' } };
 
+  // Row 1: 公司名
   ws.mergeCells('A1:J1');
   const r1 = ws.getCell('A1');
   r1.value = companyName;
@@ -58,6 +60,7 @@ export async function generateBillXlsx(
   r1.alignment = { horizontal: 'center', vertical: 'middle' };
   ws.getRow(1).height = 32;
 
+  // Row 2: 请款单
   ws.mergeCells('A2:J2');
   const r2 = ws.getCell('A2');
   r2.value = '请款单';
@@ -65,16 +68,19 @@ export async function generateBillXlsx(
   r2.alignment = { horizontal: 'center', vertical: 'middle' };
   ws.getRow(2).height = 28;
 
+  // Row 3: 客户 + 月份
   ws.mergeCells('A3:S3');
   ws.getCell('A3').value = `客户：${customerName}    月份：${month}`;
   ws.getCell('A3').font = { name: '微软雅黑', size: 10 };
   ws.getRow(3).height = 22;
 
+  // Row 4: 提示
   ws.mergeCells('A4:S4');
   ws.getCell('A4').value = '如有疑问请在两个工作日之内提出，以便我们及时核实，修改账单。确认金额后请及时安排付款，感谢配合！';
   ws.getCell('A4').font = { name: '微软雅黑', size: 9, italic: true };
   ws.getRow(4).height = 20;
 
+  // Row 5: 表头
   const headers = [
     '日期', '唛头', '仓位', '运输', '单号', '货物类型', '品名', '尺寸',
     '件数', '入库单号', '单项体积', '单项重量', '总体积', '总重量',
@@ -91,9 +97,10 @@ export async function generateBillXlsx(
     cell.font = headerFont;
     cell.fill = headerFill;
     cell.border = border;
-    cell.alignment = centerAlign;
+    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
   });
 
+  // ── 数据行 ──
   let currentRow = 5;
   for (const row of rows) {
     currentRow++;
@@ -116,12 +123,14 @@ export async function generateBillXlsx(
       cell.alignment = { horizontal: i >= 10 ? 'right' : 'left', vertical: 'middle' };
     });
 
+    // R列 (18): 单项价格 = 单价 × 计费体积
     r.getCell(18).value = { formula: `Q${currentRow}*O${currentRow}`, result: row.计费体积 * row.单价 };
     r.getCell(18).numFmt = '#,##0.00';
     r.getCell(18).font = dataFont;
     r.getCell(18).border = border;
     r.getCell(18).alignment = { horizontal: 'right', vertical: 'middle' };
 
+    // S列 (19): 订单总价 = 单项价格
     r.getCell(19).value = { formula: `R${currentRow}`, result: row.计费体积 * row.单价 };
     r.getCell(19).numFmt = '#,##0.00';
     r.getCell(19).font = dataFont;
@@ -129,6 +138,7 @@ export async function generateBillXlsx(
     r.getCell(19).alignment = { horizontal: 'right', vertical: 'middle' };
   }
 
+  // ── 合计行 ──
   const totalRow = currentRow + 1;
   ws.getRow(totalRow).height = 22;
   ws.mergeCells(`A${totalRow}:Q${totalRow}`);
@@ -146,20 +156,27 @@ export async function generateBillXlsx(
     ws.getCell(totalRow, c).border = border;
   }
 
+  // 泰铢合计
   if (totalThb > 0) {
     const thbRow = totalRow + 1;
+    ws.getRow(thbRow).height = 22;
     ws.mergeCells(`A${thbRow}:Q${thbRow}`);
     ws.getCell(thbRow, 1).value = 'THB 合计';
     ws.getCell(thbRow, 1).font = { name: '微软雅黑', size: 11, bold: true };
     ws.getCell(thbRow, 1).alignment = { horizontal: 'right', vertical: 'middle' };
-    ws.getCell(thbRow, 18).value = totalThb / 100;
+    ws.getCell(thbRow, 18).value = totalThb;
     ws.getCell(thbRow, 18).numFmt = '#,##0.00';
     ws.getCell(thbRow, 18).font = { name: '微软雅黑', size: 11, bold: true };
-    ws.getCell(thbRow, 19).value = totalThb / 100;
+    ws.getCell(thbRow, 19).value = totalThb;
     ws.getCell(thbRow, 19).numFmt = '#,##0.00';
     ws.getCell(thbRow, 19).font = { name: '微软雅黑', size: 11, bold: true };
+
+    for (let c = 1; c <= 22; c++) {
+      ws.getCell(thbRow, c).border = border;
+    }
   }
 
+  // ── 收款账户信息 ──
   const bankStart = (totalThb > 0 ? totalRow + 2 : totalRow + 1) + 1;
   const bankInfo = [
     ['人民币收款账户', '泰铢收款账户', '公户收款账号'],
@@ -168,18 +185,18 @@ export async function generateBillXlsx(
 
   bankInfo.forEach((bankRow, bi) => {
     const r = ws.getRow(bankStart + bi);
-    r.height = 50;
+    r.height = bi === 0 ? 28 : 50;
     bankRow.forEach((v, ci) => {
       const col = ci === 0 ? 1 : ci === 1 ? 8 : 15;
+      const colEnd = col + 5;
+      ws.mergeCells(bankStart + bi, col, bankStart + bi, colEnd);
+      const cell = ws.getCell(bankStart + bi, col);
+      cell.value = v;
       if (bi === 0) {
-        ws.mergeCells(bankStart, col, bankStart, col + 5);
-        ws.getCell(bankStart, col).value = v;
-        ws.getCell(bankStart, col).font = { name: '微软雅黑', size: 10, bold: true };
+        cell.font = { name: '微软雅黑', size: 10, bold: true };
       } else {
-        ws.mergeCells(bankStart + 1, col, bankStart + 1, col + 5);
-        ws.getCell(bankStart + 1, col).value = v;
-        ws.getCell(bankStart + 1, col).font = { name: '微软雅黑', size: 9 };
-        ws.getCell(bankStart + 1, col).alignment = { wrapText: true, vertical: 'top' };
+        cell.font = { name: '微软雅黑', size: 9 };
+        cell.alignment = { wrapText: true, vertical: 'top' };
       }
     });
   });
