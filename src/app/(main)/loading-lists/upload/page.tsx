@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -47,16 +47,21 @@ const BATCH_SIZE = 50;
 export default function UploadLoadingListPage() {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
+  const [customers, setCustomers] = useState<{ id: number; name: string }[]>([]);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<number>(0);
 
   const [phase, setPhase] = useState<'idle' | 'parsing' | 'preview' | 'importing'>('idle');
   const [preview, setPreview] = useState<LdItem[]>([]);
   const [summary, setSummary] = useState<LdSummary>({ totalItems: 0, abnormalCount: 0 });
   const [result, setResult] = useState<{ passed: boolean; msg: string } | null>(null);
   const [progress, setProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 });
-  const [customerId, setCustomerId] = useState<number>(0);
+
+  useEffect(() => {
+    fetch('/api/customers').then(r => r.json()).then(setCustomers);
+  }, []);
 
   const handleExtract = async () => {
-    if (!file) return;
+    if (!file || !selectedCustomerId) return;
     setPhase('parsing');
     setResult(null);
     setPreview([]);
@@ -120,8 +125,12 @@ export default function UploadLoadingListPage() {
             }
           }
 
-          // 过滤汇总行：箱数 > 100 且大于其他所有行箱数之和的视为汇总行
+          // 过滤汇总行：箱数 > 100 且（长/宽/高缺失或箱数 > 其他行箱数之和）
           const boxColIdx = header.findIndex((h) => String(h).includes('箱数') || String(h).includes('件数'));
+          const lengthIdx = header.findIndex((h) => String(h).includes('长') && !String(h).includes('宽') && !String(h).includes('高'));
+          const widthIdx = header.findIndex((h) => String(h).includes('宽') && !String(h).includes('长') && !String(h).includes('高'));
+          const heightIdx = header.findIndex((h) => String(h).includes('高'));
+          const isZero = (v: unknown) => { const n = parseFloat(String(v || '')); return isNaN(n) || n <= 0; };
           let finalRows: unknown[][] = dataRows;
           if (boxColIdx !== -1) {
             const boxes = dataRows.map((r) => parseFloat(String(r[boxColIdx])) || 0);
@@ -129,7 +138,8 @@ export default function UploadLoadingListPage() {
             for (let i = 0; i < dataRows.length; i++) {
               const myBox = boxes[i];
               const othersSum = boxes.reduce((sum, b, j) => j !== i ? sum + b : sum, 0);
-              if (myBox > 100 && myBox > othersSum) continue;
+              const sizeEmpty = isZero(dataRows[i][lengthIdx]) || isZero(dataRows[i][widthIdx]) || isZero(dataRows[i][heightIdx]);
+              if (myBox > 100 && (myBox > othersSum || sizeEmpty)) continue;
               filtered.push(dataRows[i]);
             }
             if (filtered.length < dataRows.length) {
@@ -147,10 +157,12 @@ export default function UploadLoadingListPage() {
             const batchRows = finalRows.slice(start, start + BATCH_SIZE);
             const batch = [header, ...batchRows];
 
+            const customerName = customers.find(c => c.id === selectedCustomerId)?.name || '';
+
             const aiRes = await fetch('/api/ai/extract-loading', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ rawRows: batch }),
+              body: JSON.stringify({ rawRows: batch, customerId: selectedCustomerId, customerName }),
             });
 
             if (!aiRes.ok) {
@@ -167,19 +179,6 @@ export default function UploadLoadingListPage() {
           }
 
           allItems = allItems.map((item, idx) => ({ ...item, rowIndex: idx + 1 }));
-
-          // 从提取结果取客户名，查库匹配 customerId
-          const customerName = allItems.map((item: any) => item.客户).find((n: string) => n && n.trim());
-          if (customerName) {
-            try {
-              const customersRes = await fetch('/api/customers');
-              const customersData = await customersRes.json();
-              const match = (Array.isArray(customersData) ? customersData : []).find(
-                (c: any) => c.name === customerName.trim()
-              );
-              if (match) setCustomerId(match.id);
-            } catch {}
-          }
 
           setPreview(allItems);
           setSummary({
@@ -205,7 +204,6 @@ export default function UploadLoadingListPage() {
     setSummary({ totalItems: 0, abnormalCount: 0 });
     setResult(null);
     setProgress({ current: 0, total: 0 });
-    setCustomerId(0);
     setPhase('idle');
   };
 
@@ -218,7 +216,7 @@ export default function UploadLoadingListPage() {
 
       const items = preview.map((item) => ({
         markNo: item.markNo,
-        customerId: customerId,
+        customerId: selectedCustomerId,
         品名: item.品名,
         尺寸_长: item.尺寸_长 || 0,
         尺寸_宽: item.尺寸_宽 || 0,
@@ -384,6 +382,20 @@ export default function UploadLoadingListPage() {
               <Input type="file" accept=".xlsx,.xls" onChange={(e) => setFile(e.target.files?.[0] || null)} />
             </div>
 
+            <div className="space-y-2">
+              <Label>选择客户</Label>
+              <select
+                className="h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base"
+                value={selectedCustomerId}
+                onChange={(e) => setSelectedCustomerId(Number(e.target.value))}
+              >
+                <option value={0}>-- 请选择客户 --</option>
+                {customers.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+
             {result && (
               <div className={`p-3 rounded-lg flex items-center gap-2 ${result.passed ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
                 {result.passed ? <CheckCircle className="h-5 w-5" /> : <AlertTriangle className="h-5 w-5" />}
@@ -391,7 +403,7 @@ export default function UploadLoadingListPage() {
               </div>
             )}
 
-            <Button onClick={handleExtract} disabled={phase === 'parsing' || !file} className="w-full">
+            <Button onClick={handleExtract} disabled={phase === 'parsing' || !file || !selectedCustomerId} className="w-full">
               {phase === 'parsing' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Brain className="h-4 w-4 mr-2" />}
               {phase === 'parsing'
                 ? progress.total > 0

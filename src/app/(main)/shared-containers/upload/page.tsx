@@ -121,8 +121,12 @@ export default function UploadSharedContainerPage() {
             }
           }
 
-          // 过滤汇总行：箱数 > 100 且大于其他所有行箱数之和的视为汇总行
+          // 过滤汇总行：箱数 > 100 且（长/宽/高缺失或箱数 > 其他行箱数之和）
           const boxColIdx = header.findIndex((h) => String(h).includes('箱数') || String(h).includes('件数'));
+          const lengthIdx = header.findIndex((h) => String(h).includes('长') && !String(h).includes('宽') && !String(h).includes('高'));
+          const widthIdx = header.findIndex((h) => String(h).includes('宽') && !String(h).includes('长') && !String(h).includes('高'));
+          const heightIdx = header.findIndex((h) => String(h).includes('高'));
+          const isZero = (v: unknown) => { const n = parseFloat(String(v || '')); return isNaN(n) || n <= 0; };
           let finalRows: unknown[][] = dataRows;
           if (boxColIdx !== -1) {
             const boxes = dataRows.map((r) => parseFloat(String(r[boxColIdx])) || 0);
@@ -130,7 +134,8 @@ export default function UploadSharedContainerPage() {
             for (let i = 0; i < dataRows.length; i++) {
               const myBox = boxes[i];
               const othersSum = boxes.reduce((sum, b, j) => j !== i ? sum + b : sum, 0);
-              if (myBox > 100 && myBox > othersSum) continue;
+              const sizeEmpty = isZero(dataRows[i][lengthIdx]) || isZero(dataRows[i][widthIdx]) || isZero(dataRows[i][heightIdx]);
+              if (myBox > 100 && (myBox > othersSum || sizeEmpty)) continue;
               filtered.push(dataRows[i]);
             }
             if (filtered.length < dataRows.length) {
