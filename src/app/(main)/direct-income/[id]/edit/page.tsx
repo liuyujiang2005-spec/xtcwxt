@@ -10,8 +10,9 @@ import { Loader2, Save } from 'lucide-react';
 
 export default function EditDirectIncomePage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const id = parseInt(params.id);
+  const id = parseInt(String(params?.id || ''));
   const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(true);
   const [customers, setCustomers] = useState<{ id: number; name: string }[]>([]);
   const [customerId, setCustomerId] = useState<number>(0);
   const [amount, setAmount] = useState('');
