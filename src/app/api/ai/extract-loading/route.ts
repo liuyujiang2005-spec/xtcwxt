@@ -76,12 +76,8 @@ export async function POST(request: NextRequest) {
 
 3. **验价规则**（按优先级判断，取第一条命中的异常）：
    a. 唛头号为空 → verdict:"异常", reason:"缺少唛头号"
-   b. 品名为空 → verdict:"异常", reason:"缺少品名"
-   c. 总体积 <= 0 → verdict:"异常", reason:"体积无效（≤0）"
-   d. 运输方式不在 ["海运","陆运","空运"] 中 → verdict:"异常", reason:"运输方式无法识别"
-   e. 货型不在 ["普货","商检货","敏货","特货"] 中 → verdict:"异常", reason:"货型无法识别"
-   f. 如果表格中存在"总价"列：计算 总价 ≈ 成本单价 × 总体积（允许舍入误差 ±1），如果差异过大（>总价的5% 或 >5元）→ verdict:"异常", reason:"总价与单价×体积不匹配（表格总价=X，计算值=Y）"
-   g. 以上都不触发 → verdict:"通过", reason:""
+   b. 总体积 <= 0 → verdict:"异常", reason:"体积无效（≤0）"
+   c. 以上都不触发 → verdict:"通过", reason:""
 
 4. **汇总**：统计所有行，返回 summary
 
@@ -131,18 +127,13 @@ ${JSON.stringify(rawRows)}
     }
 
     const items = (data.items || []).map((item: any) => {
-      const mode = item.运输方式 === '海运' ? 'sea' : item.运输方式 === '陆运' ? 'land' : null;
-      const type = item.货型 === '普货' ? 'regular' : item.货型 === '商检货' ? 'inspection' : item.货型 === '敏货' ? 'sensitive' : null;
+      const mode = item.运输方式 === '海运' ? 'sea' : item.运输方式 === '陆运' ? 'land' : 'sea';
+      const type = item.货型 === '普货' ? 'regular' : item.货型 === '商检货' ? 'inspection' : item.货型 === '敏货' ? 'sensitive' : 'regular';
       const totalVol = Number(item.总体积) || 0;
 
-      let unitPrice = 0;
-      let receivable = 0;
-
-      if (mode && type) {
-        const key = `${mode}_${type}`;
-        unitPrice = priceMatrix[key] || 0;
-        receivable = Math.round(unitPrice * totalVol * 100) / 100;
-      }
+      const key = `${mode}_${type}`;
+      const unitPrice = priceMatrix[key] || 0;
+      const receivable = Math.round(unitPrice * totalVol * 100) / 100;
 
       return {
         ...item,
@@ -196,16 +187,12 @@ ${JSON.stringify(rawRows)}
       }
 
       const items = (data.items || []).map((item: any) => {
-        const mode = item.运输方式 === '海运' ? 'sea' : item.运输方式 === '陆运' ? 'land' : null;
-        const type = item.货型 === '普货' ? 'regular' : item.货型 === '商检货' ? 'inspection' : item.货型 === '敏货' ? 'sensitive' : null;
+        const mode = item.运输方式 === '海运' ? 'sea' : item.运输方式 === '陆运' ? 'land' : 'sea';
+        const type = item.货型 === '普货' ? 'regular' : item.货型 === '商检货' ? 'inspection' : item.货型 === '敏货' ? 'sensitive' : 'regular';
         const totalVol = Number(item.总体积) || 0;
-        let unitPrice = 0;
-        let receivable = 0;
-        if (mode && type) {
-          const key = `${mode}_${type}`;
-          unitPrice = priceMatrix[key] || 0;
-          receivable = Math.round(unitPrice * totalVol * 100) / 100;
-        }
+        const key = `${mode}_${type}`;
+        const unitPrice = priceMatrix[key] || 0;
+        const receivable = Math.round(unitPrice * totalVol * 100) / 100;
         return { ...item, 单价: unitPrice, 应收: receivable };
       });
 
