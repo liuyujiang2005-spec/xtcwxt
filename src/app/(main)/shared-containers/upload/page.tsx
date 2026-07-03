@@ -51,6 +51,15 @@ export default function UploadSharedContainerPage() {
 
   useEffect(() => { return () => { abortRef.current?.abort(); }; }, []);
 
+  const toBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => { const result = reader.result as string; resolve(result.split(',')[1]); };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleExtract = async () => {
     if (!file || processingRef.current) return;
     processingRef.current = true;
@@ -63,13 +72,12 @@ export default function UploadSharedContainerPage() {
     abortRef.current = controller;
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('tableType', 'shared-container');
+      const base64 = await toBase64(file);
 
       const res = await fetch('/api/ai/extract-sc', {
         method: 'POST',
-        body: formData,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileName: file.name, fileData: base64 }),
         signal: controller.signal,
       });
 

@@ -35,6 +35,15 @@ export default function UploadLoadingListPage() {
 
   useEffect(() => { return () => { abortRef.current?.abort(); }; }, []);
 
+  const toBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => { const result = reader.result as string; resolve(result.split(',')[1]); };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleExtract = async () => {
     if (!file || processingRef.current) return;
     processingRef.current = true;
@@ -47,12 +56,13 @@ export default function UploadLoadingListPage() {
     abortRef.current = controller;
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('customerId', String(customerId));
+      const base64 = await toBase64(file);
 
       const res = await fetch('/api/ai/extract-loading', {
-        method: 'POST', body: formData, signal: controller.signal,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileName: file.name, fileData: base64, customerId }),
+        signal: controller.signal,
       });
 
       if (!res.ok) {
