@@ -122,7 +122,7 @@ export default function UploadLoadingListPage() {
 
           // 过滤汇总行：箱数 > 100 且大于其他所有行箱数之和的视为汇总行
           const boxColIdx = header.findIndex((h) => String(h).includes('箱数') || String(h).includes('件数'));
-          let finalRows = dataRows;
+          let finalRows: unknown[][] = dataRows;
           if (boxColIdx !== -1) {
             const boxes = dataRows.map((r) => parseFloat(String(r[boxColIdx])) || 0);
             const filtered: unknown[][] = [];
