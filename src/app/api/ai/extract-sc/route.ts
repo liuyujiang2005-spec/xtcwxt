@@ -5,6 +5,14 @@ import { join } from 'path';
 import { randomUUID } from 'crypto';
 import { parseViaPythonService, mapPythonResult } from '@/lib/table-parser-client';
 
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '50mb',
+    },
+  },
+};
+
 export async function POST(request: NextRequest) {
   const sessionToken = request.cookies.get('session')?.value;
   if (!sessionToken) return NextResponse.json({ error: '未登录' }, { status: 401 });
