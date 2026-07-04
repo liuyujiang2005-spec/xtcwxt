@@ -1,6 +1,5 @@
-import { createReadStream } from 'fs';
+import { readFileSync } from 'fs';
 import { unlink } from 'fs/promises';
-import FormData from 'form-data';
 
 const PARSER_URL = process.env.TABLE_PARSER_URL || 'http://localhost:8800';
 
@@ -9,14 +8,15 @@ const PARSER_URL = process.env.TABLE_PARSER_URL || 'http://localhost:8800';
  */
 export async function parseViaPythonService(filePath: string): Promise<any> {
   try {
+    const buffer = readFileSync(filePath);
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const form = new FormData();
-    form.append('file', createReadStream(filePath));
+    form.append('file', blob, 'upload.xlsx');
     form.append('classify', 'false');
 
     const res = await fetch(`${PARSER_URL}/api/table/parse`, {
       method: 'POST',
-      body: form as any,
-      headers: form.getHeaders(),
+      body: form,
     });
 
     if (!res.ok) {
