@@ -212,30 +212,26 @@ def parse_data(ws, rules):
     
     for ri in range(data_start, ws.max_row + 1):
         row_data = {}
-        is_new = False
-        
         for name, ci in col_map.items():
             row_data[name] = ws.cell(row=ri, column=ci).value
         
         order_val = ws.cell(row=ri, column=order_col).value
-        date_val = ws.cell(row=ri, column=1).value if col_map else None
+        order_str = str(order_val).strip() if order_val is not None else ""
         
-        # 判断是否新订单：单号有值 或 日期有值且前面行是空
-        if (order_val is not None and str(order_val).strip()) or \
-           (date_val is not None and str(date_val).strip()):
-            is_new = True
+        # 判断是否新订单：order列有值即为新订单开始
+        is_new = bool(order_str)
         
         if is_new:
             if current_order:
                 orders.append(current_order)
-            current_order = {"订单号": str(order_val).strip() if order_val else "", "产品明细": []}
+            current_order = {"订单号": order_str, "产品明细": []}
             for name in col_map:
                 if row_data[name] is not None:
                     current_order[name] = row_data[name]
             current_order["产品明细"].append(dict(row_data))
         else:
             if current_order is not None:
-                # 前向填充订单级字段
+                # 前向填充：合并单元格字段用上一行值
                 for name in col_map:
                     if row_data[name] is None and name in current_order:
                         row_data[name] = current_order[name]
