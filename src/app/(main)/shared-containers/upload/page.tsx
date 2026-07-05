@@ -74,13 +74,27 @@ export default function UploadSharedContainerPage() {
     try {
       const batchNo = `SC-${new Date().toISOString().substring(0, 10).replace(/-/g, '')}-${Date.now().toString().slice(-4)}`;
       const items = preview.map(item => ({
-        markNo: item.唛头 || item.运单号, customerId, 品名: item.品名, 货型: item.货型 || '', 运输方式: item.运输方式 || '',
-        尺寸_长: 0, 尺寸_宽: 0, 尺寸_高: 0, // DB 保留为 0
-        单箱体积: item.单项体积 || 0, 总体积: item.总体积 || item.计费体积 || 0,
-        国内单号: item.国内单号 || '', 单箱数量: item.件数 || 0, 总重量: item.总重量 || 0, 箱数: item.件数 || 0, pcs数量: 0,
-        成本单价_cents: Math.round((item.单价 || 0) * 100), 需支付总价_cents: Math.round((item.单项价格 || 0) * 100),
-        客户应收_cents: Math.round((item.单项价格 || 0) * 100), 结算状态: item.结算状态 || '',
-        ai_verified: item.verdict === '通过' ? 1 : 0, ai_verify_msg: item.reason || '',
+        markNo: item.唛头 || item.运单号,
+        customerId,
+        品名: item.品名,
+        货型: item.货型 || '',
+        运输方式: item.运输方式 || '',
+        尺寸_长: 0,
+        尺寸_宽: 0,
+        尺寸_高: 0,
+        单箱体积: item.单项体积 || 0,
+        总体积: item.总体积 || item.计费体积 || 0,
+        国内单号: item.国内单号 || '',
+        单箱数量: item.件数 || 0,
+        总重量: item.总重量 || 0,
+        箱数: item.件数 || 0,
+        pcs数量: 0,
+        成本单价_cents: Math.round((item.单价 || 0) * 100),
+        需支付总价_cents: Math.round((item.单项价格 || 0) * 100),
+        客户应收_cents: Math.round((item.单项价格 || 0) * 100),
+        结算状态: item.结算状态 || '',
+        ai_verified: item.verdict === '通过' ? 1 : 0,
+        ai_verify_msg: item.reason || '',
       }));
       const totalVol = items.reduce((s: number, i: any) => s + (i.总体积 || 0), 0);
       const batchRes = await fetch('/api/shared-containers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ batchNo, totalVolumeUploaded: totalVol, originalFilename: file.name }), signal: controller.signal });
