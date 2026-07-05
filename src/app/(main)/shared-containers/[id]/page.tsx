@@ -103,8 +103,8 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
                 <TableHead>结算</TableHead><TableHead>状态</TableHead><TableHead className="w-10"></TableHead>
               </TableRow></TableHeader>
               <TableBody>
-                {items.map((item) => (<TableRow key={item.id}>
-                  <TableCell className="font-medium">{markMap.get(item.markId) || '-'}</TableCell>
+                {(() => { const groups: { markId: number; rows: typeof items }[] = []; let last = -1; for (const i of items) { if (i.markId !== last) { groups.push({ markId: i.markId, rows: [] }); last = i.markId; } groups[groups.length - 1].rows.push(i); } return groups.map(g => g.rows.map((item, ri) => (<TableRow key={item.id}>
+                  {ri === 0 ? <TableCell className="font-medium" rowSpan={g.rows.length}>{markMap.get(item.markId) || '-'}</TableCell> : null}
                   <TableCell className="max-w-[120px] truncate" title={item.品名 || ''}>{item.品名 || '-'}</TableCell>
                   <TableCell>{item.货型 || '-'}</TableCell><TableCell>{item.运输方式 || '-'}</TableCell>
                   <TableCell className="text-right">{item.总体积.toFixed(2)}</TableCell>
@@ -119,7 +119,7 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
                   <TableCell>{item.cost_status || '-'}</TableCell>
                   <TableCell><Badge className={item.cost_status === '已支出' ? 'bg-gray-100 text-gray-700' : 'bg-yellow-100 text-yellow-700'}>{item.cost_status || '-'}</Badge></TableCell>
                   <TableCell><DeleteItemButton itemId={item.id} apiPath="/api/shared-container-items" /></TableCell>
-                </TableRow>))}
+                </TableRow>))); })()}
               </TableBody>
             </Table>
           )}

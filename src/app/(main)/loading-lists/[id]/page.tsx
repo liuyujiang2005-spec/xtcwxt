@@ -71,8 +71,8 @@ export default async function LoadingListDetailPage({ params }: { params: Promis
                 <TableHead className="text-right">应收</TableHead><TableHead>状态</TableHead><TableHead className="w-10"></TableHead>
               </TableRow></TableHeader>
               <TableBody>
-                {items.map((item) => (<TableRow key={item.id}>
-                  <TableCell>{customerMap.get(item.customerId) || '-'}</TableCell>
+                {(() => { const groups: { custId: number; rows: typeof items }[] = []; let last = -1; for (const i of items) { if (i.customerId !== last) { groups.push({ custId: i.customerId, rows: [] }); last = i.customerId; } groups[groups.length - 1].rows.push(i); } return groups.map(g => g.rows.map((item, ri) => (<TableRow key={item.id}>
+                  {ri === 0 ? <TableCell className="font-medium" rowSpan={g.rows.length}>{customerMap.get(item.customerId) || '-'}</TableCell> : null}
                   <TableCell className="max-w-[120px] truncate" title={item.品名 || ''}>{item.品名 || '-'}</TableCell>
                   <TableCell className="text-right">{item.总体积.toFixed(2)}</TableCell>
                   <TableCell className="text-right">{item.单箱体积 || '-'}</TableCell>
@@ -85,7 +85,7 @@ export default async function LoadingListDetailPage({ params }: { params: Promis
                   <TableCell className="text-right text-green-600">{formatCents(item.需支付总价_cents || 0)}</TableCell>
                   <TableCell><span className={`text-xs px-2 py-1 rounded ${item.payment_status === '已支付' ? 'bg-gray-100 text-gray-700' : 'bg-yellow-100 text-yellow-700'}`}>{item.payment_status}</span></TableCell>
                   <TableCell><DeleteItemButton itemId={item.id} apiPath="/api/loading-items" /></TableCell>
-                </TableRow>))}
+                </TableRow>))); })()}
               </TableBody>
             </Table>
           )}
