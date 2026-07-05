@@ -138,22 +138,27 @@ export default function UploadLoadingListPage() {
               <Table>
                 <TableHeader><TableRow>
                   <TableHead className="w-10 sticky top-0 bg-muted">#</TableHead>
-                  <TableHead className="sticky top-0 bg-muted">唛头</TableHead><TableHead className="sticky top-0 bg-muted">品名</TableHead><TableHead className="sticky top-0 bg-muted">尺寸</TableHead>
-                  <TableHead className="sticky top-0 bg-muted text-right">件数</TableHead><TableHead className="sticky top-0 bg-muted text-right">单项体积</TableHead><TableHead className="sticky top-0 bg-muted text-right">总计费体积</TableHead>
-                  <TableHead className="sticky top-0 bg-muted text-right">单价</TableHead><TableHead className="sticky top-0 bg-muted text-right">单项价格</TableHead><TableHead className="sticky top-0 bg-muted text-right">订单总价</TableHead>
-                  <TableHead className="sticky top-0 bg-muted">国内单号</TableHead><TableHead className="sticky top-0 bg-muted text-right">总体积</TableHead><TableHead className="sticky top-0 bg-muted text-right">总重量</TableHead>
-                  <TableHead className="sticky top-0 bg-muted">货型</TableHead><TableHead className="sticky top-0 bg-muted">运输</TableHead><TableHead className="sticky top-0 bg-muted">结算</TableHead><TableHead className="sticky top-0 bg-muted">柜号</TableHead>
-                  <TableHead className="sticky top-0 bg-muted">状态</TableHead>
+                  <TableHead className="sticky top-0 bg-muted">日期</TableHead><TableHead className="sticky top-0 bg-muted">唛头</TableHead><TableHead className="sticky top-0 bg-muted">仓库</TableHead>
+                  <TableHead className="sticky top-0 bg-muted">运输</TableHead><TableHead className="sticky top-0 bg-muted">运单号</TableHead><TableHead className="sticky top-0 bg-muted">货型</TableHead>
+                  <TableHead className="sticky top-0 bg-muted">品名</TableHead><TableHead className="sticky top-0 bg-muted">尺寸</TableHead><TableHead className="sticky top-0 bg-muted text-right">件数</TableHead>
+                  <TableHead className="sticky top-0 bg-muted">国内单号</TableHead><TableHead className="sticky top-0 bg-muted text-right">单项体积</TableHead><TableHead className="sticky top-0 bg-muted text-right">单项重量</TableHead>
+                  <TableHead className="sticky top-0 bg-muted text-right">计费体积</TableHead><TableHead className="sticky top-0 bg-muted text-right">总体积</TableHead><TableHead className="sticky top-0 bg-muted text-right">总重量</TableHead>
+                  <TableHead className="sticky top-0 bg-muted text-right">总计费体积</TableHead><TableHead className="sticky top-0 bg-muted text-right">单价</TableHead><TableHead className="sticky top-0 bg-muted text-right">单项价格</TableHead>
+                  <TableHead className="sticky top-0 bg-muted text-right">订单总价</TableHead><TableHead className="sticky top-0 bg-muted">备注</TableHead><TableHead className="sticky top-0 bg-muted">结算</TableHead>
+                  <TableHead className="sticky top-0 bg-muted">柜号</TableHead><TableHead className="sticky top-0 bg-muted">状态</TableHead>
                 </TableRow></TableHeader>
                 <TableBody>
                   {preview.map((item, i) => (
                     <TableRow key={i}>
                       <TableCell className="text-xs text-muted-foreground">{item.rowIndex}</TableCell>
-                      <TableCell>{item.唛头 || '-'}</TableCell><TableCell>{item.品名 || '-'}</TableCell><TableCell>{item.尺寸 || '-'}</TableCell>
-                      <TableCell className="text-right">{item.件数 || '-'}</TableCell><TableCell className="text-right">{item.单项体积 || '-'}</TableCell><TableCell className="text-right">{item.总计费体积 || '-'}</TableCell>
-                      <TableCell className="text-right">{item.单价 || '-'}</TableCell><TableCell className="text-right">{item.单项价格 || '-'}</TableCell><TableCell className="text-right">{item.订单总价 || '-'}</TableCell>
-                      <TableCell className="text-xs">{item.国内单号 || '-'}</TableCell><TableCell className="text-right">{item.总体积 || '-'}</TableCell><TableCell className="text-right">{item.总重量 || '-'}</TableCell>
-                      <TableCell>{item.货型 || '-'}</TableCell><TableCell>{item.运输方式 || '-'}</TableCell><TableCell>{item.结算状态 || '-'}</TableCell><TableCell>{item.柜号 || '-'}</TableCell>
+                      <TableCell className="text-xs">{item.日期 || '-'}</TableCell><TableCell>{item.唛头 || '-'}</TableCell><TableCell>{item.仓库 || '-'}</TableCell>
+                      <TableCell>{item.运输方式 || '-'}</TableCell><TableCell>{item.运单号 || '-'}</TableCell><TableCell>{item.货型 || '-'}</TableCell>
+                      <TableCell>{item.品名 || '-'}</TableCell><TableCell>{item.尺寸 || '-'}</TableCell><TableCell className="text-right">{item.件数 || '-'}</TableCell>
+                      <TableCell className="text-xs">{item.国内单号 || '-'}</TableCell><TableCell className="text-right">{item.单项体积 || '-'}</TableCell><TableCell className="text-right">{item.单项重量 || '-'}</TableCell>
+                      <TableCell className="text-right">{item.计费体积 || '-'}</TableCell><TableCell className="text-right">{item.总体积 || '-'}</TableCell><TableCell className="text-right">{item.总重量 || '-'}</TableCell>
+                      <TableCell className="text-right">{item.总计费体积 || '-'}</TableCell><TableCell className="text-right">{item.单价 || '-'}</TableCell><TableCell className="text-right">{item.单项价格 || '-'}</TableCell>
+                      <TableCell className="text-right">{item.订单总价 || '-'}</TableCell><TableCell className="text-xs max-w-[80px] truncate">{item.备注 || '-'}</TableCell><TableCell>{item.结算状态 || '-'}</TableCell>
+                      <TableCell>{item.柜号 || '-'}</TableCell>
                       <TableCell><Badge className={item.verdict === '通过' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}>{item.verdict}</Badge></TableCell>
                     </TableRow>
                   ))}
