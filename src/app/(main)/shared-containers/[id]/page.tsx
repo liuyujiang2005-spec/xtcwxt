@@ -36,13 +36,16 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
   const markMap = new Map(markList.map(m => [m.id, m.markNo]));
 
   const totalVolume = items.reduce((s, i) => s + i.总体积, 0);
-  const totalCost = items.reduce((s, i) => s + (i.需支付总价_cents || 0), 0);
+  // 总成本 = 每个运单号对应的订单总价累加（取唯一，按mark分组取第一个非零值）
+  const orderCosts = new Map<number, number>();
+  items.forEach(i => { if (i.订单总价_cents && !orderCosts.has(i.markId)) orderCosts.set(i.markId, i.订单总价_cents); });
+  const totalCost = Array.from(orderCosts.values()).reduce((s, v) => s + v, 0);
   const totalReceivable = items.reduce((s, i) => s + (i.客户应收_cents || 0), 0);
 
   const byMark = new Map<number, { markNo: string; volume: number; cost: number; count: number }>();
   items.forEach((item) => {
     const m = byMark.get(item.markId) || { markNo: markMap.get(item.markId) || `#${item.markId}`, volume: 0, cost: 0, count: 0 };
-    m.volume += item.总体积; m.cost += (item.需支付总价_cents || 0); m.count++;
+    m.volume += item.总体积; m.cost = Math.max(m.cost, item.订单总价_cents || 0); m.count++;
     byMark.set(item.markId, m);
   });
   const markStats = Array.from(byMark.values());
