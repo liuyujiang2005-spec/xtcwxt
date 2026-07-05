@@ -51,6 +51,7 @@ export function mapPythonResult(pyData: any): { items: any[]; summary: { totalIt
       allItems.push({
         rowIndex: 0,
         markNo: mark || row.运单号 || row.订单号 || '',
+        唛头: mark,
         品名: row.品名 || row.名称 || row.货物名称 || '',
         客户: mark,
         日期: row.日期 || '',
