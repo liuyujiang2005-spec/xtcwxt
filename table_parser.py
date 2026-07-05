@@ -264,7 +264,8 @@ def parse_data(ws, rules):
                 for name in col_map:
                     if row_data[name] is None and name in current_order:
                         row_data[name] = current_order[name]
-                current_order["产品明细"].append(dict(row_data))
+                if row_data.get('品名'):
+                    current_order["产品明细"].append(dict(row_data))
     
     if current_order:
         orders.append(current_order)
