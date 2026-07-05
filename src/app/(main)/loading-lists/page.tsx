@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import Link from 'next/link';
 import { Upload } from 'lucide-react';
+import { DeleteBatchButton } from '../shared-containers/DeleteBatchButton';
 
 export default async function LoadingListsPage() {
   const user = await getCurrentUser();
@@ -42,9 +43,10 @@ export default async function LoadingListsPage() {
                   <TableCell className="text-sm text-muted-foreground">{b.originalFilename || '-'}</TableCell>
                   <TableCell className="text-sm">{b.createdAt?.substring(0, 10) || '-'}</TableCell>
                   <TableCell className="text-right">
-                    <Link href={`/loading-lists/${b.id}`}>
-                      <Button variant="ghost" size="sm">详情</Button>
-                    </Link>
+                    <div className="flex items-center justify-end gap-1">
+                      <Link href={`/loading-lists/${b.id}`}><Button variant="ghost" size="sm">详情</Button></Link>
+                      <DeleteBatchButton batchId={b.id} apiPath="/api/loading-batches" />
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

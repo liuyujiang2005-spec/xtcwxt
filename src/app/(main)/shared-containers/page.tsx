@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import Link from 'next/link';
 import { Upload } from 'lucide-react';
+import { DeleteBatchButton } from './DeleteBatchButton';
 
 const STATUS_COLORS: Record<string, string> = {
   '待验证': 'bg-yellow-100 text-yellow-700',
@@ -55,9 +56,10 @@ export default async function SharedContainersPage() {
                   <TableCell className="text-sm text-muted-foreground">{b.originalFilename || '-'}</TableCell>
                   <TableCell className="text-sm">{b.createdAt?.substring(0, 10) || '-'}</TableCell>
                   <TableCell className="text-right">
-                    <Link href={`/shared-containers/${b.id}`}>
-                      <Button variant="ghost" size="sm">详情</Button>
-                    </Link>
+                    <div className="flex items-center justify-end gap-1">
+                      <Link href={`/shared-containers/${b.id}`}><Button variant="ghost" size="sm">详情</Button></Link>
+                      <DeleteBatchButton batchId={b.id} apiPath="/api/shared-containers" />
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

@@ -20,3 +20,20 @@ export async function GET(
   const costList = await db.select().from(expenses).where(eq(expenses.loadingBatchId, batch.id)).all();
   return NextResponse.json({ batch, items, expenses: costList });
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const sessionToken = request.cookies.get('session')?.value;
+  if (!sessionToken) return NextResponse.json({ error: '未登录' }, { status: 401 });
+  const user = await validateSession(sessionToken);
+  if (!user || (user.role !== 'admin' && user.role !== 'finance')) return NextResponse.json({ error: '无权限' }, { status: 403 });
+
+  const { id } = await params;
+  const batchId = parseInt(id);
+  await db.delete(loadingItems).where(eq(loadingItems.batchId, batchId));
+  await db.delete(expenses).where(eq(expenses.loadingBatchId, batchId));
+  await db.delete(loadingBatches).where(eq(loadingBatches.id, batchId));
+  return NextResponse.json({ success: true });
+}

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db/index';
-import { sharedContainerItems } from '@/db/schema';
+import { loadingItems } from '@/db/schema';
 import { validateSession } from '@/lib/auth';
 import { eq } from 'drizzle-orm';
 
@@ -11,6 +11,6 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   if (!user || (user.role !== 'admin' && user.role !== 'finance')) return NextResponse.json({ error: '无权限' }, { status: 403 });
 
   const { id } = await params;
-  await db.delete(sharedContainerItems).where(eq(sharedContainerItems.id, parseInt(id)));
+  await db.delete(loadingItems).where(eq(loadingItems.id, parseInt(id)));
   return NextResponse.json({ success: true });
 }

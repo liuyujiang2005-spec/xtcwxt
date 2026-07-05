@@ -1,4 +1,5 @@
 import { sqliteTable, text, integer, real, index } from 'drizzle-orm/sqlite-core';
+import { sql } from 'drizzle-orm';
 
 export const users = sqliteTable('users', {
   id: integer('id').primaryKey(),
@@ -40,7 +41,7 @@ export const marks = sqliteTable('marks', {
   mode: text('mode').notNull(),
   monthTag: text('month_tag').notNull(),
   remark: text('remark'),
-  createdAt: text('created_at').default('datetime(\'now\')'),
+  createdAt: text('created_at').default(sql`(datetime('now'))`),
 }, (table) => ({
   monthTagIdx: index('marks_month_tag_idx').on(table.monthTag),
   customerIdIdx: index('marks_customer_id_idx').on(table.customerId),
@@ -52,7 +53,7 @@ export const sharedContainerBatches = sqliteTable('shared_container_batches', {
   totalVolumeUploaded: real('total_volume_uploaded').notNull(),
   status: text('status').default('待验证'),
   originalFilename: text('original_filename'),
-  createdAt: text('created_at').default('datetime(\'now\')'),
+  createdAt: text('created_at').default(sql`(datetime('now'))`),
 });
 
 export const sharedContainerItems = sqliteTable('shared_container_items', {
@@ -79,7 +80,7 @@ export const sharedContainerItems = sqliteTable('shared_container_items', {
   cost_status: text('cost_status').default('待支出'),
   ai_verified: integer('ai_verified').default(0),
   ai_verify_msg: text('ai_verify_msg'),
-  createdAt: text('created_at').default('datetime(\'now\')'),
+  createdAt: text('created_at').default(sql`(datetime('now'))`),
 }, (table) => ({
   batchIdIdx: index('sci_batch_id_idx').on(table.batchId),
   markIdIdx: index('sci_mark_id_idx').on(table.markId),
@@ -90,7 +91,7 @@ export const loadingBatches = sqliteTable('loading_batches', {
   id: integer('id').primaryKey(),
   batchNo: text('batch_no').notNull().unique(),
   originalFilename: text('original_filename'),
-  createdAt: text('created_at').default('datetime(\'now\')'),
+  createdAt: text('created_at').default(sql`(datetime('now'))`),
 });
 
 export const loadingItems = sqliteTable('loading_items', {
@@ -114,7 +115,7 @@ export const loadingItems = sqliteTable('loading_items', {
   货型: text('货型'),
   运输方式: text('运输方式'),
   payment_status: text('payment_status').default('待支付'),
-  createdAt: text('created_at').default('datetime(\'now\')'),
+  createdAt: text('created_at').default(sql`(datetime('now'))`),
 }, (table) => ({
   batchIdIdx: index('li_batch_id_idx').on(table.batchId),
   markIdIdx: index('li_mark_id_idx').on(table.markId),
@@ -129,7 +130,7 @@ export const directIncome = sqliteTable('direct_income', {
   volume: real('volume'),
   incomeDate: text('income_date').notNull(),
   remark: text('remark'),
-  createdAt: text('created_at').default('datetime(\'now\')'),
+  createdAt: text('created_at').default(sql`(datetime('now'))`),
 }, (table) => ({
   customerIdIdx: index('di_customer_id_idx').on(table.customerId),
   incomeDateIdx: index('di_income_date_idx').on(table.incomeDate),
@@ -145,7 +146,7 @@ export const expenses = sqliteTable('expenses', {
   status: text('status').default('待支付'),
   paidDate: text('paid_date'),
   remark: text('remark'),
-  createdAt: text('created_at').default('datetime(\'now\')'),
+  createdAt: text('created_at').default(sql`(datetime('now'))`),
 }, (table) => ({
   expenseTypeIdx: index('exp_type_idx').on(table.expenseType),
   statusIdx: index('exp_status_idx').on(table.status),
@@ -181,7 +182,7 @@ export const bills = sqliteTable('bills', {
   totalAmountCents: integer('total_amount_cents').notNull(),
   currency: text('currency').default('CNY'),
   status: text('status').default('待生成'),
-  createdAt: text('created_at').default('datetime(\'now\')'),
+  createdAt: text('created_at').default(sql`(datetime('now'))`),
 }, (table) => ({
   customerMonthIdx: index('bills_customer_month_idx').on(table.customerId, table.monthTag),
 }));

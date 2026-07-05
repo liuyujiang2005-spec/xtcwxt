@@ -1,12 +1,16 @@
 import { getCurrentUser } from '@/lib/auth';
 import { redirect, notFound } from 'next/navigation';
+import Link from 'next/link';
 import { db } from '@/db/index';
 import { loadingBatches, loadingItems, expenses, customers } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { formatCents } from '@/lib/format';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ArrowLeft } from 'lucide-react';
 import { LoadingExpenseManager } from './LoadingExpenseManager';
+import { DeleteItemButton } from '../../shared-containers/[id]/DeleteButton';
 
 export default async function LoadingListDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
@@ -27,7 +31,8 @@ export default async function LoadingListDetailPage({ params }: { params: Promis
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <Link href="/loading-lists"><Button variant="ghost" size="icon" className="h-8 w-8"><ArrowLeft className="h-5 w-5" /></Button></Link>
         <div>
           <h1 className="text-2xl font-bold">{batch.batchNo}</h1>
           <p className="text-muted-foreground">文件: {batch.originalFilename || '-'}</p>
@@ -48,33 +53,39 @@ export default async function LoadingListDetailPage({ params }: { params: Promis
       <Card>
         <CardHeader><CardTitle>装柜清单明细（{items.length} 条）</CardTitle></CardHeader>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>客户</TableHead><TableHead>品名</TableHead>
-                <TableHead className="text-right">总体积</TableHead><TableHead>货型</TableHead><TableHead>运输</TableHead>
-                <TableHead className="text-right">应收</TableHead><TableHead>状态</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {items.map((item) => (
-                <TableRow key={item.id}>
+          {items.length === 0 ? (
+            <div className="py-8 text-center text-muted-foreground">
+              <p>暂无明细数据</p>
+              <p className="text-xs mt-2">批次: {batch.batchNo} | 文件: {batch.originalFilename || '-'}</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader><TableRow>
+                <TableHead>客户</TableHead><TableHead>品名</TableHead><TableHead className="text-right">总体积</TableHead>
+                <TableHead className="text-right">单箱体积</TableHead><TableHead className="text-right">箱数</TableHead><TableHead className="text-right">单箱数量</TableHead>
+                <TableHead>国内单号</TableHead><TableHead className="text-right">总重量</TableHead>
+                <TableHead>货型</TableHead><TableHead>运输</TableHead><TableHead className="text-right">单价</TableHead>
+                <TableHead className="text-right">应收</TableHead><TableHead>状态</TableHead><TableHead className="w-10"></TableHead>
+              </TableRow></TableHeader>
+              <TableBody>
+                {items.map((item) => (<TableRow key={item.id}>
                   <TableCell>{customerMap.get(item.customerId) || '-'}</TableCell>
                   <TableCell className="max-w-[120px] truncate" title={item.品名 || ''}>{item.品名 || '-'}</TableCell>
                   <TableCell className="text-right">{item.总体积.toFixed(2)}</TableCell>
-                  <TableCell>{item.货型 || '-'}</TableCell>
-                  <TableCell>{item.运输方式 || '-'}</TableCell>
+                  <TableCell className="text-right">{item.单箱体积 || '-'}</TableCell>
+                  <TableCell className="text-right">{item.箱数 || '-'}</TableCell>
+                  <TableCell className="text-right">{item.单箱数量 || '-'}</TableCell>
+                  <TableCell className="text-xs">{item.国内单号 || '-'}</TableCell>
+                  <TableCell className="text-right">{item.总重量 || '-'}</TableCell>
+                  <TableCell>{item.货型 || '-'}</TableCell><TableCell>{item.运输方式 || '-'}</TableCell>
+                  <TableCell className="text-right">{((item.单价_cents || 0) / 100).toFixed(2)}</TableCell>
                   <TableCell className="text-right text-green-600">{formatCents(item.需支付总价_cents || 0)}</TableCell>
-                  <TableCell>
-                    <span className={`text-xs px-2 py-1 rounded ${item.payment_status === '已支付' ? 'bg-gray-100 text-gray-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                      {item.payment_status}
-                    </span>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {items.length === 0 && <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">暂无明细</TableCell></TableRow>}
-            </TableBody>
-          </Table>
+                  <TableCell><span className={`text-xs px-2 py-1 rounded ${item.payment_status === '已支付' ? 'bg-gray-100 text-gray-700' : 'bg-yellow-100 text-yellow-700'}`}>{item.payment_status}</span></TableCell>
+                  <TableCell><DeleteItemButton itemId={item.id} apiPath="/api/loading-items" /></TableCell>
+                </TableRow>))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>

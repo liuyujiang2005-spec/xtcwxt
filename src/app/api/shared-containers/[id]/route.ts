@@ -35,3 +35,19 @@ export async function PUT(
     .where(eq(sharedContainerBatches.id, parseInt(id)));
   return NextResponse.json({ success: true });
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const sessionToken = request.cookies.get('session')?.value;
+  if (!sessionToken) return NextResponse.json({ error: '未登录' }, { status: 401 });
+  const user = await validateSession(sessionToken);
+  if (!user || (user.role !== 'admin' && user.role !== 'finance')) return NextResponse.json({ error: '无权限' }, { status: 403 });
+
+  const { id } = await params;
+  const batchId = parseInt(id);
+  await db.delete(sharedContainerItems).where(eq(sharedContainerItems.batchId, batchId));
+  await db.delete(sharedContainerBatches).where(eq(sharedContainerBatches.id, batchId));
+  return NextResponse.json({ success: true });
+}
