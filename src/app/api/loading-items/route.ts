@@ -15,12 +15,25 @@ export async function POST(request: NextRequest) {
     const { batchId, items } = body;
 
     for (const item of items) {
+      // 检查或自动创建客户
+      let custId = item.customerId;
+      const custExists = custId > 0 ? await db.select().from(customers).where(eq(customers.id, custId)).get() : null;
+      if (!custExists && item.markNo) {
+        const existingCust = await db.select().from(customers).where(eq(customers.name, item.markNo)).get();
+        if (existingCust) {
+          custId = existingCust.id;
+        } else {
+          const result = await db.insert(customers).values({ name: item.markNo });
+          custId = Number(result.lastInsertRowid);
+        }
+      }
+
       let mark = await db.select().from(marks).where(eq(marks.markNo, item.markNo)).get();
       if (!mark) {
         const monthTag = new Date().toISOString().substring(0, 7);
         const result = await db.insert(marks).values({
           markNo: item.markNo,
-          customerId: item.customerId,
+          customerId: custId,
           mode: '装柜',
           monthTag,
         });
@@ -28,7 +41,7 @@ export async function POST(request: NextRequest) {
         if (!mark) throw new Error(`创建唛头失败: ${item.markNo}`);
       }
 
-      const cust = await db.select().from(customers).where(eq(customers.id, item.customerId)).get();
+      const cust = await db.select().from(customers).where(eq(customers.id, custId)).get();
       let unitPriceCents = 0;
       if (cust?.priceMatrix) {
         try {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db/index';
-import { sharedContainerItems, marks, sharedContainerBatches } from '@/db/schema';
+import { sharedContainerItems, marks, sharedContainerBatches, customers } from '@/db/schema';
 import { validateSession } from '@/lib/auth';
 import { eq } from 'drizzle-orm';
 
@@ -15,12 +15,25 @@ export async function POST(request: NextRequest) {
     const { batchId, items } = body;
 
     for (const item of items) {
+      // 检查或自动创建客户
+      let custId = item.customerId;
+      const custExists = custId > 0 ? await db.select().from(customers).where(eq(customers.id, custId)).get() : null;
+      if (!custExists && item.markNo) {
+        const existingCust = await db.select().from(customers).where(eq(customers.name, item.markNo)).get();
+        if (existingCust) {
+          custId = existingCust.id;
+        } else {
+          const result = await db.insert(customers).values({ name: item.markNo });
+          custId = Number(result.lastInsertRowid);
+        }
+      }
+
       let mark = await db.select().from(marks).where(eq(marks.markNo, item.markNo)).get();
       if (!mark) {
         const monthTag = new Date().toISOString().substring(0, 7);
         const result = await db.insert(marks).values({
           markNo: item.markNo,
-          customerId: item.customerId,
+          customerId: custId,
           mode: '拼柜',
           monthTag,
         });
@@ -31,7 +44,7 @@ export async function POST(request: NextRequest) {
       await db.insert(sharedContainerItems).values({
         batchId,
         markId: mark!.id,
-        customerId: item.customerId,
+        customerId: custId,
         品名: item.品名 || null,
         尺寸_长: item.尺寸_长 || null,
         尺寸_宽: item.尺寸_宽 || null,
