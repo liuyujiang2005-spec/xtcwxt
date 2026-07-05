@@ -148,7 +148,7 @@ export default function UploadSharedContainerPage() {
                   <TableCell>{item.品名 || '-'}</TableCell>
                   <TableCell>{item.尺寸 || '-'}</TableCell>
                   <TableCell className="text-right">{item.件数 || '-'}</TableCell>
-                  <TableCell className="text-xs max-w-[80px] truncate">{item.国内单号 || '-'}</TableCell>
+                  <TableCell className="text-xs max-w-[120px] truncate">{item.国内单号 || '-'}</TableCell>
                   <TableCell className="text-right">{item.单项体积 || '-'}</TableCell><TableCell className="text-right">{item.单项重量 || '-'}</TableCell>
                   {ri === 0 ? <TableCell className="text-right" rowSpan={g.items.length}>{item.总体积 || '-'}</TableCell> : null}
                   {ri === 0 ? <TableCell className="text-right" rowSpan={g.items.length}>{item.总重量 || '-'}</TableCell> : null}
