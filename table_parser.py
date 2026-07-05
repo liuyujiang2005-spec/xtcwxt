@@ -205,7 +205,14 @@ def parse_data(ws, rules):
         if len(col_map) >= 5:
             order_col = list(col_map.values())[4]
             order_col_name_used = list(col_map.keys())[4]
-    
+
+    # 修正 data_start：GPT-4o 可能因合并单元格误判，向上扫描找第一条有运单号的行
+    for ri in range(data_start - 1, header_row, -1):
+        v = ws.cell(row=ri, column=order_col).value
+        if v is not None and str(v).strip():
+            data_start = ri
+            break
+
     # 逐行解析
     orders = []
     current_order = None
