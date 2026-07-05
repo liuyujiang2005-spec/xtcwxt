@@ -176,9 +176,9 @@ export function mapPythonResult(pyData: any): { items: any[]; summary: { totalIt
       }
     }
 
-    // 汇总总重量 vs 头层总重量 (单项重量是单件重量，需×件数)
+    // 汇总总重量 vs 头层总重量 (单项重量是行总重量，不乘件数)
     if (first.总重量 > 0) {
-      const sumW = round6(group.reduce((s: number, i: any) => s + i.单项重量 * (i.件数 || 1), 0));
+      const sumW = round6(group.reduce((s: number, i: any) => s + i.单项重量, 0));
       if (Math.abs(sumW - first.总重量) > 0.000001) {
         for (const item of group) {
           if (item.verdict === '通过') { item.verdict = '异常'; item.reason = ''; }
