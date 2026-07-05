@@ -83,7 +83,7 @@ export default function UploadSharedContainerPage() {
         尺寸_宽: 0,
         尺寸_高: 0,
         单箱体积: item.单项体积 || 0,
-        总体积: item.总体积 || item.计费体积 || 0,
+        总体积: item.总体积 || item.计费体积 || item.单项体积 || 0,
         国内单号: item.国内单号 || '',
         单箱数量: item.件数 || 0,
         总重量: item.总重量 || 0,

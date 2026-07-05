@@ -35,7 +35,7 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
   const markList = markIds.length > 0 ? await db.select().from(marks).where(inArray(marks.id, markIds)).all() : [];
   const markMap = new Map(markList.map(m => [m.id, m.markNo]));
 
-  const totalVolume = items.reduce((s, i) => s + i.总体积, 0);
+  const totalVolume = items.reduce((s, i) => s + (i.单箱体积 || 0), 0);
   // 总成本 = 每个运单号的订单总价累加（按运单号分组取唯一值）
   const orderCosts = new Map<string, number>();
   items.forEach(i => { 
