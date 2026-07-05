@@ -81,6 +81,7 @@ sqlite.exec(`
     货型 TEXT,
     运输方式 TEXT,
     客户应收_cents INTEGER,
+    运单号 TEXT,
     cost_status TEXT DEFAULT '待支出',
     ai_verified INTEGER DEFAULT 0,
     ai_verify_msg TEXT,

@@ -61,6 +61,7 @@ export async function POST(request: NextRequest) {
         货型: item.货型 || null,
         运输方式: item.运输方式 || null,
         订单总价_cents: item.订单总价_cents || 0,
+        运单号: item.运单号 || '',
         cost_status: '待支出',
         ai_verified: item.ai_verified || 0,
         ai_verify_msg: item.ai_verify_msg || null,

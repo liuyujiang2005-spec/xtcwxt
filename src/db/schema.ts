@@ -78,6 +78,7 @@ export const sharedContainerItems = sqliteTable('shared_container_items', {
   运输方式: text('运输方式'),
   客户应收_cents: integer('客户应收_cents'),
   订单总价_cents: integer('订单总价_cents'),
+  运单号: text('运单号'),
   cost_status: text('cost_status').default('待支出'),
   ai_verified: integer('ai_verified').default(0),
   ai_verify_msg: text('ai_verify_msg'),
