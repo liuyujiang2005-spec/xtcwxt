@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
     }
 
     await db.update(sharedContainerBatches)
-      .set({ status: '已验证' })
+      .set({ status: '待审核' })
       .where(eq(sharedContainerBatches.id, batchId));
 
     return NextResponse.json({ success: true, itemCount: items.length });

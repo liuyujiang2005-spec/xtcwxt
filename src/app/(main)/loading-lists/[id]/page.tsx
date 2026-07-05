@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ArrowLeft } from 'lucide-react';
 import { LoadingExpenseManager } from './LoadingExpenseManager';
 import { DeleteItemButton } from '../../shared-containers/[id]/DeleteButton';
+import { ReviewActions } from '../../shared-containers/[id]/ReviewActions';
 
 export default async function LoadingListDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
@@ -33,10 +34,12 @@ export default async function LoadingListDetailPage({ params }: { params: Promis
     <div className="space-y-6">
       <div className="flex items-center gap-3">
         <Link href="/loading-lists"><Button variant="ghost" size="icon" className="h-8 w-8"><ArrowLeft className="h-5 w-5" /></Button></Link>
-        <div>
+        <div className="flex-1">
           <h1 className="text-2xl font-bold">{batch.batchNo}</h1>
           <p className="text-muted-foreground">文件: {batch.originalFilename || '-'}</p>
         </div>
+        {batch.status && <span className={`text-xs px-2 py-1 rounded ${batch.status === '待审核' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}>{batch.status}</span>}
+        {batch.status === '待审核' && <ReviewActions batchId={batch.id} apiPath="/api/loading-batches" listPath="/loading-lists" />}
       </div>
 
       <div className="grid grid-cols-3 gap-4">

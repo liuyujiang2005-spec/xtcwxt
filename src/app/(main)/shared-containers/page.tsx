@@ -12,9 +12,9 @@ import { Upload } from 'lucide-react';
 import { DeleteBatchButton } from './DeleteBatchButton';
 
 const STATUS_COLORS: Record<string, string> = {
-  '待验证': 'bg-yellow-100 text-yellow-700',
-  '已验证': 'bg-green-100 text-green-700',
-  '已导入': 'bg-blue-100 text-blue-700',
+  '待验证': 'bg-gray-100 text-gray-700',
+  '待审核': 'bg-yellow-100 text-yellow-700',
+  '已发布': 'bg-green-100 text-green-700',
 };
 
 export default async function SharedContainersPage() {

@@ -21,6 +21,21 @@ export async function GET(
   return NextResponse.json({ batch, items, expenses: costList });
 }
 
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const sessionToken = request.cookies.get('session')?.value;
+  if (!sessionToken) return NextResponse.json({ error: '未登录' }, { status: 401 });
+  const user = await validateSession(sessionToken);
+  if (!user || user.role === 'viewer') return NextResponse.json({ error: '无权限' }, { status: 403 });
+
+  const { id } = await params;
+  const body = await request.json();
+  await db.update(loadingBatches).set({ status: body.status }).where(eq(loadingBatches.id, parseInt(id)));
+  return NextResponse.json({ success: true });
+}
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

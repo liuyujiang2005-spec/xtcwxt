@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db/index';
-import { loadingItems, marks, customers } from '@/db/schema';
+import { loadingItems, marks, customers, loadingBatches } from '@/db/schema';
 import { validateSession } from '@/lib/auth';
 import { eq } from 'drizzle-orm';
 
@@ -78,6 +78,8 @@ export async function POST(request: NextRequest) {
         payment_status: '待支付',
       });
     }
+
+    await db.update(loadingBatches).set({ status: '待审核' }).where(eq(loadingBatches.id, batchId));
 
     return NextResponse.json({ success: true, itemCount: items.length });
   } catch (error) {

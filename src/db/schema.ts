@@ -91,6 +91,7 @@ export const loadingBatches = sqliteTable('loading_batches', {
   id: integer('id').primaryKey(),
   batchNo: text('batch_no').notNull().unique(),
   originalFilename: text('original_filename'),
+  status: text('status').default('待验证'),
   createdAt: text('created_at').default(sql`(datetime('now'))`),
 });
 

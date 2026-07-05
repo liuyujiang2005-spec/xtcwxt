@@ -11,6 +11,13 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ArrowLeft } from 'lucide-react';
 import { DeleteItemButton } from './DeleteButton';
+import { ReviewActions } from './ReviewActions';
+
+const STATUS_COLORS: Record<string, string> = {
+  '待验证': 'bg-gray-100 text-gray-700',
+  '待审核': 'bg-yellow-100 text-yellow-700',
+  '已发布': 'bg-green-100 text-green-700',
+};
 
 export default async function SharedContainerDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
@@ -48,9 +55,10 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
           <h1 className="text-2xl font-bold">{batch.batchNo}</h1>
           <p className="text-muted-foreground">上传文件: {batch.originalFilename || '-'}</p>
         </div>
-        <Badge className={batch.status === '已验证' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}>
+        <Badge className={STATUS_COLORS[batch.status!] || 'bg-gray-100 text-gray-700'}>
           {batch.status}
         </Badge>
+        {batch.status === '待审核' && <ReviewActions batchId={batch.id} apiPath="/api/shared-containers" listPath="/shared-containers" />}
       </div>
 
       <div className="grid grid-cols-3 gap-4">
