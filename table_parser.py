@@ -260,12 +260,14 @@ def parse_data(ws, rules):
             current_order["产品明细"].append(dict(row_data))
         else:
             if current_order is not None:
+                # 先检查是否有明细数据，空行直接跳过
+                if not (row_data.get('品名') or row_data.get('尺寸') or row_data.get('件数')):
+                    continue
                 # 前向填充：合并单元格字段用上一行值
                 for name in col_map:
                     if row_data[name] is None and name in current_order:
                         row_data[name] = current_order[name]
-                if row_data.get('品名') or row_data.get('尺寸') or row_data.get('件数'):
-                    current_order["产品明细"].append(dict(row_data))
+                current_order["产品明细"].append(dict(row_data))
     
     if current_order:
         orders.append(current_order)
