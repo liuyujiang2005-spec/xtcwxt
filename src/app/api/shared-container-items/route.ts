@@ -60,7 +60,6 @@ export async function POST(request: NextRequest) {
         需支付总价_cents: item.成本单价_cents ? Math.round(item.成本单价_cents * item.总体积) : 0,
         货型: item.货型 || null,
         运输方式: item.运输方式 || null,
-        客户应收_cents: item.客户应收_cents || 0,
         订单总价_cents: item.订单总价_cents || 0,
         cost_status: '待支出',
         ai_verified: item.ai_verified || 0,

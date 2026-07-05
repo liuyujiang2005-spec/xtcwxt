@@ -91,7 +91,6 @@ export default function UploadSharedContainerPage() {
         pcs数量: 0,
         成本单价_cents: Math.round((item.单价 || 0) * 100),
         需支付总价_cents: Math.round((item.单项价格 || 0) * 100),
-        客户应收_cents: Math.round((item.单项价格 || 0) * 100),
         订单总价_cents: Math.round((item.订单总价 || 0) * 100),
         结算状态: item.结算状态 || '',
         ai_verified: item.verdict === '通过' ? 1 : 0,

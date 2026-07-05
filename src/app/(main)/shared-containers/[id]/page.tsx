@@ -40,7 +40,6 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
   const orderCosts = new Map<number, number>();
   items.forEach(i => { if (i.订单总价_cents && !orderCosts.has(i.markId)) orderCosts.set(i.markId, i.订单总价_cents); });
   const totalCost = Array.from(orderCosts.values()).reduce((s, v) => s + v, 0);
-  const totalReceivable = items.reduce((s, i) => s + (i.客户应收_cents || 0), 0);
 
   const byMark = new Map<number, { markNo: string; volume: number; cost: number; count: number }>();
   items.forEach((item) => {
@@ -69,8 +68,6 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
           <CardContent><span className="text-xl font-bold">{totalVolume.toFixed(2)} m³</span></CardContent></Card>
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm">总成本</CardTitle></CardHeader>
           <CardContent><span className="text-xl font-bold text-red-600">{formatCents(totalCost)}</span></CardContent></Card>
-        <Card><CardHeader className="pb-2"><CardTitle className="text-sm">总应收</CardTitle></CardHeader>
-          <CardContent><span className="text-xl font-bold text-green-600">{formatCents(totalReceivable)}</span></CardContent></Card>
       </div>
 
       {markStats.length > 0 && (
@@ -102,7 +99,7 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
                 <TableHead className="text-right">总体积</TableHead><TableHead className="text-right">单箱体积</TableHead>
                 <TableHead className="text-right">箱数</TableHead><TableHead className="text-right">单箱数量</TableHead>
                 <TableHead>国内单号</TableHead><TableHead className="text-right">总重量</TableHead>
-                <TableHead className="text-right">成本单价</TableHead><TableHead className="text-right">成本</TableHead><TableHead className="text-right">应收</TableHead>
+                <TableHead className="text-right">成本单价</TableHead>                <TableHead className="text-right">成本</TableHead>
                 <TableHead>结算</TableHead><TableHead>状态</TableHead><TableHead className="w-10"></TableHead>
               </TableRow></TableHeader>
               <TableBody>
@@ -118,7 +115,6 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
                   <TableCell className="text-right">{item.总重量 || '-'}</TableCell>
                   <TableCell className="text-right">{((item.成本单价_cents || 0) / 100).toFixed(2)}</TableCell>
                   <TableCell className="text-right">{formatCents(item.需支付总价_cents || 0)}</TableCell>
-                  <TableCell className="text-right text-green-600">{formatCents(item.客户应收_cents || 0)}</TableCell>
                   <TableCell>{item.cost_status || '-'}</TableCell>
                   <TableCell><Badge className={item.cost_status === '已支出' ? 'bg-gray-100 text-gray-700' : 'bg-yellow-100 text-yellow-700'}>{item.cost_status || '-'}</Badge></TableCell>
                   <TableCell><DeleteItemButton itemId={item.id} apiPath="/api/shared-container-items" /></TableCell>
