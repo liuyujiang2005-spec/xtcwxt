@@ -141,6 +141,28 @@ def parse_data(ws, rules):
     data_start = rules.get("data_start_row", rules.get("header_row", 7) + 1)
     header_row = rules.get("header_row", 7)
     order_col_name = rules.get("order_id_column", "汇诚邦单号")
+
+    # 校验 header_row：检查是否包含多个已知列头关键词
+    HEADER_KEYWORDS = ["日期", "唛头", "仓库", "运输", "运单", "货型", "品名", "尺寸", "件数",
+                       "国内单号", "单项体积", "单项重量", "总体积", "总重量", "计费体积", "单价", "单项价格", "订单总价", "备注", "结算", "柜号"]
+    
+    def count_header_matches(row_idx):
+        text = ""
+        for ci in range(1, ws.max_column + 1):
+            v = ws.cell(row=row_idx, column=ci).value
+            if v: text += str(v)
+        return sum(1 for kw in HEADER_KEYWORDS if kw in text)
+
+    match_count = count_header_matches(header_row)
+    if match_count < 3:
+        # GPT-4o 误判了 header_row，扫描前10行找最佳列头行
+        best_row, best_cnt = 1, 0
+        for ri in range(1, min(ws.max_row + 1, 11)):
+            cnt = count_header_matches(ri)
+            if cnt > best_cnt:
+                best_cnt, best_row = cnt, ri
+        if best_cnt >= 3:
+            header_row = best_row
     
     # 建立列名→列索引映射
     col_map = {}
