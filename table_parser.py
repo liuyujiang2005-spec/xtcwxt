@@ -81,7 +81,7 @@ def analyze_structure(ws, filename=""):
         v = ws.cell(row=header_row, column=ci).value
         headers.append(str(v).strip() if v else f"列{ci}")
     
-    prompt = f"""分析这个Excel表格的结构，返回JSON格式的解析规则。
+    prompt = f"""分析这个装柜清单Excel表格的结构，返回JSON格式的解析规则。
 
 文件名：{filename}
 规格：{ws.max_row}行 x {ws.max_column}列
@@ -94,20 +94,30 @@ def analyze_structure(ws, filename=""):
 样本数据（前30行 + 最后5行）：
 {chr(10).join(sample)}
 
+这是一个固定的22列装柜单格式，列顺序为：
+日期、唛头、仓库、运输方式、运单号、货型、品名、尺寸、件数、国内单号、单项体积、单项重量、总体积、总重量、计费体积、总计费体积、单价、单项价格、订单总价、备注、结算状态、柜号
+
+其中9个字段是合并单元格（头层，一个运单号对应一条）：
+日期、唛头、仓库、运输方式、运单号、总体积、总重量、总计费体积、订单总价
+合并单元格只在第一行有值，后续行为空，需要用运单号做分组标识进行前向填充。
+
+13个字段是逐行明细：
+货型、品名、尺寸（为字符串格式如"20×30×40"）、件数、国内单号、单项体积、单项重量、计费体积、单价、单项价格、备注、结算状态、柜号
+
 规则（只返回JSON，不要其他文字，JSON格式如下）：
 {{
   "title_rows": 标题行数（数字，列头之前的行数）,
   "header_row": 列头所在行号（数字）,
   "data_start_row": 数据起始行号（数字）,
-  "order_id_column": "用于区分每笔订单的唯一列名",
-  "date_column": "日期列名",
-  "customer_column": "客户/供应商列名",
-  "total_price_column": "总价列名",
-  "has_merge_cells": true或false,
-  "merge_columns": ["合并列的列名列表"],
-  "merge_rule": "合并规律说明",
-  "product_detail_columns": ["产品明细列名"],
-  "parse_logic": "如何解析的详细说明"
+  "order_id_column": "运单号",
+  "date_column": "日期",
+  "customer_column": "唛头",
+  "total_price_column": "订单总价",
+  "has_merge_cells": true,
+  "merge_columns": ["日期", "唛头", "仓库", "运输方式", "运单号", "总体积", "总重量", "总计费体积", "订单总价"],
+  "merge_rule": "以运单号分组，头层字段只在该组第一行有值，后续行向前填充",
+  "product_detail_columns": ["货型", "品名", "尺寸", "件数", "国内单号", "单项体积", "单项重量", "计费体积", "单价", "单项价格", "备注", "结算状态", "柜号"],
+  "parse_logic": "运单号相同的行属于同一订单，头层字段前向填充，明细字段逐行解析"
 }}
 """
     
