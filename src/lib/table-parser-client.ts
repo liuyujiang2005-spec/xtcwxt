@@ -204,19 +204,4 @@ export function mapPythonResult(pyData: any): { items: any[]; summary: { totalIt
     summary: { totalItems: items.length, abnormalCount: items.filter(i => i.verdict === '异常').length },
   };
 }
-  }
 
-  const items = allItems.map((item, idx) => {
-    item.rowIndex = idx + 1;
-    if (item.计费体积 <= 0 && item.单项价格 <= 0 && item.订单总价 <= 0) {
-      item.verdict = '异常';
-      item.reason = '未识别到体积和金额';
-    }
-    return item;
-  });
-
-  return {
-    items,
-    summary: { totalItems: items.length, abnormalCount: items.filter(i => i.verdict === '异常').length },
-  };
-}
