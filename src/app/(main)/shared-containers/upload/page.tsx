@@ -109,6 +109,15 @@ export default function UploadSharedContainerPage() {
 
   const abnormalItems = preview.filter(i => i.verdict === '异常');
 
+  // 按运单号分组用于合并展示
+  const grouped: { key: string; items: ScItem[] }[] = [];
+  let lastKey = '';
+  for (const item of preview) {
+    const key = item.运单号 || item.rowIndex.toString();
+    if (key !== lastKey) { grouped.push({ key, items: [] }); lastKey = key; }
+    grouped[grouped.length - 1].items.push(item);
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3"><Link href="/shared-containers"><Button variant="ghost" size="icon" className="h-8 w-8"><ArrowLeft className="h-5 w-5" /></Button></Link><h1 className="text-2xl font-bold">上传拼柜表格</h1></div>
@@ -127,19 +136,31 @@ export default function UploadSharedContainerPage() {
                 <TableHead className="sticky top-0 bg-muted text-right">单价</TableHead><TableHead className="sticky top-0 bg-muted text-right">单项价格</TableHead><TableHead className="sticky top-0 bg-muted text-right">订单总价</TableHead>
                 <TableHead className="sticky top-0 bg-muted">备注</TableHead><TableHead className="sticky top-0 bg-muted">结算</TableHead><TableHead className="sticky top-0 bg-muted">柜号</TableHead><TableHead className="sticky top-0 bg-muted">状态</TableHead>
               </TableRow></TableHeader>
-              <TableBody>{preview.map((item, i) => (
-                <TableRow key={i}>
+              <TableBody>{grouped.map(g => g.items.map((item, ri) => (
+                <TableRow key={`${g.key}_${ri}`}>
                   <TableCell className="text-xs text-muted-foreground">{item.rowIndex}</TableCell>
-                  <TableCell className="text-xs">{item.日期 || '-'}</TableCell><TableCell>{item.唛头 || '-'}</TableCell><TableCell>{item.仓库 || '-'}</TableCell>
-                  <TableCell>{item.运输方式 || '-'}</TableCell><TableCell>{item.运单号 || '-'}</TableCell><TableCell>{item.货型 || '-'}</TableCell>
-                  <TableCell>{item.品名 || '-'}</TableCell><TableCell>{item.尺寸 || '-'}</TableCell><TableCell className="text-right">{item.件数 || '-'}</TableCell>
-                  <TableCell className="text-xs">{item.国内单号 || '-'}</TableCell><TableCell className="text-right">{item.单项体积 || '-'}</TableCell><TableCell className="text-right">{item.单项重量 || '-'}</TableCell>
-                  <TableCell className="text-right">{item.总体积 || '-'}</TableCell><TableCell className="text-right">{item.总重量 || '-'}</TableCell><TableCell className="text-right">{item.计费体积 || '-'}</TableCell><TableCell className="text-right">{item.总计费体积 || '-'}</TableCell>
-                  <TableCell className="text-right">{item.单价 || '-'}</TableCell><TableCell className="text-right">{item.单项价格 || '-'}</TableCell><TableCell className="text-right">{item.订单总价 || '-'}</TableCell>
-                  <TableCell className="text-xs max-w-[80px] truncate">{item.备注 || '-'}</TableCell><TableCell>{item.结算状态 || '-'}</TableCell><TableCell>{item.柜号 || '-'}</TableCell>
+                  {ri === 0 ? <TableCell className="text-xs" rowSpan={g.items.length}>{item.日期 || '-'}</TableCell> : null}
+                  {ri === 0 ? <TableCell rowSpan={g.items.length}>{item.唛头 || '-'}</TableCell> : null}
+                  {ri === 0 ? <TableCell rowSpan={g.items.length}>{item.仓库 || '-'}</TableCell> : null}
+                  {ri === 0 ? <TableCell rowSpan={g.items.length}>{item.运输方式 || '-'}</TableCell> : null}
+                  {ri === 0 ? <TableCell rowSpan={g.items.length}>{item.运单号 || '-'}</TableCell> : null}
+                  <TableCell>{item.货型 || '-'}</TableCell>
+                  <TableCell>{item.品名 || '-'}</TableCell>
+                  <TableCell>{item.尺寸 || '-'}</TableCell>
+                  <TableCell className="text-right">{item.件数 || '-'}</TableCell>
+                  <TableCell className="text-xs max-w-[80px] truncate">{item.国内单号 || '-'}</TableCell>
+                  <TableCell className="text-right">{item.单项体积 || '-'}</TableCell><TableCell className="text-right">{item.单项重量 || '-'}</TableCell>
+                  {ri === 0 ? <TableCell className="text-right" rowSpan={g.items.length}>{item.总体积 || '-'}</TableCell> : null}
+                  {ri === 0 ? <TableCell className="text-right" rowSpan={g.items.length}>{item.总重量 || '-'}</TableCell> : null}
+                  <TableCell className="text-right">{item.计费体积 || '-'}</TableCell>
+                  {ri === 0 ? <TableCell className="text-right" rowSpan={g.items.length}>{item.总计费体积 || '-'}</TableCell> : null}
+                  <TableCell className="text-right">{item.单价 || '-'}</TableCell><TableCell className="text-right">{item.单项价格 || '-'}</TableCell>
+                  {ri === 0 ? <TableCell className="text-right" rowSpan={g.items.length}>{item.订单总价 || '-'}</TableCell> : null}
+                  <TableCell className="text-xs max-w-[80px] truncate">{item.备注 || '-'}</TableCell>
+                  <TableCell>{item.结算状态 || '-'}</TableCell><TableCell>{item.柜号 || '-'}</TableCell>
                   <TableCell><Badge className={item.verdict === '通过' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}>{item.verdict}</Badge></TableCell>
                 </TableRow>
-              ))}</TableBody>
+              )))}</TableBody>
             </Table></div>
             <div className="flex gap-3"><Button variant="outline" onClick={handleReset} className="flex-1">重新选择文件</Button><Button onClick={handleConfirmImport} disabled={phase === 'importing'} className="flex-1">{phase === 'importing' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}{phase === 'importing' ? '导入中...' : `确认导入（${preview.length} 条）`}</Button></div>
             {result && <div className={`p-3 rounded-lg flex items-center gap-2 ${result.passed ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>{result.passed ? <CheckCircle className="h-5 w-5" /> : <AlertTriangle className="h-5 w-5" />}<span>{result.msg}</span></div>}
