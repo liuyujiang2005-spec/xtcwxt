@@ -100,24 +100,21 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>客户</TableHead>
-                <TableHead>品名</TableHead>
-                <TableHead className="text-right">总体积</TableHead>
-                <TableHead>货型</TableHead>
-                <TableHead>运输</TableHead>
-                <TableHead className="text-right">成本价</TableHead>
-                <TableHead className="text-right">应收</TableHead>
+                <TableHead>唛头</TableHead><TableHead>品名</TableHead><TableHead className="text-right">件数</TableHead>
+                <TableHead className="text-right">总体积</TableHead><TableHead className="text-right">单价</TableHead>
+                <TableHead className="text-right">单项价格</TableHead><TableHead className="text-right">成本</TableHead><TableHead className="text-right">应收</TableHead>
                 <TableHead>状态</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {items.map((item) => (
                 <TableRow key={item.id}>
-                  <TableCell>{customerMap.get(item.customerId) || '-'}</TableCell>
+                  <TableCell>{customerMap.get(item.customerId) || markMap.get(item.markId) || '-'}</TableCell>
                   <TableCell className="max-w-[150px] truncate" title={item.品名 || ''}>{item.品名 || '-'}</TableCell>
+                  <TableCell className="text-right">{item.箱数 || item.单箱数量 || '-'}</TableCell>
                   <TableCell className="text-right">{item.总体积.toFixed(2)}</TableCell>
-                  <TableCell>{item.货型 || '-'}</TableCell>
-                  <TableCell>{item.运输方式 || '-'}</TableCell>
+                  <TableCell className="text-right">{((item.成本单价_cents || 0) / 100).toFixed(2)}</TableCell>
+                  <TableCell className="text-right">{((item.需支付总价_cents || item.客户应收_cents || 0) / 100).toFixed(2)}</TableCell>
                   <TableCell className="text-right">{formatCents(item.需支付总价_cents || 0)}</TableCell>
                   <TableCell className="text-right text-green-600">{formatCents(item.客户应收_cents || 0)}</TableCell>
                   <TableCell>
