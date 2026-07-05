@@ -97,13 +97,17 @@ export default function UploadLoadingListPage() {
       const batchNo = `LB-${new Date().toISOString().substring(0, 10).replace(/-/g, '')}-${Date.now().toString().slice(-4)}`;
       const items = preview.map(item => ({
         markNo: item.唛头 || item.运单号, customerId, 品名: item.品名, 货型: item.货型 || '',
-        运输方式: item.运输方式 || '', 日期: item.日期 || '', 仓库: item.仓库 || '',
-        运单号: item.运单号, 尺寸: item.尺寸 || '', 件数: item.件数 || 0,
-        国内单号: item.国内单号 || '', 单项体积: item.单项体积 || 0, 单项重量: item.单项重量 || 0,
-        总体积: item.总体积 || item.计费体积 || 0, 总重量: item.总重量 || 0,
-        计费体积: item.计费体积 || item.单项体积 || 0, 总计费体积: item.总计费体积 || 0,
-        单价: item.单价 || 0, 单项价格: item.单项价格 || 0, 订单总价: item.订单总价 || 0,
-        备注: item.备注 || '', 结算状态: item.结算状态 || '', 柜号: item.柜号 || '',
+        运输方式: item.运输方式 || '',
+        尺寸_长: 0, 尺寸_宽: 0, 尺寸_高: 0, // DB 保留为 0，尺寸存为字符串备注
+        单箱体积: item.单项体积 || 0,
+        总体积: item.总体积 || item.计费体积 || 0,
+        国内单号: item.国内单号 || '',
+        单箱数量: item.件数 || 0,
+        总重量: item.总重量 || 0,
+        箱数: item.件数 || 0,
+        pcs数量: 0,
+        单价_cents: Math.round((item.单价 || 0) * 100),
+        需支付总价_cents: Math.round((item.单项价格 || 0) * 100),
       }));
       const batchRes = await fetch('/api/loading-batches', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
