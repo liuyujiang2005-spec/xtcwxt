@@ -146,7 +146,7 @@ export default function UploadLoadingListPage() {
         <Card>
           <CardHeader><CardTitle>预览数据 <span className="ml-2 text-sm font-normal text-muted-foreground">共 {summary.totalItems} 条{summary.abnormalCount > 0 ? `，${summary.abnormalCount} 条异常` : '，全部通过'}</span></CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            {summary.abnormalCount > 0 && <div className="p-3 rounded-lg bg-yellow-50 text-yellow-700 text-sm max-h-32 overflow-auto">{abnormalItems.map((item, i) => (<div key={i} className="flex gap-2"><span className="shrink-0">第{item.rowIndex}行：</span><span>{item.reason}</span></div>))}</div>}
+            {summary.abnormalCount > 0 && <div className="p-3 rounded-lg bg-yellow-50 text-yellow-700 text-sm max-h-32 overflow-auto">{abnormalItems.map((item, i) => (<div key={i} className="flex gap-2"><span className="shrink-0">第{item.rowIndex}行 [{item.运单号 || '-'}] {item.唛头 || item.markNo || '-'}：{item.reason}</span></div>))}</div>}
             <div className="border rounded-lg overflow-auto max-h-80">
               <Table>
                 <TableHeader><TableRow>

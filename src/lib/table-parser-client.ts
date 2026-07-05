@@ -120,14 +120,14 @@ export function mapPythonResult(pyData: any): { items: any[]; summary: { totalIt
     if (size && item.单项体积 > 0) {
       const unitVol = round6((size.l * size.w * size.h) / 1000000);
       const expected = round6(unitVol * (item.件数 || 1));
-      if (Math.abs(item.单项体积 - expected) > 0.000001) {
+      if (Math.abs(item.单项体积 - expected) > 0.001) {
         reasons.push(`单项体积不符：${unitVol}×${item.件数}=${expected}，表格值=${item.单项体积}`);
       }
     }
 
     // 3. 计费体积 ≈ 单项体积
     if (item.单项体积 > 0 && item.计费体积 > 0) {
-      if (Math.abs(item.计费体积 - item.单项体积) > 0.000001) {
+      if (Math.abs(item.计费体积 - item.单项体积) > 0.001) {
         reasons.push(`计费体积不符：单项体积=${item.单项体积}，计费体积=${item.计费体积}`);
       }
     }
@@ -168,7 +168,7 @@ export function mapPythonResult(pyData: any): { items: any[]; summary: { totalIt
     // 汇总总体积 vs 头层总体积 (单项体积已是总立方，不乘件数)
     if (first.总体积 > 0) {
       const sumVol = round6(group.reduce((s: number, i: any) => s + i.单项体积, 0));
-      if (Math.abs(sumVol - first.总体积) > 0.000001) {
+      if (Math.abs(sumVol - first.总体积) > 0.001) {
         for (const item of group) {
           if (item.verdict === '通过') { item.verdict = '异常'; item.reason = ''; }
           item.reason = item.reason ? item.reason + '；汇总总体积不符(' + sumVol + '≠' + first.总体积 + ')' : '汇总总体积不符(' + sumVol + '≠' + first.总体积 + ')';
@@ -179,7 +179,7 @@ export function mapPythonResult(pyData: any): { items: any[]; summary: { totalIt
     // 汇总总重量 vs 头层总重量 (单项重量是行总重量，不乘件数)
     if (first.总重量 > 0) {
       const sumW = round6(group.reduce((s: number, i: any) => s + i.单项重量, 0));
-      if (Math.abs(sumW - first.总重量) > 0.000001) {
+      if (Math.abs(sumW - first.总重量) > 0.001) {
         for (const item of group) {
           if (item.verdict === '通过') { item.verdict = '异常'; item.reason = ''; }
           item.reason = item.reason ? item.reason + '；汇总总重量不符' : '汇总总重量不符';
