@@ -116,23 +116,23 @@ export function mapPythonResult(pyData: any): { items: any[]; summary: { totalIt
       reasons.push('尺寸格式无效');
     }
 
-    // 2. 单项体积 = 长×宽×高 / 1e6 (cm³→m³)
+    // 2. 单项体积 = (长×宽×高÷1e6) × 件数
     if (size && item.单项体积 > 0) {
-      const expected = round6((size.l * size.w * size.h) / 1000000);
+      const unitVol = round6((size.l * size.w * size.h) / 1000000);
+      const expected = round6(unitVol * (item.件数 || 1));
       if (Math.abs(item.单项体积 - expected) > 0.000001) {
-        reasons.push(`单项体积不符：尺寸计算=${expected}，表格值=${item.单项体积}`);
+        reasons.push(`单项体积不符：${unitVol}×${item.件数}=${expected}，表格值=${item.单项体积}`);
       }
     }
 
-    // 3. 计费体积 ≈ 单项体积 × 件数
-    if (item.件数 > 0 && item.单项体积 > 0) {
-      const expected = round6(item.单项体积 * item.件数);
-      if (item.计费体积 > 0 && Math.abs(item.计费体积 - expected) > 0.000001) {
-        reasons.push(`计费体积不符：${item.单项体积}×${item.件数}=${expected}，表格值=${item.计费体积}`);
+    // 3. 计费体积 ≈ 单项体积
+    if (item.单项体积 > 0 && item.计费体积 > 0) {
+      if (Math.abs(item.计费体积 - item.单项体积) > 0.000001) {
+        reasons.push(`计费体积不符：单项体积=${item.单项体积}，计费体积=${item.计费体积}`);
       }
     }
 
-    // 4. 单项价格 ≈ 单价 × 计费体积 (or 单项体积)
+    // 4. 单项价格 ≈ 单价 × 计费体积
     if (item.单价 > 0 && item.单项价格 > 0) {
       const chargeVol = item.计费体积 > 0 ? item.计费体积 : item.单项体积;
       const expected = round6(item.单价 * chargeVol);
@@ -165,9 +165,9 @@ export function mapPythonResult(pyData: any): { items: any[]; summary: { totalIt
     if (group.length <= 1) continue;
     const first = group[0];
 
-    // 汇总总体积 vs 头层总体积
+    // 汇总总体积 vs 头层总体积 (单项体积已是总立方，不乘件数)
     if (first.总体积 > 0) {
-      const sumVol = round6(group.reduce((s: number, i: any) => s + i.单项体积 * (i.件数 || 1), 0));
+      const sumVol = round6(group.reduce((s: number, i: any) => s + i.单项体积, 0));
       if (Math.abs(sumVol - first.总体积) > 0.000001) {
         for (const item of group) {
           if (item.verdict === '通过') { item.verdict = '异常'; item.reason = ''; }
@@ -176,7 +176,7 @@ export function mapPythonResult(pyData: any): { items: any[]; summary: { totalIt
       }
     }
 
-    // 汇总总重量 vs 头层总重量
+    // 汇总总重量 vs 头层总重量 (单项重量是单件重量，需×件数)
     if (first.总重量 > 0) {
       const sumW = round6(group.reduce((s: number, i: any) => s + i.单项重量 * (i.件数 || 1), 0));
       if (Math.abs(sumW - first.总重量) > 0.000001) {
