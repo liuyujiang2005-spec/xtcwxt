@@ -156,7 +156,7 @@ export function mapPythonResult(pyData: any): { items: any[]; summary: { totalIt
   // 6. 订单内汇总校验：按运单号分组
   const groups = new Map<string, any[]>();
   for (const item of items) {
-    const key = item.运单号 || `_${item.rowIndex}`;
+    const key = (item.运单号 || `_${item.rowIndex}`) + '|' + (item.唛头 || '');
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key)!.push(item);
   }
