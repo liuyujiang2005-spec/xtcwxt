@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
           .where(inArray(customers.id, customerIds)).all()
       : [];
 
-    const customerName = customerRecords[0]?.name || '未知客户';
+    const customerNames = customerRecords.map(c => c.name).join(', ') || '未知客户';
 
     const itemsForAi = items.map((item, i) => ({
       序号: i + 1,
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
   ]
 }`;
 
-    const userPrompt = `客户：${customerName}\n装柜清单明细（共 ${itemsForAi.length} 条）：\n${JSON.stringify(itemsForAi, null, 2)}`;
+    const userPrompt = `客户：${customerNames}\n装柜清单明细（共 ${itemsForAi.length} 条）：\n${JSON.stringify(itemsForAi, null, 2)}`;
 
     const aiResult = await aiChat(systemPrompt, userPrompt);
 
