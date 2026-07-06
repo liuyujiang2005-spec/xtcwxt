@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db/index';
-import { sharedContainerItems, loadingItems, marks, customers } from '@/db/schema';
+import { sharedContainerItems, loadingItems, marks, customers, bills, billItems } from '@/db/schema';
 import { validateSession } from '@/lib/auth';
-import { eq, and } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 
 export async function POST(request: NextRequest) {
   const sessionToken = request.cookies.get('session')?.value;
@@ -19,33 +19,66 @@ export async function POST(request: NextRequest) {
 
   if (items.length === 0) return NextResponse.json({ error: '无数据' }, { status: 404 });
 
-  // 按客户分组汇总
-  const byCustomer = new Map<number, { volume: number; total: number; count: number }>();
-  const byType = new Map<string, number>();
-  const anomalies: string[] = [];
+  const markIds = [...new Set(items.map(i => i.markId))];
+  const markList = await db.select().from(marks).where(inArray(marks.id, markIds)).all();
+  const markMap = new Map(markList.map(m => [m.id, m]));
+  const custList = await db.select().from(customers).all();
+  const custMap = new Map(custList.map(c => [c.id, c]));
 
+  // 按唛头分组，每组生成一条账单
+  const byMark = new Map<number, typeof items>();
   for (const item of items) {
-    const c = byCustomer.get(item.customerId) || { volume: 0, total: 0, count: 0 };
-    c.volume += (item as any).总体积 || 0;
-    c.total += (item as any).订单总价_cents || (item as any).需支付总价_cents || 0;
-    c.count++;
-    byCustomer.set(item.customerId, c);
-
-    const cargoType = (item as any).货型 || '未知';
-    byType.set(cargoType, (byType.get(cargoType) || 0) + 1);
-
-    if (((item as any).总体积 || 0) <= 0) anomalies.push(`#${item.id} 体积为空`);
+    if (!byMark.has(item.markId)) byMark.set(item.markId, []);
+    byMark.get(item.markId)!.push(item);
   }
 
-  const customerList = await db.select().from(customers).all();
-  const customerMap = new Map(customerList.map(c => [c.id, c.name]));
+  const results: any[] = [];
+  for (const [markId, group] of byMark) {
+    const mark = markMap.get(markId);
+    const markNo = mark?.markNo || `#${markId}`;
+    const totalVol = group.reduce((s, i) => s + (i.单箱体积 || i.总体积 || 0), 0);
+    const totalCost = group[0]?.订单总价_cents || group[0]?.需支付总价_cents || 0;
 
-  return NextResponse.json({
-    summary: { totalItems: items.length, totalVolume: Array.from(byCustomer.values()).reduce((s, v) => s + v.volume, 0) },
-    byCustomer: Array.from(byCustomer.entries()).map(([id, v]) => ({
-      customer: customerMap.get(id) || `#${id}`, ...v, total: (v.total / 100).toFixed(2),
-    })),
-    byCargoType: Array.from(byType.entries()).map(([type, count]) => ({ type, count })),
-    anomalies,
-  });
+    // 查找是否有同唛头的客户
+    let custId = group[0].customerId;
+    if (!custId || !custMap.has(custId)) {
+      const c = await db.select().from(customers).where(eq(customers.name, markNo)).get();
+      if (c) custId = c.id;
+    }
+
+    const monthTag = mark?.monthTag || new Date().toISOString().substring(0, 7);
+    const billNo = `BL-${monthTag.replace('-', '')}-${markNo}`;
+
+    // 检查是否已有账单，有则更新
+    const existing = await db.select().from(bills).where(eq(bills.billNo, billNo)).get();
+    let billId: number;
+    if (existing) {
+      await db.update(bills).set({ totalAmountCents: Math.round(totalCost), status: '已生成', createdAt: new Date().toISOString() })
+        .where(eq(bills.id, existing.id));
+      await db.delete(billItems).where(eq(billItems.billId, existing.id));
+      billId = existing.id;
+    } else {
+      const r = await db.insert(bills).values({
+        billNo, customerId: custId || 0, monthTag, totalAmountCents: Math.round(totalCost),
+        currency: 'CNY', status: '已生成',
+      });
+      billId = Number(r.lastInsertRowid);
+    }
+
+    for (const item of group) {
+      await db.insert(billItems).values({
+        billId, markId, mode: '拼柜',
+        amountCents: Math.round(item.订单总价_cents || item.需支付总价_cents || 0),
+      });
+    }
+
+    results.push({
+      billId, billNo, markNo, customerName: custMap.get(custId)?.name || markNo,
+      itemCount: group.length, totalVolume: round6(totalVol), totalCost: round6(totalCost),
+    });
+  }
+
+  return NextResponse.json({ bills: results, totalMarks: results.length });
 }
+
+function round6(n: number): number { return Math.round(n * 1000000) / 1000000; }
