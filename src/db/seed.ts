@@ -81,6 +81,7 @@ sqlite.exec(`
     货型 TEXT,
     运输方式 TEXT,
     客户应收_cents INTEGER,
+    订单总价_cents INTEGER,
     运单号 TEXT,
     cost_status TEXT DEFAULT '待支出',
     ai_verified INTEGER DEFAULT 0,
@@ -92,6 +93,7 @@ sqlite.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     batch_no TEXT NOT NULL UNIQUE,
     original_filename TEXT,
+    status TEXT DEFAULT '待验证',
     created_at TEXT DEFAULT (datetime('now'))
   );
 
