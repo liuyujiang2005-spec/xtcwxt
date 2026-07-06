@@ -76,8 +76,8 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
           {batch.status}
         </Badge>
         {batch.status === '待审核' && <ReviewActions batchId={batch.id} apiPath="/api/shared-containers" listPath="/shared-containers" />}
-        <ClassifyButton batchId={batch.id} />
       </div>
+      <ClassifyButton batchId={batch.id} />
 
       <div className="grid grid-cols-3 gap-4">
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm">总立方</CardTitle></CardHeader>
