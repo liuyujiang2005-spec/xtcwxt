@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
   const custMap = new Map(custList.map(c => [c.id, c]));
 
   // 按唛头分组，每组生成一条账单
-  const byMark = new Map<number, typeof items>();
+  const byMark = new Map<number, any[]>();
   for (const item of items) {
     if (!byMark.has(item.markId)) byMark.set(item.markId, []);
     byMark.get(item.markId)!.push(item);
