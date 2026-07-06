@@ -21,6 +21,7 @@ export const customers = sqliteTable('customers', {
   name: text('name').notNull(),
   contact: text('contact'),
   priceMatrix: text('price_matrix'),
+  enableMinVolume: integer('enable_min_volume').default(1),
   defaultCurrency: text('default_currency').default('CNY'),
   remark: text('remark'),
 });

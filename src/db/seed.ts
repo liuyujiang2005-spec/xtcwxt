@@ -28,6 +28,7 @@ sqlite.exec(`
     name TEXT NOT NULL,
     contact TEXT,
     price_matrix TEXT,
+    enable_min_volume INTEGER DEFAULT 1,
     default_currency TEXT DEFAULT 'CNY',
     remark TEXT
   );

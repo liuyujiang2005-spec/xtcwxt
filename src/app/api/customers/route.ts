@@ -46,6 +46,7 @@ export async function PUT(request: NextRequest) {
         contact: body.contact,
         priceMatrix: body.priceMatrix,
         defaultCurrency: body.defaultCurrency,
+        enableMinVolume: body.enableMinVolume ?? 1,
         remark: body.remark,
       })
       .where(eq(customers.id, body.id));
