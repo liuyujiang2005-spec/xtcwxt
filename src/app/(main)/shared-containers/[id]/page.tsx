@@ -77,7 +77,7 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm">总立方</CardTitle></CardHeader>
           <CardContent><span className="text-xl font-bold">{totalVolume.toFixed(6)} m³</span></CardContent></Card>
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm">总成本</CardTitle></CardHeader>
-          <CardContent><span className="text-xl font-bold text-red-600">¥{totalCost.toFixed(6)}</span></CardContent></Card>
+          <CardContent><span className="text-xl font-bold text-red-600">¥{(totalCost ?? 0).toFixed(6)}</span></CardContent></Card>
       </div>
 
       {markStats.length > 0 && (

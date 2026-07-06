@@ -3,7 +3,7 @@ import { db } from '@/db/index';
 import { sharedContainerItems, marks, customers } from '@/db/schema';
 import { validateSession } from '@/lib/auth';
 import { aiChat } from '@/lib/ai';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 
 export async function POST(request: NextRequest) {
   const sessionToken = request.cookies.get('session')?.value;
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     const customerIds = [...new Set(items.map((i) => i.customerId))];
     const customerRecords = customerIds.length > 0
       ? await db.select().from(customers)
-          .where(eq(customers.id, customerIds[0])).all()
+          .where(inArray(customers.id, customerIds)).all()
       : [];
 
     const customerName = customerRecords[0]?.name || '未知客户';

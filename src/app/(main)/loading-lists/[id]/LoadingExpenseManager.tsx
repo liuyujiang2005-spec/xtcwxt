@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,6 +17,7 @@ export function LoadingExpenseManager({
   batchId: number;
   initialExpenses: { id: number; expenseType: string; amountCents: number; currency: string; status: string }[];
 }) {
+  const router = useRouter();
   const expenseMap = new Map(initialExpenses.map((e) => [e.expenseType, e]));
   const [entries, setEntries] = useState<Record<string, { amount: string; currency: string; status: string }>>(() => {
     const map: Record<string, any> = {};
@@ -55,7 +57,7 @@ export function LoadingExpenseManager({
       alert('保存失败，请重试');
     }
     setSaving(false);
-    window.location.reload();
+    router.refresh();
   };
 
   return (

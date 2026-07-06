@@ -106,8 +106,8 @@ export default function UploadLoadingListPage() {
         总重量: item.总重量 || 0,
         箱数: item.件数 || 0,
         pcs数量: 0,
-        单价_cents: Math.round((item.单价 || 0) * 100),
-        需支付总价_cents: Math.round((item.单项价格 || 0) * 100),
+        单价_cents: item.单价 || 0,
+        需支付总价_cents: item.单项价格 || 0,
       }));
       const batchRes = await fetch('/api/loading-batches', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },

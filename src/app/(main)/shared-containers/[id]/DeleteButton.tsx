@@ -13,7 +13,8 @@ export function DeleteItemButton({ itemId, apiPath }: { itemId: number; apiPath:
     if (!confirm('确认删除这条明细？')) return;
     setDeleting(true);
     try {
-      await fetch(`${apiPath}/${itemId}`, { method: 'DELETE' });
+      const res = await fetch(`${apiPath}/${itemId}`, { method: 'DELETE' });
+      if (!res.ok) { alert('删除失败'); setDeleting(false); return; }
       router.refresh();
     } catch { alert('删除失败'); setDeleting(false); }
   };

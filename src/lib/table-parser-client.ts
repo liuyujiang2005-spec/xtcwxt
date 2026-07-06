@@ -26,7 +26,7 @@ export async function parseViaPythonService(filePath: string): Promise<any> {
 
     return await res.json();
   } finally {
-    unlink(filePath).catch(() => {});
+    unlink(filePath).catch((e) => console.error('Failed to clean temp file:', (e as any)?.message));
   }
 }
 
