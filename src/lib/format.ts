@@ -1,13 +1,15 @@
 const CNY_FORMATTER = new Intl.NumberFormat('zh-CN', {
   style: 'currency',
   currency: 'CNY',
-  minimumFractionDigits: 2,
+  minimumFractionDigits: 6,
+  maximumFractionDigits: 6,
 });
 
 const THB_FORMATTER = new Intl.NumberFormat('th-TH', {
   style: 'currency',
   currency: 'THB',
-  minimumFractionDigits: 2,
+  minimumFractionDigits: 6,
+  maximumFractionDigits: 6,
 });
 
 export function formatCents(cents: number, currency: string = 'CNY'): string {
