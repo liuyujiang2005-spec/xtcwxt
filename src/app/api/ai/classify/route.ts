@@ -3,6 +3,7 @@ import { db } from '@/db/index';
 import { sharedContainerItems, loadingItems, marks, customers, bills, billItems } from '@/db/schema';
 import { validateSession } from '@/lib/auth';
 import { eq, inArray } from 'drizzle-orm';
+import { aiChat } from '@/lib/ai';
 
 export async function POST(request: NextRequest) {
   const sessionToken = request.cookies.get('session')?.value;
@@ -78,7 +79,20 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  return NextResponse.json({ bills: results, totalMarks: results.length });
+  // DeepSeek 分类分析
+  let classifyResult: any = null;
+  try {
+    const summary = results.map(r => ({
+      唛头: r.markNo, 客户: r.customerName, 件数: r.itemCount,
+      总体积: r.totalVolume, 订单总价: (r.totalCost / 100).toFixed(2),
+    }));
+    const prompt = `分析以下拼柜账单分类数据，按客户、运输方式、货物类型做汇总，标记异常。\n\n${JSON.stringify(summary, null, 2)}\n\n返回JSON：{"summary":"一段中文总结","anomalies":[{"唛头":"xxx","问题":"描述"}],"按客户汇总":[{"客户":"xx","账单数":1,"总金额":123}]}`;
+    const raw = await aiChat('你是物流财务分类助手，只返回JSON。', prompt);
+    const json = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+    classifyResult = JSON.parse(json);
+  } catch (e) { console.error('DeepSeek 分类失败:', e); }
+
+  return NextResponse.json({ bills: results, totalMarks: results.length, classify: classifyResult });
 }
 
 function round6(n: number): number { return Math.round(n * 1000000) / 1000000; }
