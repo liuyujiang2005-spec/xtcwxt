@@ -40,7 +40,6 @@ export default async function SharedContainersPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>批次号</TableHead>
-                <TableHead className="text-right">声明的总立方</TableHead>
                 <TableHead>状态</TableHead>
                 <TableHead>上传文件</TableHead>
                 <TableHead>创建时间</TableHead>
@@ -51,7 +50,6 @@ export default async function SharedContainersPage() {
               {batches.map((b) => (
                 <TableRow key={b.id}>
                   <TableCell className="font-mono text-xs">{b.batchNo}</TableCell>
-                  <TableCell className="text-right">{b.totalVolumeUploaded.toFixed(2)} m³</TableCell>
                   <TableCell>
                     <Badge className={STATUS_COLORS[b.status!] || ''}>{b.status}</Badge>
                   </TableCell>
@@ -67,7 +65,7 @@ export default async function SharedContainersPage() {
               ))}
               {batches.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">暂无拼柜数据</TableCell>
+                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">暂无拼柜数据</TableCell>
                 </TableRow>
               )}
             </TableBody>
