@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
       const transport = (i.运输方式 || '海运') as string;
       const cargo = (i.货型 || '普货') as string;
       const unitPrice = getUnitPrice(cust, transport, cargo);
-      const chargeVol = Math.max(i.计费体积 || i.总体积 || 0, minVolume(cust, transport));
+      const chargeVol = Math.max((i as any).计费体积 || i.单箱体积 || i.总体积 || 0, minVolume(cust, transport));
       const receivable = unitPrice * chargeVol;
       return { ...i, 客户单价: unitPrice, 计费体积: chargeVol, 应收: receivable.toFixed(2) };
     }));
