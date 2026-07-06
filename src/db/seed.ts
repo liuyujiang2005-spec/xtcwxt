@@ -173,6 +173,11 @@ sqlite.exec(`
     customer_id INTEGER NOT NULL REFERENCES customers(id),
     month_tag TEXT NOT NULL,
     total_amount_cents REAL NOT NULL,
+    paid_amount REAL DEFAULT 0,
+    remaining_amount REAL DEFAULT 0,
+    payment_status TEXT DEFAULT '待付款',
+    exported_at TEXT,
+    paid_at TEXT,
     currency TEXT DEFAULT 'CNY',
     status TEXT DEFAULT '待生成',
     created_at TEXT DEFAULT (datetime('now'))
