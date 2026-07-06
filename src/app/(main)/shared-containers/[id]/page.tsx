@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { db } from '@/db/index';
 import { sharedContainerBatches, sharedContainerItems, customers, marks } from '@/db/schema';
 import { eq, inArray } from 'drizzle-orm';
-import { formatCents } from '@/lib/format';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -78,7 +77,7 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm">总立方</CardTitle></CardHeader>
           <CardContent><span className="text-xl font-bold">{totalVolume.toFixed(6)} m³</span></CardContent></Card>
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm">总成本</CardTitle></CardHeader>
-          <CardContent><span className="text-xl font-bold text-red-600">{formatCents(totalCost)}</span></CardContent></Card>
+          <CardContent><span className="text-xl font-bold text-red-600">¥{totalCost.toFixed(6)}</span></CardContent></Card>
       </div>
 
       {markStats.length > 0 && (
@@ -89,7 +88,7 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
           </TableRow></TableHeader><TableBody>
             {markStats.map((m) => (<TableRow key={m.markNo}>
               <TableCell className="font-medium">{m.markNo}</TableCell><TableCell className="text-right">{m.count}</TableCell>
-              <TableCell className="text-right font-bold">{m.volume.toFixed(6)} m³</TableCell><TableCell className="text-right">{formatCents(m.cost)}</TableCell>
+              <TableCell className="text-right font-bold">{m.volume.toFixed(6)} m³</TableCell><TableCell className="text-right">¥{m.cost.toFixed(6)}</TableCell>
             </TableRow>))}
           </TableBody></Table></CardContent>
         </Card>
@@ -124,8 +123,8 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
                   <TableCell className="text-right">{item.单箱数量 || '-'}</TableCell>
                   <TableCell className="text-xs">{item.国内单号 || '-'}</TableCell>
                   <TableCell className="text-right">{item.总重量 || '-'}</TableCell>
-                  <TableCell className="text-right">{((item.成本单价_cents || 0) / 100).toFixed(6)}</TableCell>
-                  <TableCell className="text-right">{formatCents(item.需支付总价_cents || 0)}</TableCell>
+                  <TableCell className="text-right">¥{(item.成本单价_cents || 0).toFixed(6)}</TableCell>
+                  <TableCell className="text-right">¥{(item.需支付总价_cents || 0).toFixed(6)}</TableCell>
                   <TableCell>{item.cost_status || '-'}</TableCell>
                   <TableCell><Badge className={item.cost_status === '已支出' ? 'bg-gray-100 text-gray-700' : 'bg-yellow-100 text-yellow-700'}>{item.cost_status || '-'}</Badge></TableCell>
                   <TableCell><DeleteItemButton itemId={item.id} apiPath="/api/shared-container-items" /></TableCell>
