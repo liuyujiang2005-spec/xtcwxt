@@ -76,7 +76,7 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
 
       <div className="grid grid-cols-3 gap-4">
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm">总立方</CardTitle></CardHeader>
-          <CardContent><span className="text-xl font-bold">{totalVolume.toFixed(2)} m³</span></CardContent></Card>
+          <CardContent><span className="text-xl font-bold">{totalVolume.toFixed(6)} m³</span></CardContent></Card>
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm">总成本</CardTitle></CardHeader>
           <CardContent><span className="text-xl font-bold text-red-600">{formatCents(totalCost)}</span></CardContent></Card>
       </div>
@@ -89,7 +89,7 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
           </TableRow></TableHeader><TableBody>
             {markStats.map((m) => (<TableRow key={m.markNo}>
               <TableCell className="font-medium">{m.markNo}</TableCell><TableCell className="text-right">{m.count}</TableCell>
-              <TableCell className="text-right font-bold">{m.volume.toFixed(2)} m³</TableCell><TableCell className="text-right">{formatCents(m.cost)}</TableCell>
+              <TableCell className="text-right font-bold">{m.volume.toFixed(6)} m³</TableCell><TableCell className="text-right">{formatCents(m.cost)}</TableCell>
             </TableRow>))}
           </TableBody></Table></CardContent>
         </Card>
@@ -118,13 +118,13 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
                   {ri === 0 ? <TableCell className="font-medium" rowSpan={g.rows.length}>{markMap.get(item.markId) || '-'}</TableCell> : null}
                   <TableCell className="max-w-[120px] truncate" title={item.品名 || ''}>{item.品名 || '-'}</TableCell>
                   <TableCell>{item.货型 || '-'}</TableCell><TableCell>{item.运输方式 || '-'}</TableCell>
-                  <TableCell className="text-right">{item.总体积.toFixed(2)}</TableCell>
+                  <TableCell className="text-right">{item.总体积.toFixed(6)}</TableCell>
                   <TableCell className="text-right">{item.单箱体积 || '-'}</TableCell>
                   <TableCell className="text-right">{item.箱数 || '-'}</TableCell>
                   <TableCell className="text-right">{item.单箱数量 || '-'}</TableCell>
                   <TableCell className="text-xs">{item.国内单号 || '-'}</TableCell>
                   <TableCell className="text-right">{item.总重量 || '-'}</TableCell>
-                  <TableCell className="text-right">{((item.成本单价_cents || 0) / 100).toFixed(2)}</TableCell>
+                  <TableCell className="text-right">{((item.成本单价_cents || 0) / 100).toFixed(6)}</TableCell>
                   <TableCell className="text-right">{formatCents(item.需支付总价_cents || 0)}</TableCell>
                   <TableCell>{item.cost_status || '-'}</TableCell>
                   <TableCell><Badge className={item.cost_status === '已支出' ? 'bg-gray-100 text-gray-700' : 'bg-yellow-100 text-yellow-700'}>{item.cost_status || '-'}</Badge></TableCell>
