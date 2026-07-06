@@ -50,10 +50,16 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
   });
   const totalCost = Array.from(orderCosts.values()).reduce((s, v) => s + v, 0);
 
-  const byMark = new Map<number, { markNo: string; volume: number; cost: number; count: number }>();
+  const byMark = new Map<number, { markNo: string; volume: number; cost: number; count: number; seenOrders: Set<string> }>();
   items.forEach((item) => {
-    const m = byMark.get(item.markId) || { markNo: markMap.get(item.markId) || `#${item.markId}`, volume: 0, cost: 0, count: 0 };
-    m.volume += item.总体积; m.cost = orderCosts.get(item.运单号 || `mark_${item.markId}`) || 0; m.count++;
+    const m = byMark.get(item.markId) || { markNo: markMap.get(item.markId) || `#${item.markId}`, volume: 0, cost: 0, count: 0, seenOrders: new Set<string>() };
+    const orderKey = item.运单号 || `m${item.markId}`;
+    if (!m.seenOrders.has(orderKey)) {
+      m.volume += item.总体积;
+      m.seenOrders.add(orderKey);
+    }
+    m.cost = orderCosts.get(orderKey) || 0;
+    m.count++;
     byMark.set(item.markId, m);
   });
   const markStats = Array.from(byMark.values());

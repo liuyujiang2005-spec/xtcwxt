@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
         箱数: item.箱数 || null,
         pcs数量: item.pcs数量 || null,
         单价_cents: unitPriceCents,
-        需支付总价_cents: Math.round(unitPriceCents * item.总体积),
+        需支付总价_cents: item.需支付总价_cents || 0,
         货型: item.货型 || null,
         运输方式: item.运输方式 || null,
         payment_status: '待支付',

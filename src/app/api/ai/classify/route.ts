@@ -38,7 +38,16 @@ export async function POST(request: NextRequest) {
     const mark = markMap.get(markId);
     const markNo = mark?.markNo || `#${markId}`;
     const totalVol = group.reduce((s, i) => s + (i.单箱体积 || i.总体积 || 0), 0);
-    const totalCost = group[0]?.订单总价_cents || group[0]?.需支付总价_cents || 0;
+    // 按运单号去重累加订单总价
+    const seenOrders = new Set<string>();
+    let totalCost = 0;
+    for (const i of group) {
+      const key = (i as any).运单号 || `_${i.markId}`;
+      if (!seenOrders.has(key) && (i.订单总价_cents || i.需支付总价_cents)) {
+        totalCost += (i.订单总价_cents || i.需支付总价_cents || 0);
+        seenOrders.add(key);
+      }
+    }
 
     // 查找是否有同唛头的客户
     let custId = group[0].customerId;
@@ -84,7 +93,7 @@ export async function POST(request: NextRequest) {
   try {
     const summary = results.map(r => ({
       唛头: r.markNo, 客户: r.customerName, 件数: r.itemCount,
-      总体积: r.totalVolume, 订单总价: (r.totalCost / 100).toFixed(2),
+      总体积: r.totalVolume, 订单总价: r.totalCost.toFixed(2),
     }));
     const prompt = `分析以下拼柜账单分类数据，按客户、运输方式、货物类型做汇总，标记异常。\n\n${JSON.stringify(summary, null, 2)}\n\n返回JSON：{"summary":"一段中文总结","anomalies":[{"唛头":"xxx","问题":"描述"}],"按客户汇总":[{"客户":"xx","账单数":1,"总金额":123}]}`;
     const raw = await aiChat('你是物流财务分类助手，只返回JSON。', prompt);

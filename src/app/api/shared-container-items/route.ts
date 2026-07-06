@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
         箱数: item.箱数 || null,
         pcs数量: item.pcs数量 || null,
         成本单价_cents: item.成本单价_cents || 0,
-        需支付总价_cents: item.成本单价_cents ? Math.round(item.成本单价_cents * item.总体积) : 0,
+        需支付总价_cents: item.需支付总价_cents || 0,
         货型: item.货型 || null,
         运输方式: item.运输方式 || null,
         订单总价_cents: item.订单总价_cents || 0,

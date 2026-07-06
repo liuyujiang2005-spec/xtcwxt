@@ -190,7 +190,7 @@ export function mapPythonResult(pyData: any): { items: any[]; summary: { totalIt
     // 汇总单项价格 vs 订单总价
     if (first.订单总价 > 0) {
       const sumP = round6(group.reduce((s: number, i: any) => s + i.单项价格, 0));
-      if (Math.abs(sumP - first.订单总价) > 0.01) {
+      if (Math.abs(sumP - first.订单总价) > Math.max(0.01, Math.abs(first.订单总价) * 0.001)) {
         for (const item of group) {
           if (item.verdict === '通过') { item.verdict = '异常'; item.reason = ''; }
           item.reason = item.reason ? item.reason + '；汇总总价不符(' + sumP.toFixed(2) + '≠' + first.订单总价.toFixed(2) + ')' : '汇总总价不符(' + sumP.toFixed(2) + '≠' + first.订单总价.toFixed(2) + ')';
