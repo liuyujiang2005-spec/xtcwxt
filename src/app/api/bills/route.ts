@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
       .where(eq(loadingItems.markId, mark.id)).all();
 
     scItems.forEach((i) => {
-      const amount = i.客户应收_cents || 0;
+      const amount = i.需支付总价_cents || 0;
       totalCents += amount;
       items.push({ markId: mark.id, mode: '拼柜', amountCents: amount });
     });
