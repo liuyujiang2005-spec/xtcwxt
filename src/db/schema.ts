@@ -183,7 +183,7 @@ export const bills = sqliteTable('bills', {
   billNo: text('bill_no').notNull().unique(),
   customerId: integer('customer_id').references(() => customers.id).notNull(),
   monthTag: text('month_tag').notNull(),
-  totalAmountCents: integer('total_amount_cents').notNull(),
+  totalAmountCents: real('total_amount_cents').notNull(),
   currency: text('currency').default('CNY'),
   status: text('status').default('待生成'),
   createdAt: text('created_at').default(sql`(datetime('now'))`),
@@ -196,7 +196,7 @@ export const billItems = sqliteTable('bill_items', {
   billId: integer('bill_id').references(() => bills.id).notNull(),
   markId: integer('mark_id').references(() => marks.id).notNull(),
   mode: text('mode').notNull(),
-  amountCents: integer('amount_cents').notNull(),
+  amountCents: real('amount_cents').notNull(),
 }, (table) => ({
   billIdIdx: index('bi_bill_id_idx').on(table.billId),
 }));

@@ -172,7 +172,7 @@ sqlite.exec(`
     bill_no TEXT NOT NULL UNIQUE,
     customer_id INTEGER NOT NULL REFERENCES customers(id),
     month_tag TEXT NOT NULL,
-    total_amount_cents INTEGER NOT NULL,
+    total_amount_cents REAL NOT NULL,
     currency TEXT DEFAULT 'CNY',
     status TEXT DEFAULT '待生成',
     created_at TEXT DEFAULT (datetime('now'))
@@ -183,7 +183,7 @@ sqlite.exec(`
     bill_id INTEGER NOT NULL REFERENCES bills(id),
     mark_id INTEGER NOT NULL REFERENCES marks(id),
     mode TEXT NOT NULL,
-    amount_cents INTEGER NOT NULL
+    amount_cents REAL NOT NULL
   );
 
   CREATE TABLE IF NOT EXISTS customer_metrics (
