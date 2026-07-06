@@ -48,8 +48,8 @@ export default async function BillsPage() {
                 <span>{customerMap.get(b.customerId) || '-'}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">月份</span>
-                <span>{b.monthTag}</span>
+                <span className="text-muted-foreground">日期</span>
+                <span className="text-xs">{b.createdAt?.substring(0, 10) || '-'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">条数</span>

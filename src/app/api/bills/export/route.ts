@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db/index';
-import { sharedContainerItems, loadingItems, marks, billItems, customers } from '@/db/schema';
+import { sharedContainerItems, loadingItems, marks, billItems, customers, bills } from '@/db/schema';
 import { validateSession } from '@/lib/auth';
 import { eq, inArray } from 'drizzle-orm';
 import ExcelJS from 'exceljs';
@@ -54,6 +54,8 @@ export async function GET(request: NextRequest) {
       return { ...i, markNo: mark?.markNo || '', 客户单价: up, 计费体积: cv, 应收: (up * cv).toFixed(2) };
     }));
   }
+
+  await db.update(bills).set({ exportedAt: new Date().toISOString() }).where(eq(bills.id, billId));
 
   const wb = new ExcelJS.Workbook();
   const cols = [

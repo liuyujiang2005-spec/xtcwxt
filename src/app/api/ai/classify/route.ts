@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     }
 
     const monthTag = mark?.monthTag || new Date().toISOString().substring(0, 7);
-    const billNo = `BL-${monthTag.replace('-', '')}-${markNo}`;
+    const billNo = markNo;
 
     // 检查是否已有账单，有则更新
     const existing = await db.select().from(bills).where(eq(bills.billNo, billNo)).get();

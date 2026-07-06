@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  const billNo = `BL-${monthTag.replace('-', '')}-${String(customerId).padStart(4, '0')}`;
+  const billNo = `${monthTag.replace('-', '')}-${String(customerId).padStart(4, '0')}`;
 
   const existing = await db.select().from(bills)
     .where(and(eq(bills.customerId, customerId), eq(bills.monthTag, monthTag)))
