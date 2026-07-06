@@ -83,7 +83,7 @@ export default function UploadSharedContainerPage() {
         尺寸_宽: 0,
         尺寸_高: 0,
         单箱体积: item.单项体积 || 0,
-        总体积: item.总体积 || item.计费体积 || item.单项体积 || 0,
+        总体积: item.单项体积 || item.总体积 || 0,
         国内单号: item.国内单号 || '',
         单箱数量: item.件数 || 0,
         总重量: item.总重量 || 0,
@@ -97,7 +97,7 @@ export default function UploadSharedContainerPage() {
         ai_verified: item.verdict === '通过' ? 1 : 0,
         ai_verify_msg: item.reason || '',
       }));
-      const totalVol = items.reduce((s: number, i: any) => s + (i.总体积 || 0), 0);
+      const totalVol = items.reduce((s: number, i: any) => s + (i.单项体积 || i.总体积 || 0), 0);
       const batchRes = await fetch('/api/shared-containers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ batchNo, totalVolumeUploaded: totalVol, originalFilename: file.name }), signal: controller.signal });
       const batchData = await batchRes.json().catch(() => ({}));
       if (!batchData.id) throw new Error('批次创建失败');
