@@ -43,8 +43,8 @@ export async function GET(request: NextRequest) {
       const volume = item.总体积 ?? 0;
       const singleVolume = item.单箱体积 ?? 0;
       const count = item.箱数 ?? 0;
-      const amountCents = item.客户应收_cents ?? 0;
-      const amountYuan = amountCents / 100;
+      const amountCents = item.需支付总价_cents ?? 0;
+      const amountYuan = amountCents;
       const unitPrice = volume > 0 ? amountYuan / volume : 0;
 
       totalCny += amountYuan;

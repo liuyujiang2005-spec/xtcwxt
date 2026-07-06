@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
     allSC.push(...scItems.map(i => {
       const t = (i.运输方式 || '海运') as string; const c = (i.货型 || '普货') as string;
       const up = getUnitPrice(cust, t, c);
-      const cv = Math.max((i as any).计费体积 || i.单箱体积 || i.总体积 || 0, minVolume(cust, t));
+      const cv = Math.max(i.单箱体积 || i.总体积 || 0, minVolume(cust, t));
       return { ...i, markNo: mark?.markNo || '', 客户单价: up, 计费体积: cv, 应收: (up * cv).toFixed(2) };
     }));
     allLD.push(...ldItems.map(i => {

@@ -88,7 +88,7 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
           </TableRow></TableHeader><TableBody>
             {markStats.map((m) => (<TableRow key={m.markNo}>
               <TableCell className="font-medium">{m.markNo}</TableCell><TableCell className="text-right">{m.count}</TableCell>
-              <TableCell className="text-right font-bold">{m.volume.toFixed(6)} m³</TableCell><TableCell className="text-right">¥{m.cost.toFixed(6)}</TableCell>
+              <TableCell className="text-right font-bold">{(m.volume ?? 0).toFixed(6)} m³</TableCell><TableCell className="text-right">¥{(m.cost ?? 0).toFixed(6)}</TableCell>
             </TableRow>))}
           </TableBody></Table></CardContent>
         </Card>
@@ -117,7 +117,7 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
                   {ri === 0 ? <TableCell className="font-medium" rowSpan={g.rows.length}>{markMap.get(item.markId) || '-'}</TableCell> : null}
                   <TableCell className="max-w-[120px] truncate" title={item.品名 || ''}>{item.品名 || '-'}</TableCell>
                   <TableCell>{item.货型 || '-'}</TableCell><TableCell>{item.运输方式 || '-'}</TableCell>
-                  <TableCell className="text-right">{item.总体积.toFixed(6)}</TableCell>
+                  <TableCell className="text-right">{(item.总体积 ?? 0).toFixed(6)}</TableCell>
                   <TableCell className="text-right">{item.单箱体积 || '-'}</TableCell>
                   <TableCell className="text-right">{item.箱数 || '-'}</TableCell>
                   <TableCell className="text-right">{item.单箱数量 || '-'}</TableCell>

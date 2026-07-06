@@ -30,7 +30,7 @@ export default function BillGenerateCard() {
       });
       const data = await res.json();
       if (res.ok) {
-        setMsg(`账单${data.isUpdate ? '已更新' : '已生成'}！共 ${data.itemCount} 条明细，合计 ${(data.totalCents / 100).toFixed(2)} CNY`);
+        setMsg(`账单${data.isUpdate ? '已更新' : '已生成'}！共 ${data.itemCount} 条明细，合计 ${(Number(data.totalCents || 0)).toFixed(2)} CNY`);
       } else {
         setMsg(data.error || '生成失败');
       }

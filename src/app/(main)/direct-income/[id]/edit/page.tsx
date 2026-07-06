@@ -27,7 +27,7 @@ export default function EditDirectIncomePage({ params }: { params: { id: string 
       return r.json();
     }).then((data) => {
       setCustomerId(data.customerId);
-      setAmount(String(data.amountCents / 100));
+      setAmount(String((data.amountCents || 0) / 100));
       setCurrency(data.currency || 'CNY');
       setVolume(data.volume ? String(data.volume) : '');
       setIncomeDate(data.incomeDate || '');
