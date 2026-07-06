@@ -12,6 +12,7 @@ import { ArrowLeft } from 'lucide-react';
 import { LoadingExpenseManager } from './LoadingExpenseManager';
 import { DeleteItemButton } from '../../shared-containers/[id]/DeleteButton';
 import { ReviewActions } from '../../shared-containers/[id]/ReviewActions';
+import { ClassifyButton } from '../../shared-containers/[id]/ClassifyButton';
 
 export default async function LoadingListDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
@@ -40,6 +41,7 @@ export default async function LoadingListDetailPage({ params }: { params: Promis
         </div>
         {batch.status && <span className={`text-xs px-2 py-1 rounded ${batch.status === '待审核' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}>{batch.status}</span>}
         {batch.status === '待审核' && <ReviewActions batchId={batch.id} apiPath="/api/loading-batches" listPath="/loading-lists" />}
+        <ClassifyButton batchId={batch.id} type="loading-list" />
       </div>
 
       <div className="grid grid-cols-3 gap-4">

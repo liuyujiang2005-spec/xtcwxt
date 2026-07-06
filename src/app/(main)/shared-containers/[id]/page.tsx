@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ArrowLeft } from 'lucide-react';
 import { DeleteItemButton } from './DeleteButton';
 import { ReviewActions } from './ReviewActions';
+import { ClassifyButton } from './ClassifyButton';
 
 const STATUS_COLORS: Record<string, string> = {
   '待验证': 'bg-gray-100 text-gray-700',
@@ -70,6 +71,7 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
           {batch.status}
         </Badge>
         {batch.status === '待审核' && <ReviewActions batchId={batch.id} apiPath="/api/shared-containers" listPath="/shared-containers" />}
+        <ClassifyButton batchId={batch.id} />
       </div>
 
       <div className="grid grid-cols-3 gap-4">

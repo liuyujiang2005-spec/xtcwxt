@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import Link from 'next/link';
 import { Upload } from 'lucide-react';
 import { DeleteBatchButton } from './DeleteBatchButton';
+import { ExportButton } from './ExportButton';
 
 const STATUS_COLORS: Record<string, string> = {
   '待验证': 'bg-gray-100 text-gray-700',
@@ -30,6 +31,7 @@ export default async function SharedContainersPage() {
         <Link href="/shared-containers/upload">
           <Button><Upload className="h-4 w-4 mr-2" />上传拼柜</Button>
         </Link>
+        <ExportButton apiPath="/api/shared-containers/export" label="拼柜批次" />
       </div>
 
       <Card>

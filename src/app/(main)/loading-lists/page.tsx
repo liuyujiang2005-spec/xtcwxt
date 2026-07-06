@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import Link from 'next/link';
 import { Upload } from 'lucide-react';
 import { DeleteBatchButton } from '../shared-containers/DeleteBatchButton';
+import { ExportButton } from '../shared-containers/ExportButton';
 
 export default async function LoadingListsPage() {
   const user = await getCurrentUser();
@@ -23,6 +24,7 @@ export default async function LoadingListsPage() {
         <Link href="/loading-lists/upload">
           <Button><Upload className="h-4 w-4 mr-2" />上传装柜清单</Button>
         </Link>
+        <ExportButton apiPath="/api/loading-batches/export" label="装柜批次" />
       </div>
 
       <Card>
