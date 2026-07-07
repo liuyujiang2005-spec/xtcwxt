@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
   return new NextResponse(buf, {
     headers: {
       'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'Content-Disposition': `attachment; filename="装柜批次_${new Date().toISOString().slice(0, 10)}.xlsx"`,
+      'Content-Disposition': `attachment; filename="loading-batches_${new Date().toISOString().slice(0, 10)}.xlsx"`,
     },
   });
 }
