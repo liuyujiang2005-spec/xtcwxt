@@ -17,8 +17,8 @@ export function ScItemEditDialog({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [cost, setCost] = useState(String((成本单价_cents ?? 0) / 100));
-  const [receivable, setReceivable] = useState(String((客户应收_cents ?? 0) / 100));
+  const [cost, setCost] = useState(String((成本单价_cents ?? 0)));
+  const [receivable, setReceivable] = useState(String((客户应收_cents ?? 0)));
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {

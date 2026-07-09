@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { PaymentReceivedDialog } from './PaymentReceivedDialog';
 
 export default async function CustomerAccountsPage({ searchParams }: { searchParams: Promise<{ q?: string; month?: string }> }) {
   const user = await getCurrentUser();
@@ -81,7 +82,9 @@ export default async function CustomerAccountsPage({ searchParams }: { searchPar
         {(q || month) && <Link href="/accounts/customers"><Button variant="ghost" size="sm">清除</Button></Link>}
       </form>
 
-      {data.map((row) => (
+      {data.map((row) => {
+        const custMarks = allMarks.filter(m => m.customerId === row.customerId).map(m => ({ id: m.id, markNo: m.markNo }));
+        return (
         <Card key={row.customerId}>
           <CardContent className="py-4">
             <div className="flex items-center justify-between mb-3">
@@ -89,7 +92,8 @@ export default async function CustomerAccountsPage({ searchParams }: { searchPar
                 <h3 className="text-lg font-bold">{row.name}</h3>
                 <p className="text-xs text-muted-foreground">{row.marksCount} 个唛头 · {row.billCount} 张账单{month ? ` (${month})` : ''}</p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
+                <PaymentReceivedDialog customerId={row.customerId} customerName={row.name} marks={custMarks} />
                 {row.paidCount > 0 && <Badge className="bg-green-100 text-green-700">{row.paidCount}张已付</Badge>}
                 {row.partialCount > 0 && <Badge className="bg-orange-100 text-orange-700">{row.partialCount}张部分</Badge>}
                 {(row.billCount - row.paidCount - row.partialCount) > 0 && <Badge className="bg-red-100 text-red-700">{row.billCount - row.paidCount - row.partialCount}张待付</Badge>}
@@ -115,7 +119,8 @@ export default async function CustomerAccountsPage({ searchParams }: { searchPar
             </div>
           </CardContent>
         </Card>
-      ))}
+        );
+      })}
       {data.length === 0 && <Card><CardContent className="py-8 text-center text-muted-foreground">暂无匹配的客户数据</CardContent></Card>}
     </div>
   );

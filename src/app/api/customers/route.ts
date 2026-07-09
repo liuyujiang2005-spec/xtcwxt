@@ -4,7 +4,12 @@ import { customers, customerMetrics } from '@/db/schema';
 import { validateSession } from '@/lib/auth';
 import { eq } from 'drizzle-orm';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const sessionToken = request.cookies.get('session')?.value;
+  if (!sessionToken) return NextResponse.json({ error: '未登录' }, { status: 401 });
+  const user = await validateSession(sessionToken);
+  if (!user) return NextResponse.json({ error: '登录已过期' }, { status: 401 });
+
   const all = await db.select().from(customers).all();
   return NextResponse.json(all);
 }

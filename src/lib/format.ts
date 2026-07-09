@@ -13,7 +13,7 @@ const THB_FORMATTER = new Intl.NumberFormat('th-TH', {
 });
 
 export function formatCents(cents: number, currency: string = 'CNY'): string {
-  const amount = cents / 100;
+  const amount = cents;
   if (currency === 'THB') {
     return THB_FORMATTER.format(amount);
   }
@@ -25,7 +25,7 @@ export function formatNumber(n: number, decimals: number = 2): string {
 }
 
 export function centsToYuan(cents: number): number {
-  return cents / 100;
+  return cents;
 }
 
 export function getMonthTag(date?: Date): string {

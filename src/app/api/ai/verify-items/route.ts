@@ -1,0 +1,110 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { validateSession } from '@/lib/auth';
+import { aiChat } from '@/lib/ai';
+
+const MAX_ITEMS_PER_BATCH = 400;
+const MAX_GROUPS_PER_BATCH = 50;
+
+export async function POST(request: NextRequest) {
+  const sessionToken = request.cookies.get('session')?.value;
+  if (!sessionToken) return NextResponse.json({ error: '未登录' }, { status: 401 });
+  const user = await validateSession(sessionToken);
+  if (!user || user.role === 'viewer') return NextResponse.json({ error: '无权限' }, { status: 403 });
+
+  try {
+    const { items, type = 'shared-container' } = await request.json();
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return NextResponse.json({ error: '缺少数据' }, { status: 400 });
+    }
+
+    const isSc = type === 'shared-container';
+
+    const groups = new Map<string, { originalIndex: number; item: any }[]>();
+    items.forEach((item: any, idx: number) => {
+      const key = item.运单号 || `_row_${idx}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push({ originalIndex: idx, item });
+    });
+
+    const batches: { originalIndex: number; item: any }[][][] = [];
+    let currentBatch: { originalIndex: number; item: any }[][] = [];
+    let currentItemCount = 0;
+
+    for (const group of groups.values()) {
+      if (currentBatch.length >= MAX_GROUPS_PER_BATCH || currentItemCount + group.length > MAX_ITEMS_PER_BATCH) {
+        if (currentBatch.length > 0) {
+          batches.push(currentBatch);
+          currentBatch = [];
+          currentItemCount = 0;
+        }
+      }
+      currentBatch.push(group);
+      currentItemCount += group.length;
+    }
+    if (currentBatch.length > 0) batches.push(currentBatch);
+
+    const systemPrompt = isSc
+      ? `你是一个货运财务系统的 AI 验价助手。检查拼柜导入数据的合理性。
+检查规则：
+1. 成本单价是否明显异常（过高或过低，与市场行情对比）
+2. 是否有缺失的关键字段（品名、体积、单价等）
+3. 体积是否为合理的正数
+4. 同一运单内的明细汇总是否合理
+只返回异常项，通过的不需要返回。如果全部通过，返回空数组。
+返回JSON：{"abnormal":[{"itemId":数字,"reason":"原因说明"}]}`
+      : `你是一个货运财务系统的 AI 验价助手。检查装柜导入数据的合理性。
+检查规则：
+1. 单价是否与客户价格模板匹配（海运普货、海运商检货、陆运普货、陆运商检货等）
+2. 体积是否为合理的正数
+3. 应收金额（单价 × 体积）计算是否正确
+4. 是否有明显的数据缺失或异常
+5. 同一运单内的明细汇总是否合理
+只返回异常项，通过的不需要返回。如果全部通过，返回空数组。
+返回JSON：{"abnormal":[{"itemId":数字,"reason":"原因说明"}]}`;
+
+    const allAbnormal: { itemId: number; reason: string }[] = [];
+
+    for (const batch of batches) {
+      const batchItems = batch.flatMap(g => g);
+      const itemsForAi = batchItems.map(({ originalIndex, item }) => ({
+        itemId: originalIndex,
+        品名: item.品名 || '-',
+        体积: item.总体积 ?? item.体积 ?? '-',
+        货型: item.货型 || '-',
+        运输方式: item.运输方式 || '-',
+        ...(isSc
+          ? { 成本单价: item.成本单价_cents ?? item.单价 ?? '-', 需支付总价: item.需支付总价_cents ?? item.单项价格 ?? '-' }
+          : { 单价: item.单价_cents ?? item.单价 ?? '-', 应收: item.需支付总价_cents ?? item.单项价格 ?? '-' }
+        ),
+      }));
+
+      const userPrompt = `以下是要检查的${isSc ? '拼柜' : '装柜'}明细（共 ${itemsForAi.length} 条）：\n${JSON.stringify(itemsForAi, null, 2)}`;
+
+      try {
+        const aiResult = await aiChat(systemPrompt, userPrompt);
+        const jsonStart = aiResult.indexOf('{');
+        const jsonEnd = aiResult.lastIndexOf('}');
+        const parsed = JSON.parse(aiResult.slice(jsonStart, jsonEnd + 1));
+        if (parsed.abnormal && Array.isArray(parsed.abnormal)) {
+          for (const a of parsed.abnormal) {
+            allAbnormal.push({ itemId: a.itemId, reason: a.reason || '异常' });
+          }
+        }
+      } catch (err) {
+        console.error('批次验价失败:', err);
+      }
+    }
+
+    const overall = allAbnormal.length === 0 ? '全部通过' : allAbnormal.length === items.length ? '全部异常' : '部分异常';
+
+    return NextResponse.json({
+      overall,
+      totalItems: items.length,
+      abnormalCount: allAbnormal.length,
+      batchCount: batches.length,
+      details: allAbnormal,
+    });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message || '验价失败' }, { status: 500 });
+  }
+}

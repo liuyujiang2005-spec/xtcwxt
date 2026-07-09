@@ -35,8 +35,8 @@ export async function POST(request: NextRequest) {
       体积: item.总体积,
       货型: item.货型 || '-',
       运输方式: item.运输方式 || '-',
-      单价: item.单价_cents ? (item.单价_cents / 100).toFixed(6) : '未填',
-      应收: item.需支付总价_cents ? (item.需支付总价_cents / 100).toFixed(6) : '未填',
+      单价: item.单价_cents ? item.单价_cents.toFixed(6) : '未填',
+      应收: item.需支付总价_cents ? item.需支付总价_cents.toFixed(6) : '未填',
     }));
 
     const systemPrompt = `你是一个货运财务系统的 AI 验价助手。你的任务是检查装柜导入数据的合理性。

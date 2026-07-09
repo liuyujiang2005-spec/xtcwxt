@@ -28,10 +28,9 @@ export default async function MonthlyReportPage() {
           + allScItems.filter((i) => i.createdAt?.startsWith(month)).reduce((s, i) => s + (i.客户应收_cents || 0), 0)
           + allLdItems.filter((i) => i.createdAt?.startsWith(month)).reduce((s, i) => s + (i.需支付总价_cents || 0), 0);
         const revenueTHB = monthIncome.filter((i) => i.currency === 'THB').reduce((s, i) => s + i.amountCents, 0);
-        const costCNY = allExpenses.filter((e) => e.currency === 'CNY' && (e.paidDate?.startsWith(month) || (!e.paidDate && e.createdAt?.startsWith(month)))).reduce((s, e) => s + e.amountCents, 0)
-          + allScItems.filter((i) => i.createdAt?.startsWith(month)).reduce((s, i) => s + (i.需支付总价_cents || 0), 0)
-          + allLdItems.filter((i) => i.createdAt?.startsWith(month)).reduce((s, i) => s + (i.需支付总价_cents || 0), 0);
-        const costTHB = allExpenses.filter((e) => e.currency === 'THB' && (e.paidDate?.startsWith(month) || (!e.paidDate && e.createdAt?.startsWith(month)))).reduce((s, e) => s + e.amountCents, 0);
+        const costCNY = allExpenses.filter((e) => e.currency === 'CNY' && e.createdAt?.startsWith(month)).reduce((s, e) => s + e.amountCents, 0)
+          + allScItems.filter((i) => i.createdAt?.startsWith(month)).reduce((s, i) => s + (i.需支付总价_cents || 0), 0);
+        const costTHB = allExpenses.filter((e) => e.currency === 'THB' && e.createdAt?.startsWith(month)).reduce((s, e) => s + e.amountCents, 0);
 
         const byCustomer = new Map<number, { CNY: number; THB: number }>();
         monthIncome.forEach((i) => {

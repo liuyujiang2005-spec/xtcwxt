@@ -15,13 +15,21 @@ export async function POST(request: NextRequest) {
   if (paymentStatus && !validStatus.includes(paymentStatus)) return NextResponse.json({ error: '无效付款状态' }, { status: 400 });
   if (!billId) return NextResponse.json({ error: '缺少参数' }, { status: 400 });
 
-  const data: any = { paymentStatus };
+  const data: any = {};
+  if (paymentStatus) data.paymentStatus = paymentStatus;
   if (typeof paidAmount === 'number') {
     data.paidAmount = paidAmount;
     const bill = await db.select().from(bills).where(eq(bills.id, billId)).get();
     if (bill) data.remainingAmount = (bill.totalAmountCents || 0) - paidAmount;
   }
-  if (paymentStatus === '已付款') data.paidAt = new Date().toISOString();
+  if (paymentStatus === '已付款') {
+    data.paidAt = new Date().toISOString();
+    if (typeof paidAmount !== 'number') {
+      const bill = await db.select().from(bills).where(eq(bills.id, billId)).get();
+      data.paidAmount = bill?.totalAmountCents || 0;
+      data.remainingAmount = 0;
+    }
+  }
 
   await db.update(bills).set(data).where(eq(bills.id, billId));
   return NextResponse.json({ success: true });

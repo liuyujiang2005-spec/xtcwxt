@@ -63,7 +63,9 @@ export async function GET(request: NextRequest) {
       const orderKey = (item as any).运单号 || `_${(item as any).id}`;
       const totalVol = orderTotalVol.get(orderKey) || singleVol;
       const chargeVol = Math.max(singleVol, minVol(transport));
-      const receivable = unitPrice * chargeVol;
+      const receivable = (item as any).客户应收_cents != null
+        ? (item as any).客户应收_cents
+        : ((item as any).需支付总价_cents || unitPrice * chargeVol);
 
       totalCny += receivable;
 

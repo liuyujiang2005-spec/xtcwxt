@@ -196,7 +196,8 @@ sqlite.exec(`
     bill_id INTEGER NOT NULL REFERENCES bills(id),
     mark_id INTEGER NOT NULL REFERENCES marks(id),
     mode TEXT NOT NULL,
-    amount_cents REAL NOT NULL
+    amount_cents REAL NOT NULL,
+    cost_amount REAL DEFAULT 0
   );
 
   CREATE TABLE IF NOT EXISTS customer_metrics (

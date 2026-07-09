@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
       itemId: item.id,
       品名: item.品名 || '-',
       体积: item.总体积,
-      成本单价: item.成本单价_cents ? (item.成本单价_cents / 100).toFixed(6) : '未填',
+      成本单价: item.成本单价_cents ? item.成本单价_cents.toFixed(6) : '未填',
       货型: item.货型 || '-',
       运输方式: item.运输方式 || '-',
     }));

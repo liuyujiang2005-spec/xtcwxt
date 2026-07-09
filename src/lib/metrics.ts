@@ -35,16 +35,26 @@ export async function refreshCustomerMetrics(customerId: number) {
     totalVolume = [...scVol, ...ldVol].reduce((s, i) => s + (i.总体积 || 0), 0);
   }
   const monthlyVolume = recentMarks.length > 0 ? (totalVolume / 6) : 0;
+  const monthlyShipments = recentMarks.length > 0 ? Math.round(recentMarks.length / 6) : 0;
+
+  const overdueCount = allMarks.filter((m) => {
+    if (!m.createdAt) return false;
+    const created = new Date(m.createdAt);
+    const daysSinceCreated = (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24);
+    if (daysSinceCreated < 60) return false;
+    const hasPayment = allPayments.some((p) => p.markId === m.id);
+    return !hasPayment;
+  }).length;
 
   let overallRating = 'C';
-  if (avgPaymentDays < 15) overallRating = 'A';
-  else if (avgPaymentDays < 30) overallRating = 'B';
-  else if (avgPaymentDays > 60) overallRating = 'D';
+  if (avgPaymentDays < 15 && overdueCount === 0) overallRating = 'A';
+  else if (avgPaymentDays < 30 && overdueCount === 0) overallRating = 'B';
+  else if (avgPaymentDays > 60 || overdueCount > 0) overallRating = 'D';
 
   const existing = await db.select().from(customerMetrics).where(eq(customerMetrics.customerId, customerId)).get();
   if (existing) {
-    await db.update(customerMetrics).set({ avgPaymentDays, monthlyVolume, monthlyShipments: recentMarks.length, overdueCount: 0, overallRating, lastUpdated: new Date().toISOString() }).where(eq(customerMetrics.customerId, customerId));
+    await db.update(customerMetrics).set({ avgPaymentDays, monthlyVolume, monthlyShipments, overdueCount, overallRating, lastUpdated: new Date().toISOString() }).where(eq(customerMetrics.customerId, customerId));
   } else {
-    await db.insert(customerMetrics).values({ customerId, avgPaymentDays, monthlyVolume, monthlyShipments: recentMarks.length, overdueCount: 0, overallRating, lastUpdated: new Date().toISOString() });
+    await db.insert(customerMetrics).values({ customerId, avgPaymentDays, monthlyVolume, monthlyShipments, overdueCount, overallRating, lastUpdated: new Date().toISOString() });
   }
 }

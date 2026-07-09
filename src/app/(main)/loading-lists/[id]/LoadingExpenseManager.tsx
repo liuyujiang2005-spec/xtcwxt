@@ -24,7 +24,7 @@ export function LoadingExpenseManager({
     for (const type of EXPENSE_TYPES) {
       const existing = expenseMap.get(type);
       map[type] = {
-        amount: existing ? String(existing.amountCents / 100) : '',
+        amount: existing ? String(existing.amountCents) : '',
         currency: existing?.currency || 'CNY',
         status: existing?.status || '待支付',
       };
@@ -35,7 +35,7 @@ export function LoadingExpenseManager({
 
   const handleSave = async (expenseType: string) => {
     const entry = entries[expenseType];
-    const amountCents = Math.round(parseFloat(entry.amount || '0') * 100);
+    const amountCents = Math.round(parseFloat(entry.amount || '0'));
     const existing = expenseMap.get(expenseType);
 
     setSaving(true);

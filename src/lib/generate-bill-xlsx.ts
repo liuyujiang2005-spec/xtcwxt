@@ -95,7 +95,7 @@ export async function generateBillXlsx(
   rSum.getCell(17).value = '合计';   // Q column
   rSum.getCell(18).value = { formula: `SUM(R8:R${currentRow})` };
   rSum.getCell(18).numFmt = '#,##0.00';
-  rSum.getCell(19).value = '泰铢';
+  rSum.getCell(19).value = '';
 
   return await wb.xlsx.writeBuffer();
 }

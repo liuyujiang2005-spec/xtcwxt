@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
       .where(eq(loadingItems.markId, mark.id)).all();
 
     scItems.forEach((i) => {
-      const amount = i.需支付总价_cents || 0;
+      const amount = i.客户应收_cents || 0;
       totalCents += amount;
       items.push({ markId: mark.id, mode: '拼柜', amountCents: amount });
     });
@@ -52,8 +52,15 @@ export async function POST(request: NextRequest) {
 
   let billId: number;
   if (existing) {
-    await db.update(bills).set({ totalAmountCents: totalCents, status: '已生成', createdAt: new Date().toISOString() })
-      .where(eq(bills.id, existing.id));
+    await db.update(bills).set({
+      totalAmountCents: totalCents,
+      status: '已生成',
+      createdAt: new Date().toISOString(),
+      paidAmount: 0,
+      remainingAmount: totalCents,
+      paymentStatus: '待付款',
+      paidAt: null,
+    }).where(eq(bills.id, existing.id));
     await db.delete(billItems).where(eq(billItems.billId, existing.id));
     billId = existing.id;
   } else {
@@ -75,6 +82,7 @@ export async function PATCH(request: NextRequest) {
   if (!st) return NextResponse.json({ error: '未登录' }, { status: 401 });
   const u = await validateSession(st);
   if (!u) return NextResponse.json({ error: '登录过期' }, { status: 401 });
+  if (u.role === 'viewer') return NextResponse.json({ error: '无权限' }, { status: 403 });
 
   const body = await request.json();
   if (body.receiptUrl !== undefined) {

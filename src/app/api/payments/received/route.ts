@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db/index';
 import { paymentsReceived } from '@/db/schema';
 import { validateSession } from '@/lib/auth';
+import { refreshCustomerMetrics } from '@/lib/metrics';
 
 export async function POST(request: NextRequest) {
   const sessionToken = request.cookies.get('session')?.value;
@@ -19,6 +20,9 @@ export async function POST(request: NextRequest) {
       receivedDate: body.receivedDate,
       remark: body.remark || null,
     });
+
+    try { await refreshCustomerMetrics(body.customerId); } catch (e) { console.error('刷新客户评分失败:', e); }
+
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json({ error: '录入失败' }, { status: 500 });

@@ -31,6 +31,7 @@ export default function UploadSharedContainerPage() {
   const [summary, setSummary] = useState<ScSummary>({ totalItems: 0, abnormalCount: 0 });
   const [result, setResult] = useState<{ passed: boolean; msg: string } | null>(null);
   const [customerId, setCustomerId] = useState<number>(0);
+  const [aiVerifying, setAiVerifying] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const processingRef = useRef(false);
@@ -62,6 +63,31 @@ export default function UploadSharedContainerPage() {
       setPreview(items);
       setSummary({ totalItems: items.length, abnormalCount: items.filter(i => i.verdict === '异常').length });
       setPhase('preview');
+
+      setAiVerifying(true);
+      fetch('/api/ai/verify-items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: items.map(i => ({ 品名: i.品名, 总体积: i.总体积, 货型: i.货型, 运输方式: i.运输方式, 运单号: i.运单号, 成本单价_cents: i.单价, 需支付总价_cents: i.单项价格 })),
+          type: 'shared-container',
+        }),
+        signal: controller.signal,
+      }).then(async (verifyRes) => {
+        if (!verifyRes.ok) return;
+        const vData = await verifyRes.json();
+        const abnormalMap = new Map<number, string>();
+        (vData.details || []).forEach((d: any) => abnormalMap.set(d.itemId, d.reason));
+        setPreview(prev => {
+          const updated = prev.map((item, idx) => {
+            const reason = abnormalMap.get(idx);
+            return reason ? { ...item, verdict: '异常', reason } : { ...item, verdict: '通过', reason: '' };
+          });
+          setSummary({ totalItems: updated.length, abnormalCount: vData.abnormalCount || 0 });
+          return updated;
+        });
+      }).catch(err => { if (err?.name !== 'AbortError') console.error('AI 验价失败:', err); })
+        .finally(() => setAiVerifying(false));
     } catch (err: any) { if (err?.name !== 'AbortError') { setResult({ passed: false, msg: '解析失败' }); setPhase('idle'); } }
     processingRef.current = false;
   };

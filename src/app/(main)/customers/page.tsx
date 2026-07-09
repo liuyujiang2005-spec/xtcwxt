@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import CustomerDialog from './customer-dialog';
+import { RefreshMetricsButton } from './RefreshMetricsButton';
 
 function parsePrice(c: any, key: string): string {
   if (!c.priceMatrix) return '-';
@@ -28,7 +29,10 @@ export default async function CustomersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">客户管理</h1>
-        {canEdit && <CustomerDialog mode="create" />}
+        <div className="flex gap-2">
+          {canEdit && <RefreshMetricsButton />}
+          {canEdit && <CustomerDialog mode="create" />}
+        </div>
       </div>
 
       <Card>

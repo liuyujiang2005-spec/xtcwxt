@@ -60,17 +60,22 @@ export async function POST(request: NextRequest) {
     let totalReceivable = 0;
 
     const monthTag = mark?.monthTag ?? new Date().toISOString().substring(0, 7);
-    const billNo = markNo;
+    const billNo = `${markNo}-${monthTag}`;
+
+    if (!custId || custId <= 0) {
+      results.push({ markId, billId: 0, billNo, markNo, customerName: '未知客户', itemCount: group.length, totalVolume: round6(totalVol), totalCost: 0, error: '无有效客户' });
+      continue;
+    }
 
     const existing = await db.select().from(bills).where(eq(bills.billNo, billNo)).get();
     let billId: number;
     if (existing) {
-      await db.update(bills).set({ totalAmountCents: 0, status: '已生成' }).where(eq(bills.id, existing.id));
+      await db.update(bills).set({ totalAmountCents: 0, status: '已生成', paidAmount: 0, remainingAmount: 0, paymentStatus: '待付款', paidAt: null }).where(eq(bills.id, existing.id));
       await db.delete(billItems).where(eq(billItems.billId, existing.id));
       billId = existing.id;
     } else {
       const r = await db.insert(bills).values({
-        billNo, customerId: custId || 0, monthTag, totalAmountCents: 0, currency: 'CNY', status: '已生成',
+        billNo, customerId: custId, monthTag, totalAmountCents: 0, currency: 'CNY', status: '已生成',
       });
       billId = Number(r.lastInsertRowid);
     }
@@ -101,7 +106,7 @@ export async function POST(request: NextRequest) {
     await db.update(bills).set({ totalAmountCents: totalReceivable }).where(eq(bills.id, billId));
 
     results.push({ markId,
-      billId, billNo, markNo, customerName: custMap.get(custId || 0)?.name || markNo,
+      billId, billNo, markNo, customerName: custMap.get(custId)?.name || markNo,
       itemCount: group.length, totalVolume: round6(totalVol), totalCost: round6(totalReceivable),
     });
   }

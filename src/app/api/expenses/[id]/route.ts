@@ -15,15 +15,17 @@ export async function PUT(
 
   const { id } = await params;
   const body = await request.json();
-  await db.update(expenses).set({
-    expenseType: body.expenseType,
-    amountCents: body.amountCents,
-    currency: body.currency,
-    supplierId: body.supplierId || null,
-    status: body.status,
-    paidDate: body.paidDate || null,
-    remark: body.remark || null,
-  }).where(eq(expenses.id, parseInt(id)));
+  const updates: any = {};
+  if (body.expenseType !== undefined) updates.expenseType = body.expenseType;
+  if (body.amountCents !== undefined) updates.amountCents = body.amountCents;
+  if (body.currency !== undefined) updates.currency = body.currency;
+  if (body.supplierId !== undefined) updates.supplierId = body.supplierId || null;
+  if (body.status !== undefined) updates.status = body.status;
+  if (body.paidDate !== undefined) updates.paidDate = body.paidDate || null;
+  if (body.remark !== undefined) updates.remark = body.remark || null;
+  if (Object.keys(updates).length > 0) {
+    await db.update(expenses).set(updates).where(eq(expenses.id, parseInt(id)));
+  }
   return NextResponse.json({ success: true });
 }
 
