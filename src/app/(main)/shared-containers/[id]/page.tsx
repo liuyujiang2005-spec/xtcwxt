@@ -39,14 +39,14 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
   const orderVolumes = new Map<string, number>();
   items.forEach(i => {
     const key = i.运单号 || `mark_${i.markId}`;
-    if (i.总体积 && !orderVolumes.has(key)) orderVolumes.set(key, i.总体积);
+    if (i.总体积 != null && !orderVolumes.has(key)) orderVolumes.set(key, i.总体积);
   });
   const totalVolume = Array.from(orderVolumes.values()).reduce((s, v) => s + v, 0);
   // 总成本 = 每个运单号的订单总价累加（按运单号分组取唯一值）
   const orderCosts = new Map<string, number>();
   items.forEach(i => { 
     const key = i.运单号 || `mark_${i.markId}`;
-    if (i.订单总价_cents && !orderCosts.has(key)) orderCosts.set(key, i.订单总价_cents); 
+    if (i.订单总价_cents != null && !orderCosts.has(key)) orderCosts.set(key, i.订单总价_cents); 
   });
   const totalCost = Array.from(orderCosts.values()).reduce((s, v) => s + v, 0);
 
@@ -56,9 +56,9 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
     const orderKey = item.运单号 || `m${item.markId}`;
     if (!m.seenOrders.has(orderKey)) {
       m.volume += item.总体积;
+      m.cost += orderCosts.get(orderKey) || 0;
       m.seenOrders.add(orderKey);
     }
-    m.cost = orderCosts.get(orderKey) || 0;
     m.count++;
     byMark.set(item.markId, m);
   });
@@ -77,7 +77,7 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
         </Badge>
         {batch.status === '待审核' && <ReviewActions batchId={batch.id} apiPath="/api/shared-containers" listPath="/shared-containers" />}
       </div>
-      <ClassifyButton batchId={batch.id} />
+      <ClassifyButton batchId={batch.id} items={items} markMap={Object.fromEntries(markMap)} />
 
       <div className="grid grid-cols-3 gap-4">
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm">总立方</CardTitle></CardHeader>

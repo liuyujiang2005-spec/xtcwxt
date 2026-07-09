@@ -17,6 +17,7 @@ interface ScItem {
   国内单号: string; 单项体积: number; 单项重量: number; 总体积: number;
   总重量: number; 计费体积: number; 总计费体积: number; 单价: number;
   单项价格: number; 订单总价: number; 备注: string; 结算状态: string; 柜号: string;
+  尺寸_长: number; 尺寸_宽: number; 尺寸_高: number;
   verdict: string; reason: string;
 }
 
@@ -79,16 +80,19 @@ export default function UploadSharedContainerPage() {
         品名: item.品名,
         货型: item.货型 || '',
         运输方式: item.运输方式 || '',
-        尺寸_长: 0,
-        尺寸_宽: 0,
-        尺寸_高: 0,
+        仓库: item.仓库 || '',
+        尺寸_长: item.尺寸_长 || 0,
+        尺寸_宽: item.尺寸_宽 || 0,
+        尺寸_高: item.尺寸_高 || 0,
         单箱体积: item.单项体积 || 0,
         总体积: item.总体积 || item.单项体积 || 0,
         国内单号: item.国内单号 || '',
         单箱数量: item.件数 || 0,
         总重量: item.总重量 || 0,
+        单项重量: item.单项重量 || 0,
         箱数: item.件数 || 0,
         pcs数量: 0,
+        备注: item.备注 || '',
         成本单价_cents: item.单价 || 0,
         需支付总价_cents: item.单项价格 || 0,
         订单总价_cents: item.订单总价 || 0,

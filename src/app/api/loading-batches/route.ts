@@ -4,7 +4,11 @@ import { loadingBatches } from '@/db/schema';
 import { validateSession } from '@/lib/auth';
 import { desc } from 'drizzle-orm';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const st = request.cookies.get('session')?.value;
+  if (!st) return NextResponse.json({ error: '未登录' }, { status: 401 });
+  const u = await validateSession(st);
+  if (!u) return NextResponse.json({ error: '登录过期' }, { status: 401 });
   const all = await db.select().from(loadingBatches).orderBy(desc(loadingBatches.createdAt)).all();
   return NextResponse.json(all);
 }

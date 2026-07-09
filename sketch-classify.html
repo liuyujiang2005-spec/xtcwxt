@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>分类统计展示（合并）</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #f0f2f5;
+    padding: 30px;
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 18px; margin-bottom: 4px; }
+  .sub { color: #666; font-size: 13px; margin-bottom: 20px; }
+
+  .group {
+    background: white;
+    border: 1px solid #d0d0d0;
+    border-radius: 10px;
+    margin: 12px 0;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+  .group-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    background: #e8f4fd;
+    font-weight: 600;
+  }
+  .group-title .mark { color: #1565c0; font-size: 14px; }
+  .group-title .sum {
+    font-size: 12px;
+    font-weight: 400;
+    color: #555;
+    display: flex;
+    gap: 14px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  th {
+    background: #fafafa;
+    border-bottom: 1px solid #e0e0e0;
+    padding: 6px 6px;
+    font-weight: 600;
+    font-size: 11px;
+    color: #555;
+    text-align: center;
+  }
+  td {
+    border-bottom: 1px solid #f0f0f0;
+    padding: 5px 6px;
+    text-align: center;
+    font-size: 12px;
+    vertical-align: middle;
+  }
+  .merged {
+    background: #f5faff;
+    font-weight: 500;
+  }
+  .sum-row td {
+    background: #fffde7;
+    font-weight: 600;
+    border-top: 2px solid #fdd835;
+  }
+  .summary-bar {
+    display: flex; gap: 12px; padding: 8px 16px;
+    background: #f8f9fa; border-top: 1px solid #d0d0d0;
+    font-size: 12px; color: #555;
+  }
+  .summary-bar span { white-space: nowrap; }
+</style>
+</head>
+<body>
+
+<h1>📊 分类统计 — 按唛头分组</h1>
+<div class="sub">558 个运单 · 31 个唛头 · 总成本 ¥292,280</div>
+
+<!-- 唛头 A -->
+<div class="group">
+  <div class="group-title">
+    <span class="mark">📍 XHH-6689 · 义乌仓</span>
+    <div class="sum">
+      <span>📦 4 单</span>
+      <span>📐 13.37 m³</span>
+      <span>💰 ¥8,398</span>
+    </div>
+  </div>
+  <table>
+    <tr><th>日期</th><th>运单号</th><th>货型</th><th>品名</th><th>尺寸</th><th>件数</th><th>单项体积</th><th>单价</th><th>单项价格</th><th>总体积</th><th>总重量</th><th>结算</th></tr>
+    <tr>
+      <td class="merged" rowspan="2">6/2</td>
+      <td class="merged" rowspan="2">YW260600125</td>
+      <td>普货</td><td>手动试压泵</td><td>67×44×52</td><td>1</td><td>0.12</td><td>720</td><td>86.40</td>
+      <td class="merged" rowspan="2" style="background:#f5faff;">0.12</td>
+      <td class="merged" rowspan="2" style="background:#f5faff;">25</td>
+      <td class="merged" rowspan="2" style="background:#f5faff;">已结算</td>
+    </tr>
+    <tr>
+      <td>普货</td><td>炒锅</td><td>61×61×40</td><td>2</td><td>0.28</td><td>720</td><td>201.60</td>
+    </tr>
+    <tr>
+      <td class="merged" rowspan="2">6/3</td>
+      <td class="merged" rowspan="2">YW260600273</td>
+      <td>普货</td><td>熨斗</td><td>63.5×30.5×33.5</td><td>150</td><td>9.73</td><td>500</td><td>4,866.08</td>
+      <td class="merged" rowspan="2" style="background:#f5faff;">9.73</td>
+      <td class="merged" rowspan="2" style="background:#f5faff;">1,725</td>
+      <td class="merged" rowspan="2" style="background:#f5faff;">已结算</td>
+    </tr>
+    <tr>
+      <td>普货</td><td>熨斗</td><td>63.5×30.5×33.5</td><td>50</td><td>3.24</td><td>1,000</td><td>3,244.06</td>
+    </tr>
+  </table>
+  <div class="summary-bar">
+    <span><strong>合计：</strong></span>
+    <span>4 单</span>
+    <span>件数 203</span>
+    <span>体积 13.37 m³</span>
+    <span>成本 ¥8,398</span>
+    <span>海运 3 / 陆运 1</span>
+    <span style="color:#e65100;">⚠️ 1 条异常</span>
+  </div>
+</div>
+
+<!-- 唛头 B -->
+<div class="group">
+  <div class="group-title">
+    <span class="mark">📍 XHH-6653 · 深圳仓</span>
+    <div class="sum">
+      <span>📦 54 单</span>
+      <span>📐 36.17 m³</span>
+      <span>💰 ¥41,382</span>
+    </div>
+  </div>
+  <table>
+    <tr><th>日期</th><th>运单号</th><th>货型</th><th>品名</th><th>尺寸</th><th>件数</th><th>单项体积</th><th>单价</th><th>单项价格</th><th>总体积</th><th>总重量</th><th>结算</th></tr>
+    <tr>
+      <td class="merged" rowspan="2">6/7</td>
+      <td class="merged" rowspan="2">SZ260600565</td>
+      <td>商检货</td><td>烟熏器</td><td>44×29×48</td><td>10</td><td>0.61</td><td>720</td><td>439.20</td>
+      <td class="merged" rowspan="2" style="background:#f5faff;">0.61</td>
+      <td class="merged" rowspan="2" style="background:#f5faff;">50</td>
+      <td class="merged" rowspan="2" style="background:#f5faff;">已结算</td>
+    </tr>
+    <tr>
+      <td>普货</td><td>底板</td><td>31×29×47</td><td>1</td><td>0.05</td><td>720</td><td>36.00</td>
+    </tr>
+  </table>
+  <div class="summary-bar">
+    <span><strong>合计：</strong></span>
+    <span>54 单</span>
+    <span>件数 423</span>
+    <span>体积 36.17 m³</span>
+    <span>成本 ¥41,382</span>
+    <span>海运 48 / 陆运 6</span>
+    <span style="color:#e65100;">⚠️ 3 条异常</span>
+  </div>
+</div>
+
+</body>
+</html>

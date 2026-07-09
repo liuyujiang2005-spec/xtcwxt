@@ -7,9 +7,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import Link from 'next/link';
-import { Upload } from 'lucide-react';
 import { DeleteBatchButton } from '../shared-containers/DeleteBatchButton';
 import { ExportButton } from '../shared-containers/ExportButton';
+import { NewBatchButton } from './NewBatchButton';
 
 export default async function LoadingListsPage() {
   const user = await getCurrentUser();
@@ -21,9 +21,7 @@ export default async function LoadingListsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">装柜批次</h1>
-        <Link href="/loading-lists/upload">
-          <Button><Upload className="h-4 w-4 mr-2" />上传装柜清单</Button>
-        </Link>
+        <NewBatchButton />
         <ExportButton apiPath="/api/loading-batches/export" label="装柜批次" />
       </div>
 
@@ -47,6 +45,7 @@ export default async function LoadingListsPage() {
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
                       <Link href={`/loading-lists/${b.id}`}><Button variant="ghost" size="sm">详情</Button></Link>
+                      <Link href={`/loading-lists/${b.id}/manual`}><Button variant="ghost" size="sm">录入</Button></Link>
                       <DeleteBatchButton batchId={b.id} apiPath="/api/loading-batches" />
                     </div>
                   </TableCell>

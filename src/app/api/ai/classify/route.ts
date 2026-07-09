@@ -37,54 +37,72 @@ export async function POST(request: NextRequest) {
   for (const [markId, group] of byMark) {
     const mark = markMap.get(markId);
     const markNo = mark?.markNo || `#${markId}`;
-    const totalVol = group.reduce((s, i) => s + (i.单箱体积 || i.总体积 || 0), 0);
-    // 按运单号去重累加订单总价
-    const seenOrders = new Set<string>();
-    let totalCost = 0;
-    for (const i of group) {
-      const key = (i as any).运单号 || `_${i.markId}`;
-      if (!seenOrders.has(key) && (i.订单总价_cents || i.需支付总价_cents)) {
-        totalCost += (i.订单总价_cents || i.需支付总价_cents || 0);
-        seenOrders.add(key);
-      }
-    }
 
-    // 查找是否有同唛头的客户
     let custId = group[0].customerId;
-    if (!custId || !custMap.has(custId)) {
-      const c = await db.select().from(customers).where(eq(customers.name, markNo)).get();
-      if (c) custId = c.id;
+    const customer = custMap.get(custId || 0);
+    let priceMatrix: Record<string, number> = {};
+    if (customer?.priceMatrix) {
+      try { priceMatrix = JSON.parse(customer.priceMatrix); } catch {}
     }
+    const enableMinVol = customer?.enableMinVolume !== 0;
 
-    const monthTag = mark?.monthTag || new Date().toISOString().substring(0, 7);
+    const getPrice = (transport: string, cargo: string): number => {
+      const m = transport === '海运' ? 'sea' : 'land';
+      const t = cargo === '普货' ? 'regular' : cargo === '商检货' ? 'inspection' : 'sensitive';
+      return priceMatrix[`${m}_${t}`] || 0;
+    };
+    const minVol = (transport: string): number => {
+      if (!enableMinVol) return 0;
+      return transport === '海运' ? 0.5 : 0.3;
+    };
+
+    const totalVol = group.reduce((s, i) => s + (i.单箱体积 || i.总体积 || 0), 0);
+    let totalReceivable = 0;
+
+    const monthTag = mark?.monthTag ?? new Date().toISOString().substring(0, 7);
     const billNo = markNo;
 
-    // 检查是否已有账单，有则更新
     const existing = await db.select().from(bills).where(eq(bills.billNo, billNo)).get();
     let billId: number;
     if (existing) {
-      await db.update(bills).set({ totalAmountCents: Math.round(totalCost), status: '已生成', createdAt: new Date().toISOString() })
-        .where(eq(bills.id, existing.id));
+      await db.update(bills).set({ totalAmountCents: 0, status: '已生成' }).where(eq(bills.id, existing.id));
       await db.delete(billItems).where(eq(billItems.billId, existing.id));
       billId = existing.id;
     } else {
       const r = await db.insert(bills).values({
-        billNo, customerId: custId || 0, monthTag, totalAmountCents: Math.round(totalCost),
-        currency: 'CNY', status: '已生成',
+        billNo, customerId: custId || 0, monthTag, totalAmountCents: 0, currency: 'CNY', status: '已生成',
       });
       billId = Number(r.lastInsertRowid);
     }
 
+    const insertedOrders = new Set<string>();
     for (const item of group) {
+      const orderKey = (item as any).运单号 || `_${item.id}`;
+      if (insertedOrders.has(orderKey)) continue;
+      insertedOrders.add(orderKey);
+
+      const transport = (item as any).运输方式 || '海运';
+      const cargo = (item as any).货型 || '普货';
+      const unitPrice = getPrice(transport, cargo);
+      const vol = (item as any).单箱体积 || (item as any).总体积 || 0;
+      const chargeVol = Math.max(vol, minVol(transport));
+      const receivable = unitPrice * chargeVol;
+      const cost = (item as any).需支付总价_cents || 0;
+
+      totalReceivable += receivable;
+
       await db.insert(billItems).values({
         billId, markId, mode: '拼柜',
-        amountCents: Math.round(item.订单总价_cents || item.需支付总价_cents || 0),
+        amountCents: receivable,
+        costAmount: cost,
       });
     }
 
-    results.push({
-      billId, billNo, markNo, customerName: custMap.get(custId)?.name || markNo,
-      itemCount: group.length, totalVolume: round6(totalVol), totalCost: round6(totalCost),
+    await db.update(bills).set({ totalAmountCents: totalReceivable }).where(eq(bills.id, billId));
+
+    results.push({ markId,
+      billId, billNo, markNo, customerName: custMap.get(custId || 0)?.name || markNo,
+      itemCount: group.length, totalVolume: round6(totalVol), totalCost: round6(totalReceivable),
     });
   }
 
@@ -93,7 +111,7 @@ export async function POST(request: NextRequest) {
   try {
     const summary = results.map(r => ({
       唛头: r.markNo, 客户: r.customerName, 件数: r.itemCount,
-      总体积: r.totalVolume, 订单总价: r.totalCost.toFixed(2),
+      总体积: r.totalVolume, 订单总价: r.totalCost.toFixed(6),
     }));
     const prompt = `分析以下拼柜账单分类数据，按客户、运输方式、货物类型做汇总，标记异常。\n\n${JSON.stringify(summary, null, 2)}\n\n返回JSON：{"summary":"一段中文总结","anomalies":[{"唛头":"xxx","问题":"描述"}],"按客户汇总":[{"客户":"xx","账单数":1,"总金额":123}]}`;
     const raw = await aiChat('你是物流财务分类助手，只返回JSON。', prompt);

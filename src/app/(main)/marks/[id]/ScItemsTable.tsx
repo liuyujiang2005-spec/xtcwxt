@@ -8,19 +8,6 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PenSquare, X } from 'lucide-react';
 import { ScItemEditDialog } from './ScItemEditDialog';
-import { formatCents } from '@/lib/format';
-
-interface ScItem {
-  id: number;
-  品名: string | null;
-  总体积: number;
-  货型: string | null;
-  运输方式: string | null;
-  需支付总价_cents: number | null;
-  客户应收_cents: number | null;
-  成本单价_cents: number | null;
-  结算状态: string | null;
-}
 
 export function ScItemsTable({ items }: { items: any[] }) {
   const router = useRouter();
@@ -47,8 +34,8 @@ export function ScItemsTable({ items }: { items: any[] }) {
     const unit = parseFloat(unitPrice || '');
     const rec = parseFloat(receivablePrice || '');
     const updates: any = {};
-    if (!isNaN(unit)) updates.成本单价_cents = Math.round(unit * 100);
-    if (!isNaN(rec)) updates.客户应收_cents = Math.round(rec * 100);
+    if (!isNaN(unit)) updates.成本单价_cents = unit;
+    if (!isNaN(rec)) updates.客户应收_cents = rec;
     if (Object.keys(updates).length === 0) return;
 
     try {
@@ -71,6 +58,18 @@ export function ScItemsTable({ items }: { items: any[] }) {
     setSaving(false);
   };
 
+  // Group by 运单号 for rowSpan merge
+  const groups: { key: string; rows: any[] }[] = [];
+  let lastKey = '';
+  for (const item of items) {
+    const key = item.运单号 || `_${item.id}`;
+    if (key !== lastKey) { groups.push({ key, rows: [] }); lastKey = key; }
+    groups[groups.length - 1].rows.push(item);
+  }
+
+  const dims = (item: any) =>
+    [item.尺寸_长, item.尺寸_宽, item.尺寸_高].filter((d: any) => d != null && d > 0).join('×') || '-';
+
   return (
     <>
       <div className="flex items-center gap-2 mb-2">
@@ -88,24 +87,37 @@ export function ScItemsTable({ items }: { items: any[] }) {
         <TableHeader>
           <TableRow>
             <TableHead className="w-8"></TableHead>
-            <TableHead>品名</TableHead><TableHead className="text-right">体积</TableHead>
-            <TableHead>货型</TableHead><TableHead>运输</TableHead>
-            <TableHead className="text-right">成本</TableHead><TableHead className="text-right">应收</TableHead>
+            <TableHead>运单号</TableHead>
+            <TableHead>运输方式</TableHead>
+            <TableHead>品名</TableHead>
+            <TableHead>尺寸</TableHead>
+            <TableHead className="text-right">件数</TableHead>
+            <TableHead>货型</TableHead>
+            <TableHead className="text-right">总体积</TableHead>
+            <TableHead className="text-right">总重量</TableHead>
+            <TableHead className="text-right">成本</TableHead>
+            <TableHead className="text-right">应收</TableHead>
+            <TableHead>结算</TableHead>
             <TableHead className="text-center">操作</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {items.map((item) => (
+          {groups.map(g => g.rows.map((item: any, ri: number) => (
             <TableRow key={item.id}>
               <TableCell>
                 <input type="checkbox" checked={selected.has(item.id)} onChange={() => toggle(item.id)} className="rounded" />
               </TableCell>
-              <TableCell>{item.品名 || '-'}</TableCell>
-              <TableCell className="text-right">{item.总体积.toFixed(2)}</TableCell>
+              {ri === 0 ? <TableCell rowSpan={g.rows.length} className="text-xs font-mono">{item.运单号 || '-'}</TableCell> : null}
+              {ri === 0 ? <TableCell rowSpan={g.rows.length}>{item.运输方式 || '-'}</TableCell> : null}
+              <TableCell className="max-w-[120px] truncate" title={item.品名 || ''}>{item.品名 || '-'}</TableCell>
+              <TableCell className="text-xs">{dims(item)}</TableCell>
+              <TableCell className="text-right">{item.箱数 || '-'}</TableCell>
               <TableCell>{item.货型 || '-'}</TableCell>
-              <TableCell>{item.运输方式 || '-'}</TableCell>
-              <TableCell className="text-right text-red-600">{formatCents(item.需支付总价_cents || 0)}</TableCell>
-              <TableCell className="text-right text-green-600">{formatCents(item.客户应收_cents || 0)}</TableCell>
+              {ri === 0 ? <TableCell className="text-right" rowSpan={g.rows.length}>{(item.总体积 ?? 0).toFixed(6)}</TableCell> : null}
+              {ri === 0 ? <TableCell className="text-right" rowSpan={g.rows.length}>{item.总重量 || '-'}</TableCell> : null}
+              <TableCell className="text-right text-red-600">¥{(item.需支付总价_cents || 0).toFixed(6)}</TableCell>
+              <TableCell className="text-right text-green-600">¥{(item.客户应收_cents ?? 0).toFixed(6)}</TableCell>
+              {ri === 0 ? <TableCell rowSpan={g.rows.length}>{item.cost_status || item.payment_status || '-'}</TableCell> : null}
               <TableCell className="text-center">
                 <ScItemEditDialog
                   itemId={item.id}
@@ -115,7 +127,7 @@ export function ScItemsTable({ items }: { items: any[] }) {
                 />
               </TableCell>
             </TableRow>
-          ))}
+          )))}
         </TableBody>
       </Table>
 

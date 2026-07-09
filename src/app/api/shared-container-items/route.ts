@@ -17,22 +17,23 @@ export async function POST(request: NextRequest) {
     for (const item of items) {
       // 检查或自动创建客户
       let custId = item.customerId;
+      const cleanMarkNo = (item.markNo || '').replace(/^BL-[\d]{6}-/, '');
       const custExists = custId > 0 ? await db.select().from(customers).where(eq(customers.id, custId)).get() : null;
-      if (!custExists && item.markNo) {
-        const existingCust = await db.select().from(customers).where(eq(customers.name, item.markNo)).get();
+      if (!custExists && cleanMarkNo) {
+        const existingCust = await db.select().from(customers).where(eq(customers.name, cleanMarkNo)).get();
         if (existingCust) {
           custId = existingCust.id;
         } else {
-          const result = await db.insert(customers).values({ name: item.markNo });
+          const result = await db.insert(customers).values({ name: cleanMarkNo });
           custId = Number(result.lastInsertRowid);
         }
       }
 
-      let mark = await db.select().from(marks).where(eq(marks.markNo, item.markNo)).get();
+      let mark = await db.select().from(marks).where(eq(marks.markNo, cleanMarkNo)).get();
       if (!mark) {
         const monthTag = new Date().toISOString().substring(0, 7);
         const result = await db.insert(marks).values({
-          markNo: item.markNo,
+          markNo: cleanMarkNo,
           customerId: custId,
           mode: '拼柜',
           monthTag,
@@ -46,22 +47,26 @@ export async function POST(request: NextRequest) {
         markId: mark!.id,
         customerId: custId,
         品名: item.品名 || null,
-        尺寸_长: item.尺寸_长 || null,
-        尺寸_宽: item.尺寸_宽 || null,
-        尺寸_高: item.尺寸_高 || null,
-        单箱体积: item.单箱体积 || null,
+        尺寸_长: item.尺寸_长 ?? null,
+        尺寸_宽: item.尺寸_宽 ?? null,
+        尺寸_高: item.尺寸_高 ?? null,
+        单箱体积: item.单箱体积 ?? null,
         总体积: item.总体积,
         国内单号: item.国内单号 || null,
-        单箱数量: item.单箱数量 || null,
+        单箱数量: item.单箱数量 ?? null,
         总重量: item.总重量 || null,
-        箱数: item.箱数 || null,
-        pcs数量: item.pcs数量 || null,
+        箱数: item.箱数 ?? null,
+        pcs数量: item.pcs数量 ?? null,
+        仓库: item.仓库 || null,
+        单项重量: item.单项重量 || null,
+        备注: item.备注 || null,
         成本单价_cents: item.成本单价_cents || 0,
         需支付总价_cents: item.需支付总价_cents || 0,
         货型: item.货型 || null,
         运输方式: item.运输方式 || null,
         订单总价_cents: item.订单总价_cents || 0,
         运单号: item.运单号 || '',
+        客户应收_cents: item.客户应收_cents || null,
         cost_status: '待支出',
         ai_verified: item.ai_verified || 0,
         ai_verify_msg: item.ai_verify_msg || null,

@@ -36,12 +36,12 @@ const DEFAULT_PRICE_MATRIX = {
 };
 
 const PRICE_LABELS: Record<string, string> = {
-  sea_regular: '海运-普货',
-  sea_inspection: '海运-商检',
-  sea_sensitive: '海运-敏感',
-  land_regular: '陆运-普货',
-  land_inspection: '陆运-商检',
-  land_sensitive: '陆运-敏感',
+  sea_regular: '海运 - 普货',
+  sea_inspection: '海运 - 商检货',
+  sea_sensitive: '海运 - 敏感货',
+  land_regular: '陆运 - 普货',
+  land_inspection: '陆运 - 商检货',
+  land_sensitive: '陆运 - 敏感货',
 };
 
 export default function CustomerDialog({ mode, customer }: Props) {
@@ -64,7 +64,8 @@ export default function CustomerDialog({ mode, customer }: Props) {
   const [prices, setPrices] = useState<Record<string, number>>(initPrices);
 
   const updatePrice = (key: string, value: string) => {
-    setPrices({ ...prices, [key]: parseInt(value) || 0 });
+    if (value.trim() === '') return;
+    setPrices({ ...prices, [key]: parseFloat(value) || 0 });
   };
 
   const handleSubmit = async () => {
@@ -233,8 +234,9 @@ function CustomerForm({
             <div key={key} className="space-y-1">
               <Label className="text-xs">{PRICE_LABELS[key]}</Label>
               <Input
-                type="number"
-                value={value}
+                type="text"
+                inputMode="decimal"
+                value={String(prices[key])}
                 onChange={(e) => updatePrice(key, e.target.value)}
                 className="h-8 text-xs"
               />

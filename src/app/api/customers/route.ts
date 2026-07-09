@@ -40,15 +40,14 @@ export async function PUT(request: NextRequest) {
 
   try {
     const body = await request.json();
-    await db.update(customers)
-      .set({
-        name: body.name,
-        contact: body.contact,
-        priceMatrix: body.priceMatrix,
-        defaultCurrency: body.defaultCurrency,
-        enableMinVolume: body.enableMinVolume ?? 1,
-        remark: body.remark,
-      })
+    const up: any = {};
+    if (body.name !== undefined) up.name = body.name;
+    if (body.contact !== undefined) up.contact = body.contact;
+    if (body.priceMatrix !== undefined) up.priceMatrix = body.priceMatrix;
+    if (body.defaultCurrency !== undefined) up.defaultCurrency = body.defaultCurrency;
+    up.enableMinVolume = body.enableMinVolume ?? 1;
+    if (body.remark !== undefined) up.remark = body.remark;
+    await db.update(customers).set(up)
       .where(eq(customers.id, body.id));
     return NextResponse.json({ success: true });
   } catch (error) {

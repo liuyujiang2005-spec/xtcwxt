@@ -37,7 +37,8 @@ function round6(n: number): number {
   return Math.round(n * 1000000) / 1000000;
 }
 
-function parseSize(s: string): { l: number; w: number; h: number } | null {
+function parseSize(s: string | null | undefined): { l: number; w: number; h: number } | null {
+  if (!s) return null;
   const cleaned = s.replace(/[×xX*]/g, '×').trim();
   const parts = cleaned.split('×');
   if (parts.length >= 3) {
@@ -63,6 +64,7 @@ export function mapPythonResult(pyData: any): { items: any[]; summary: { totalIt
       delete row.产品明细;
       const mark = row.唛头 || row.唛头号 || row.markNo || '';
       const dimStr = row.尺寸 || row.规格 || '';
+      const size = parseSize(dimStr);
 
       allItems.push({
         rowIndex: 0,
@@ -90,7 +92,7 @@ export function mapPythonResult(pyData: any): { items: any[]; summary: { totalIt
         备注: row.备注 || '',
         结算状态: row.结算状态 || row.状态 || '',
         柜号: row.柜号 || '',
-        尺寸_长: 0, 尺寸_宽: 0, 尺寸_高: 0,
+        尺寸_长: size?.l || 0, 尺寸_宽: size?.w || 0, 尺寸_高: size?.h || 0,
         成本单价: round6(parseFloat(row.单价 || row.成本单价 || 0)),
         单箱体积: round6(parseFloat(row.单项体积 || row.单箱体积 || 0)),
         单箱数量: parseInt(row.件数 || row.单箱数量 || 0),

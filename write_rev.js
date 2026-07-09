@@ -1,0 +1,120 @@
+const fs = require("fs");
+
+// Write the new revenue page
+const page = `import { getCurrentUser } from '@/lib/auth';
+import { redirect } from 'next/navigation';
+import { db } from '@/db/index';
+import { directIncome, customers } from '@/db/schema';
+import { desc } from 'drizzle-orm';
+import { Card, CardContent } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { NewIncomeDialog } from './NewIncomeDialog';
+import { DeleteIncomeButton } from './DeleteIncomeButton';
+import { EditIncomeDialog } from './EditIncomeDialog';
+
+export default async function RevenuePage() {
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+
+  const allIncome = await db.select().from(directIncome).orderBy(desc(directIncome.incomeDate)).all();
+  const allCustomers = await db.select().from(customers).all();
+  const customerMap = new Map(allCustomers.map((c) => [c.id, c.name]));
+
+  const summary = new Map();
+  allIncome.forEach((i) => {
+    const e = summary.get(i.customerId) || { CNY: 0, THB: 0, count: 0 };
+    e.count++;
+    if (i.currency === 'THB') e.THB += i.amountCents;
+    else e.CNY += i.amountCents;
+    summary.set(i.customerId, e);
+  });
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">收入总表</h1>
+        <NewIncomeDialog />
+      </div>
+
+      <Card>
+        <div className="p-4 border-b"><h2 className="font-semibold">明细（{allIncome.length} 条）</h2></div>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>客户</TableHead>
+                <TableHead className="text-right">金额</TableHead>
+                <TableHead>币种</TableHead>
+                <TableHead className="text-right">体积</TableHead>
+                <TableHead>日期</TableHead>
+                <TableHead>备注</TableHead>
+                <TableHead className="text-right">操作</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {allIncome.map((i) => (
+                <TableRow key={i.id}>
+                  <TableCell className="font-medium">{customerMap.get(i.customerId) || '-'}</TableCell>
+                  <TableCell className="text-right">¥{i.amountCents.toFixed(6)}</TableCell>
+                  <TableCell>{i.currency}</TableCell>
+                  <TableCell className="text-right">{i.volume ? i.volume.toFixed(6) + 'm³' : '-'}</TableCell>
+                  <TableCell className="text-sm">{i.incomeDate}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground max-w-[150px] truncate">{i.remark || '-'}</TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex gap-1 justify-end">
+                      <EditIncomeDialog income={i} />
+                      <DeleteIncomeButton incomeId={i.id} />
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {allIncome.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">暂无收入记录</TableCell></TableRow>}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <div className="p-4 border-b"><h2 className="font-semibold">按客户汇总</h2></div>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>客户</TableHead>
+                <TableHead className="text-right">笔数</TableHead>
+                <TableHead className="text-right">CNY</TableHead>
+                <TableHead className="text-right">THB</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {Array.from(summary.entries()).map(([cid, v]) => (
+                <TableRow key={cid}>
+                  <TableCell className="font-medium">{customerMap.get(cid) || '-'}</TableCell>
+                  <TableCell className="text-right">{v.count}</TableCell>
+                  <TableCell className="text-right">¥{v.CNY.toFixed(6)}</TableCell>
+                  <TableCell className="text-right">THB {v.THB.toFixed(6)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}`;
+
+// Check if files exist first
+for (const f of ["NewIncomeDialog.tsx", "DeleteIncomeButton.tsx", "EditIncomeDialog.tsx"]) {
+  const fp = "src/app/(main)/revenue/" + f;
+  if (!fs.existsSync(fp)) {
+    console.log("MISSING:", fp);
+    // Write minimal stub
+    if (f === "DeleteIncomeButton.tsx") {
+      const c = `'use client';\nimport { useState } from 'react';\nimport { useRouter } from 'next/navigation';\nimport { Button } from '@/components/ui/button';\nimport { Trash2, Loader2 } from 'lucide-react';\n\nexport function DeleteIncomeButton({ incomeId }: { incomeId: number }) {\n  const router = useRouter();\n  const [loading, setLoading] = useState(false);\n  const handleDelete = async () => {\n    if (!confirm('确认删除？')) return;\n    setLoading(true);\n    const r = await fetch('/api/direct-income/' + incomeId, { method: 'DELETE' });\n    if (r.ok) router.refresh(); else alert('删除失败');\n    setLoading(false);\n  };\n  return <Button variant="ghost" size="sm" onClick={handleDelete} disabled={loading}>{loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5 text-red-500" />}</Button>;\n}\n`;
+      fs.writeFileSync(fp, c);
+    }
+  }
+}
+
+fs.writeFileSync("src/app/(main)/revenue/page.tsx", page);
+console.log("revenue page written");

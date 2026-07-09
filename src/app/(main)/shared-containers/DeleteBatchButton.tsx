@@ -13,8 +13,8 @@ export function DeleteBatchButton({ batchId, apiPath }: { batchId: number; apiPa
     if (!confirm('确认删除该批次及所有关联明细？此操作不可撤销。')) return;
     setDeleting(true);
     try {
-      await fetch(`${apiPath}/${batchId}`, { method: 'DELETE' });
-      router.refresh();
+      const r = await fetch(`${apiPath}/${batchId}`, { method: 'DELETE' });
+      if (r.ok) { router.refresh(); } else { const e = await r.json().catch(()=>({error:'删除失败'})); alert(e.error); }
     } catch { alert('删除失败'); setDeleting(false); }
   };
 

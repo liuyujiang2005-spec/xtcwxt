@@ -25,7 +25,7 @@ export function CustomersTable({ customers }: { customers: any[] }) {
               <TableCell><input type="checkbox" checked={selected.has(c.id)} onChange={() => toggle(c.id)} /></TableCell>
               <TableCell className="font-medium">{c.name}</TableCell>
               <TableCell>{c.contact || '-'}</TableCell>
-              <TableCell className="text-right">{c._volume?.toFixed(2) || '-'}</TableCell>
+              <TableCell className="text-right">{c._volume?.toFixed(6) || '-'}</TableCell>
               <TableCell>{c.defaultCurrency || 'CNY'}</TableCell>
             </TableRow>
           ))}

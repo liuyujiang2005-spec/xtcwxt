@@ -2,7 +2,6 @@ import { getCurrentUser } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { db } from '@/db/index';
 import { directIncome, expenses, customers, sharedContainerItems, loadingItems } from '@/db/schema';
-import { formatCents } from '@/lib/format';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
@@ -46,16 +45,16 @@ export default async function MonthlyReportPage() {
             <CardHeader><CardTitle>{month}</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-3 gap-4">
-                <div className="text-center p-3 bg-muted rounded-lg"><p className="text-sm text-muted-foreground">营收</p><p className="text-lg font-bold">CNY {formatCents(revenueCNY)}{revenueTHB > 0 ? ` + THB ${formatCents(revenueTHB, 'THB')}` : ''}</p></div>
-                <div className="text-center p-3 bg-muted rounded-lg"><p className="text-sm text-muted-foreground">支出</p><p className="text-lg font-bold text-red-600">CNY {formatCents(costCNY)}{costTHB > 0 ? ` + THB ${formatCents(costTHB, 'THB')}` : ''}</p></div>
-                <div className="text-center p-3 bg-muted rounded-lg"><p className="text-sm text-muted-foreground">利润</p><p className={`text-lg font-bold ${revenueCNY - costCNY >= 0 ? 'text-green-600' : 'text-red-600'}`}>CNY {formatCents(revenueCNY - costCNY)}</p></div>
+                <div className="text-center p-3 bg-muted rounded-lg"><p className="text-sm text-muted-foreground">营收</p><p className="text-lg font-bold">CNY ¥{revenueCNY.toFixed(6)}{revenueTHB > 0 ? ` + THB ${revenueTHB.toFixed(6)}` : ''}</p></div>
+                <div className="text-center p-3 bg-muted rounded-lg"><p className="text-sm text-muted-foreground">支出</p><p className="text-lg font-bold text-red-600">CNY ¥{costCNY.toFixed(6)}{costTHB > 0 ? ` + THB ${costTHB.toFixed(6)}` : ''}</p></div>
+                <div className="text-center p-3 bg-muted rounded-lg"><p className="text-sm text-muted-foreground">利润</p><p className={`text-lg font-bold ${revenueCNY - costCNY >= 0 ? 'text-green-600' : 'text-red-600'}`}>CNY ¥{(revenueCNY - costCNY).toFixed(6)}</p></div>
               </div>
               {byCustomer.size > 0 && (
                 <Table>
                   <TableHeader><TableRow><TableHead>客户</TableHead><TableHead className="text-right">CNY</TableHead><TableHead className="text-right">THB</TableHead></TableRow></TableHeader>
                   <TableBody>
                     {Array.from(byCustomer.entries()).map(([cid, v]) => (
-                      <TableRow key={cid}><TableCell>{customerMap.get(cid) || '-'}</TableCell><TableCell className="text-right">{formatCents(v.CNY)}</TableCell><TableCell className="text-right">{formatCents(v.THB, 'THB')}</TableCell></TableRow>
+                      <TableRow key={cid}><TableCell>{customerMap.get(cid) || '-'}</TableCell><TableCell className="text-right">¥{v.CNY.toFixed(6)}</TableCell><TableCell className="text-right">THB {v.THB.toFixed(6)}</TableCell></TableRow>
                     ))}
                   </TableBody>
                 </Table>

@@ -3,7 +3,6 @@ import { redirect, notFound } from 'next/navigation';
 import { db } from '@/db/index';
 import { marks, customers, sharedContainerItems, loadingItems, directIncome } from '@/db/schema';
 import { eq } from 'drizzle-orm';
-import { formatCents } from '@/lib/format';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -41,13 +40,13 @@ export default async function MarkDetailPage({ params }: { params: Promise<{ id:
 
       <div className="grid grid-cols-3 gap-4">
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm">总成本</CardTitle></CardHeader>
-          <CardContent><span className="text-xl font-bold text-red-600">{formatCents(costTotal)}</span></CardContent></Card>
+          <CardContent><span className="text-xl font-bold text-red-600">¥{costTotal.toFixed(6)}</span></CardContent></Card>
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm">总应收</CardTitle></CardHeader>
-          <CardContent><span className="text-xl font-bold text-green-600">{formatCents(receivableTotal)}</span></CardContent></Card>
+          <CardContent><span className="text-xl font-bold text-green-600">¥{receivableTotal.toFixed(6)}</span></CardContent></Card>
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm">利润</CardTitle></CardHeader>
           <CardContent>
             <span className={`text-xl font-bold ${receivableTotal + directTotal - costTotal >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {formatCents(receivableTotal + directTotal - costTotal)}
+              ¥{(receivableTotal + directTotal - costTotal).toFixed(6)}
             </span>
           </CardContent></Card>
       </div>
@@ -77,10 +76,10 @@ export default async function MarkDetailPage({ params }: { params: Promise<{ id:
                 {ldItems.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell>{item.品名 || '-'}</TableCell>
-                    <TableCell className="text-right">{item.总体积.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">{(item.总体积 ?? 0).toFixed(6)}</TableCell>
                     <TableCell>{item.货型 || '-'}</TableCell>
                     <TableCell>{item.运输方式 || '-'}</TableCell>
-                    <TableCell className="text-right text-green-600">{formatCents(item.需支付总价_cents || 0)}</TableCell>
+                    <TableCell className="text-right text-green-600">¥{(item.需支付总价_cents || 0).toFixed(6)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -103,9 +102,9 @@ export default async function MarkDetailPage({ params }: { params: Promise<{ id:
               <TableBody>
                 {diItems.map((item) => (
                   <TableRow key={item.id}>
-                    <TableCell className="text-right text-green-600">{formatCents(item.amountCents, item.currency || undefined)}</TableCell>
+                    <TableCell className="text-right text-green-600">¥{item.amountCents.toFixed(6)}</TableCell>
                     <TableCell>{item.currency}</TableCell>
-                    <TableCell className="text-right">{item.volume ? `${item.volume.toFixed(2)}m³` : '-'}</TableCell>
+                    <TableCell className="text-right">{item.volume ? `${item.volume.toFixed(6)}m³` : '-'}</TableCell>
                     <TableCell className="text-sm">{item.incomeDate}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{item.remark || '-'}</TableCell>
                   </TableRow>

@@ -13,12 +13,12 @@ export function ReviewActions({ batchId, apiPath, listPath }: { batchId: number;
     if (!confirm('确认发布？发布后数据正式生效。')) return;
     setLoading('publish');
     try {
-      await fetch(`${apiPath}/${batchId}`, {
+      const r = await fetch(`${apiPath}/${batchId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: '已发布' }),
       });
-      router.refresh();
+      if (r.ok) { router.refresh(); } else { const e = await r.json().catch(()=>({error:'操作失败'})); alert(e.error); }
     } catch { alert('操作失败'); }
     setLoading(null);
   };
@@ -27,8 +27,8 @@ export function ReviewActions({ batchId, apiPath, listPath }: { batchId: number;
     if (!confirm('确认退回？将删除该批次及所有关联明细，不可恢复。')) return;
     setLoading('reject');
     try {
-      await fetch(`${apiPath}/${batchId}`, { method: 'DELETE' });
-      router.push(listPath);
+      const r2 = await fetch(`${apiPath}/${batchId}`, { method: 'DELETE' });
+      if (r2.ok) { router.push(listPath); } else { const e = await r2.json().catch(()=>({error:'操作失败'})); alert(e.error); }
     } catch { alert('操作失败'); }
     setLoading(null);
   };

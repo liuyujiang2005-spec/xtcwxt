@@ -49,6 +49,7 @@ sqlite.exec(`
     mode TEXT NOT NULL,
     month_tag TEXT NOT NULL,
     remark TEXT,
+    receipt_url TEXT,
     created_at TEXT DEFAULT (datetime('now'))
   );
 
@@ -77,6 +78,9 @@ sqlite.exec(`
     总重量 REAL,
     箱数 INTEGER,
     pcs数量 INTEGER,
+    仓库 TEXT,
+    单项重量 REAL,
+    备注 TEXT,
     成本单价_cents REAL,
     需支付总价_cents REAL,
     货型 TEXT,
@@ -131,6 +135,7 @@ sqlite.exec(`
     volume REAL,
     income_date TEXT NOT NULL,
     remark TEXT,
+    receipt_url TEXT,
     created_at TEXT DEFAULT (datetime('now'))
   );
 
@@ -144,6 +149,7 @@ sqlite.exec(`
     status TEXT DEFAULT '待支付',
     paid_date TEXT,
     remark TEXT,
+    receipt_url TEXT,
     created_at TEXT DEFAULT (datetime('now'))
   );
 
@@ -173,11 +179,13 @@ sqlite.exec(`
     customer_id INTEGER NOT NULL REFERENCES customers(id),
     month_tag TEXT NOT NULL,
     total_amount_cents REAL NOT NULL,
+    cost_amount REAL DEFAULT 0,
     paid_amount REAL DEFAULT 0,
     remaining_amount REAL DEFAULT 0,
     payment_status TEXT DEFAULT '待付款',
     exported_at TEXT,
     paid_at TEXT,
+    receipt_url TEXT,
     currency TEXT DEFAULT 'CNY',
     status TEXT DEFAULT '待生成',
     created_at TEXT DEFAULT (datetime('now'))

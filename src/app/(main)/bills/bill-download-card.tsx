@@ -14,7 +14,7 @@ export default function BillDownloadCard() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetch('/api/customers').then(r => r.json()).then(setCustomers).catch(() => {});
+    fetch('/api/customers').then(r => r.json()).then(d => setCustomers(Array.isArray(d) ? d : [])).catch(() => {});
     setMonth(new Date().toISOString().substring(0, 7));
   }, []);
 

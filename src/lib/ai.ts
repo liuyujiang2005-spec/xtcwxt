@@ -8,6 +8,7 @@ export async function aiChat(
   if (!apiKey) throw new Error('DEEPSEEK_API_KEY 未配置');
 
   const res = await fetch(DEEPSEEK_API, {
+      signal: AbortSignal.timeout(120000),
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

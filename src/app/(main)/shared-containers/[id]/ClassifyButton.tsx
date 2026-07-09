@@ -3,12 +3,28 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BarChart3, Loader2, Download } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { BarChart3, Loader2, Download, ChevronDown, ChevronRight } from 'lucide-react';
 
-export function ClassifyButton({ batchId, type = 'shared-container' }: { batchId: number; type?: string }) {
+interface ClassifyButtonProps {
+  batchId: number;
+  type?: string;
+  items?: any[];
+  markMap?: Record<number, string>;
+}
+
+export function ClassifyButton({ batchId, type = 'shared-container', items = [], markMap = {} }: ClassifyButtonProps) {
   const [loading, setLoading] = useState(false);
   const [bills, setBills] = useState<any[] | null>(null);
   const [error, setError] = useState('');
+  const [expanded, setExpanded] = useState<Set<number>>(new Set());
+
+  const toggleExpand = (markId: number) => {
+    const next = new Set(expanded);
+    next.has(markId) ? next.delete(markId) : next.add(markId);
+    setExpanded(next);
+  };
 
   const classify = async () => {
     if (bills) { setBills(null); return; }
@@ -31,13 +47,32 @@ export function ClassifyButton({ batchId, type = 'shared-container' }: { batchId
 
   const exportBill = async (billId: number, markNo: string) => {
     try {
-      const res = await fetch(`/api/bills/export?billId=${billId}`);
+      const res = await fetch(`/api/bills/export?billId=${billId}`, { credentials: 'include' });
       if (!res.ok) { alert('导出失败'); return; }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a'); a.href = url;
       a.download = `账单_${markNo}.xlsx`; a.click(); URL.revokeObjectURL(url);
     } catch { alert('下载失败'); }
+  };
+
+  // Group items by markId, then by 运单号 within each mark
+  const markItems = new Map<number, any[]>();
+  for (const item of items) {
+    if (!markItems.has(item.markId)) markItems.set(item.markId, []);
+    markItems.get(item.markId)!.push(item);
+  }
+
+  // For a single mark, group its items by 运单号
+  const getGroups = (mkItems: any[]) => {
+    const groups: { key: string; rows: any[] }[] = [];
+    let lastKey = '';
+    for (const item of mkItems) {
+      const key = item.运单号 || `_${item.id}`;
+      if (key !== lastKey) { groups.push({ key, rows: [] }); lastKey = key; }
+      groups[groups.length - 1].rows.push(item);
+    }
+    return groups;
   };
 
   return (
@@ -50,19 +85,67 @@ export function ClassifyButton({ batchId, type = 'shared-container' }: { batchId
 
       {bills && (
         <div className="mt-4 space-y-3">
-          {bills.map((b: any) => (
-            <Card key={b.billId}>
-              <CardHeader className="py-2 px-3 flex flex-row items-center justify-between">
-                <CardTitle className="text-sm">{b.markNo} ({b.customerName})</CardTitle>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">{b.itemCount}条 | {b.totalVolume?.toFixed(6)}m³ | ¥{b.totalCost?.toFixed(2)}</span>
-                  <Button size="sm" variant="ghost" className="h-6 w-6" onClick={() => exportBill(b.billId, b.markNo)}>
-                    <Download className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </CardHeader>
-            </Card>
-          ))}
+          {bills.map((b: any) => {
+            const mkItems = markItems.get(b.markId) || [];
+            const isExpanded = expanded.has(b.markId);
+            const groups = getGroups(mkItems);
+            return (
+              <Card key={b.billId}>
+                <CardHeader className="py-2 px-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 cursor-pointer" onClick={() => mkItems.length > 0 && toggleExpand(b.markId)}>
+                      {mkItems.length > 0 && (isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />)}
+                      <CardTitle className="text-sm">{b.markNo} ({b.customerName})</CardTitle>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">{b.itemCount}条 | {b.totalVolume?.toFixed(6)}m³ | ¥{b.totalCost?.toFixed(6)}</span>
+                      <Button size="sm" variant="ghost" className="h-6 w-6" onClick={() => exportBill(b.billId, b.markNo)}>
+                        <Download className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                {isExpanded && mkItems.length > 0 && (
+                  <CardContent className="p-0 pb-2">
+                    <div className="border-t">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="text-xs">运单号</TableHead>
+                            <TableHead className="text-xs">运输</TableHead>
+                            <TableHead className="text-xs">国内单号</TableHead>
+                            <TableHead className="text-xs">品名</TableHead>
+                            <TableHead className="text-xs">货型</TableHead>
+                            <TableHead className="text-xs text-right">件数</TableHead>
+                            <TableHead className="text-xs text-right">总体积</TableHead>
+                            <TableHead className="text-xs text-right">成本</TableHead>
+                            <TableHead className="text-xs">结算</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {groups.map(g => g.rows.map((item: any, ri: number) => (
+                            <TableRow key={item.id || ri}>
+                              {ri === 0 ? <TableCell className="text-xs font-mono" rowSpan={g.rows.length}>{item.运单号 || '-'}</TableCell> : null}
+                              {ri === 0 ? <TableCell className="text-xs" rowSpan={g.rows.length}>{item.运输方式 || '-'}</TableCell> : null}
+                              <TableCell className="text-xs">{item.国内单号 || '-'}</TableCell>
+                              <TableCell className="text-xs max-w-[100px] truncate" title={item.品名 || ''}>{item.品名 || '-'}</TableCell>
+                              <TableCell className="text-xs">{item.货型 || '-'}</TableCell>
+                              <TableCell className="text-xs text-right">{item.箱数 || '-'}</TableCell>
+                              {ri === 0 ? <TableCell className="text-xs text-right" rowSpan={g.rows.length}>{(item.总体积 ?? 0).toFixed(6)}</TableCell> : null}
+                              <TableCell className="text-xs text-right">¥{(item.需支付总价_cents || 0).toFixed(6)}</TableCell>
+                              {ri === 0 ? <TableCell className="text-xs" rowSpan={g.rows.length}>
+                                <Badge className="text-[10px]">{item.cost_status || item.payment_status || '-'}</Badge>
+                              </TableCell> : null}
+                            </TableRow>
+                          )))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </CardContent>
+                )}
+              </Card>
+            );
+          })}
           {bills.length === 0 && <p className="text-sm text-muted-foreground">无分类数据</p>}
         </div>
       )}

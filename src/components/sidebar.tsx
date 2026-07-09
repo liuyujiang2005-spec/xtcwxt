@@ -57,9 +57,6 @@ const navigation = [
     title: '账务管理',
     items: [
       { name: '客户账期', href: '/accounts/customers', icon: Users },
-      { name: '供应商应付', href: '/accounts/suppliers', icon: Truck },
-      { name: '费用管理', href: '/costs', icon: HandCoins },
-      { name: '直接收入', href: '/direct-income', icon: TrendingUp },
     ],
   },
   {
@@ -74,7 +71,7 @@ const navigation = [
     items: [
       { name: '客户管理', href: '/customers', icon: Users },
       { name: '唛头管理', href: '/marks', icon: FileText },
-      { name: '供应商管理', href: '/suppliers', icon: Truck },
+
     ],
   },
   {

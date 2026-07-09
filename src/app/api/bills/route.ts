@@ -69,3 +69,16 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({ success: true, billId, totalCents, itemCount: items.length, isUpdate: !!existing });
 }
+
+export async function PATCH(request: NextRequest) {
+  const st = request.cookies.get('session')?.value;
+  if (!st) return NextResponse.json({ error: '未登录' }, { status: 401 });
+  const u = await validateSession(st);
+  if (!u) return NextResponse.json({ error: '登录过期' }, { status: 401 });
+
+  const body = await request.json();
+  if (body.receiptUrl !== undefined) {
+    await db.update(bills).set({ receiptUrl: body.receiptUrl }).where(eq(bills.id, body.id));
+  }
+  return NextResponse.json({ success: true });
+}

@@ -65,7 +65,7 @@ function applyPriceMatrix(items: any[], priceMatrix: Record<string, number>) {
     const totalVol = Number(item.总体积) || 0;
     const key = `${mode}_${type}`;
     const unitPrice = priceMatrix[key] || 0;
-    const receivable = Math.round(unitPrice * totalVol * 100) / 100;
+    const receivable = unitPrice * totalVol / 100;
     return { ...item, 单价: unitPrice, 应收: receivable };
   });
 }

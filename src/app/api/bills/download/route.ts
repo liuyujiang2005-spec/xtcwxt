@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
   }
 
   // 查询拼柜明细（客户应收数据）
-  const rows: BillRow[] = [];
+  const rows: any[] = [];
   let totalCny = 0;
 
   for (const mark of customerMarks) {
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
         件数: count,
         单项体积: singleVolume,
         计费体积: volume,
-        单价: Number(unitPrice.toFixed(2)),
+        单价: Number(unitPrice.toFixed(6)),
         备注: '',
         结算状态: item.cost_status ?? '',
         柜号: '',

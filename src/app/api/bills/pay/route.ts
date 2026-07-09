@@ -11,6 +11,8 @@ export async function POST(request: NextRequest) {
   if (!user || user.role === 'viewer') return NextResponse.json({ error: '无权限' }, { status: 403 });
 
   const { billId, paymentStatus, paidAmount } = await request.json();
+  const validStatus = ['待付款','付一部分','已付款'];
+  if (paymentStatus && !validStatus.includes(paymentStatus)) return NextResponse.json({ error: '无效付款状态' }, { status: 400 });
   if (!billId) return NextResponse.json({ error: '缺少参数' }, { status: 400 });
 
   const data: any = { paymentStatus };

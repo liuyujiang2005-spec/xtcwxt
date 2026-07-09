@@ -3,15 +3,19 @@ import { db } from '@/db/index';
 import { sharedContainerItems, loadingItems, marks, billItems, customers, bills } from '@/db/schema';
 import { validateSession } from '@/lib/auth';
 import { eq, inArray } from 'drizzle-orm';
-import ExcelJS from 'exceljs';
+import { generateBillXlsx, type BillRow } from '@/lib/generate-bill-xlsx';
 
 export async function GET(request: NextRequest) {
   const sessionToken = request.cookies.get('session')?.value;
   if (!sessionToken) return NextResponse.json({ error: '未登录' }, { status: 401 });
-  await validateSession(sessionToken);
+  const user = await validateSession(sessionToken);
+  if (!user) return NextResponse.json({ error: '登录已过期' }, { status: 401 });
 
   const billId = parseInt(request.nextUrl.searchParams.get('billId') || '0');
   if (!billId) return NextResponse.json({ error: '缺少 billId' }, { status: 400 });
+
+  const bill = await db.select().from(bills).where(eq(bills.id, billId)).get();
+  if (!bill) return NextResponse.json({ error: '账单不存在' }, { status: 404 });
 
   const bItems = await db.select().from(billItems).where(eq(billItems.billId, billId)).all();
   const markIds = [...new Set(bItems.map(i => i.markId))];
@@ -19,60 +23,101 @@ export async function GET(request: NextRequest) {
 
   const markList = await db.select().from(marks).where(inArray(marks.id, markIds)).all();
   const markMap = new Map(markList.map(m => [m.id, m]));
-  const custIds = [...new Set(markList.map(m => m.customerId))];
-  const custList = await db.select().from(customers).where(inArray(customers.id, custIds)).all();
-  const custMap = new Map(custList.map(c => [c.id, c]));
+  const customer = await db.select().from(customers).where(eq(customers.id, bill.customerId)).get();
 
-  function getUnitPrice(cust: any, transport: string, cargoType: string): number {
-    const mode = transport === '海运' ? 'sea' : transport === '陆运' ? 'land' : 'sea';
-    const type = cargoType === '普货' ? 'regular' : cargoType === '商检货' ? 'inspection' : 'sensitive';
-    if (cust?.priceMatrix) { try { return JSON.parse(cust.priceMatrix)[`${mode}_${type}`] || 0; } catch {} }
-    return 0;
-  }
-  function minVolume(cust: any, transport: string): number {
-    if (!cust?.enableMinVolume) return 0;
-    return transport === '海运' ? 0.5 : transport === '陆运' ? 0.3 : 0;
-  }
+  // Customer price matrix
+  let priceMatrix: Record<string, number> = {};
+  if (customer?.priceMatrix) { try { priceMatrix = JSON.parse(customer.priceMatrix); } catch {} }
+  const enableMinVol = customer?.enableMinVolume !== 0;
+  const getPrice = (t: string, c: string): number => {
+    const m = t === '海运' ? 'sea' : 'land';
+    const ty = c === '普货' ? 'regular' : c === '商检货' ? 'inspection' : 'sensitive';
+    return priceMatrix[`${m}_${ty}`] || 0;
+  };
+  const minVol = (t: string): number => {
+    if (!enableMinVol) return 0;
+    return t === '海运' ? 0.5 : 0.3;
+  };
 
-  const allSC: any[] = [];
-  const allLD: any[] = [];
+  const rows: BillRow[] = [];
+  let totalCny = 0;
+
   for (const mId of markIds) {
     const mark = markMap.get(mId);
-    const cust = custMap.get(mark?.customerId || 0);
     const scItems = await db.select().from(sharedContainerItems).where(eq(sharedContainerItems.markId, mId)).all();
     const ldItems = await db.select().from(loadingItems).where(eq(loadingItems.markId, mId)).all();
-    allSC.push(...scItems.map(i => {
-      const t = (i.运输方式 || '海运') as string; const c = (i.货型 || '普货') as string;
-      const up = getUnitPrice(cust, t, c);
-      const cv = Math.max(i.单箱体积 || i.总体积 || 0, minVolume(cust, t));
-      return { ...i, markNo: mark?.markNo || '', 客户单价: up, 计费体积: cv, 应收: (up * cv).toFixed(2) };
-    }));
-    allLD.push(...ldItems.map(i => {
-      const t = (i.运输方式 || '海运') as string; const c = (i.货型 || '普货') as string;
-      const up = getUnitPrice(cust, t, c);
-      const cv = Math.max(i.总体积 || 0, minVolume(cust, t));
-      return { ...i, markNo: mark?.markNo || '', 客户单价: up, 计费体积: cv, 应收: (up * cv).toFixed(2) };
-    }));
+
+    const orderTotalVol = new Map<string, number>();
+    for (const item of [...scItems, ...ldItems]) {
+      const key = (item as any).运单号 || `_${(item as any).id}`;
+      orderTotalVol.set(key, (orderTotalVol.get(key) || 0) + ((item as any).单箱体积 || 0));
+    }
+
+    for (const item of [...scItems, ...ldItems]) {
+      const transport = (item as any).运输方式 || '海运';
+      const cargo = (item as any).货型 || '普货';
+      const unitPrice = getPrice(transport, cargo);
+      const singleVol = (item as any).单箱体积 ?? 0;
+      const volume = (item as any).总体积 ?? 0;
+      const count = (item as any).箱数 ?? 1;
+      const orderKey = (item as any).运单号 || `_${(item as any).id}`;
+      const totalVol = orderTotalVol.get(orderKey) || singleVol;
+      const chargeVol = Math.max(singleVol, minVol(transport));
+      const receivable = unitPrice * chargeVol;
+
+      totalCny += receivable;
+
+      const dims = [(item as any).尺寸_长, (item as any).尺寸_宽, (item as any).尺寸_高]
+        .filter((d: any) => d != null && d > 0)
+        .join('*');
+
+      rows.push({
+        日期: mark?.createdAt?.substring(0, 10) ?? bill.monthTag,
+        唛头: mark?.markNo ?? '',
+        仓库: (item as any).仓库 || '',
+        运输方式: transport,
+        运单号: (item as any).运单号 ?? mark?.markNo ?? '',
+        货型: cargo,
+        品名: (item as any).品名 ?? '',
+        尺寸: dims,
+        件数: count,
+        国内单号: (item as any).国内单号 ?? '',
+        单项体积: singleVol,
+        单项重量: (item as any).单项重量 ?? 0,
+        总体积: volume,
+        总重量: (item as any).总重量 ?? 0,
+        计费体积: chargeVol,
+        总计费体积: totalVol,
+        单价: unitPrice,
+        订单总价: receivable,
+        备注: (item as any).备注 || '',
+        结算状态: (item as any).cost_status ?? (item as any).payment_status ?? '',
+      });
+    }
   }
 
-  await db.update(bills).set({ exportedAt: new Date().toISOString() }).where(eq(bills.id, billId));
+  try {
+    await db.update(bills).set({ exportedAt: new Date().toISOString() }).where(eq(bills.id, billId));
 
-  const wb = new ExcelJS.Workbook();
-  const cols = [
-    { header: '唛头', key: 'markNo', width: 14 }, { header: '品名', key: '品名', width: 20 },
-    { header: '货型', key: '货型', width: 10 }, { header: '运输方式', key: '运输方式', width: 10 },
-    { header: '箱数', key: '箱数', width: 8 }, { header: '计费体积', key: '计费体积', width: 12 },
-    { header: '客户单价', key: '客户单价', width: 10 }, { header: '应收', key: '应收', width: 14 },
-    { header: '国内单号', key: '国内单号', width: 16 },
-  ];
-  if (allSC.length > 0) { const ws = wb.addWorksheet('拼柜'); ws.columns = cols; allSC.forEach(i => ws.addRow(i)); }
-  if (allLD.length > 0) { const ws = wb.addWorksheet('装柜'); ws.columns = cols; allLD.forEach(i => ws.addRow(i)); }
+    const buffer = await generateBillXlsx(
+      customer?.name ?? '深圳新泓瀚国际物流有限公司',
+      customer?.name ?? '未知客户',
+      bill.monthTag,
+      rows,
+      totalCny,
+      0,
+    );
 
-  const buf = await wb.xlsx.writeBuffer();
-  return new NextResponse(buf, {
-    headers: {
-      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'Content-Disposition': `attachment; filename="bill_${markMap.get(markIds[0])?.markNo || billId}_${new Date().toISOString().slice(0, 10)}.xlsx"`,
-    },
-  });
+    const fileName = `账单_${customer?.name ?? bill.billNo}_${bill.monthTag}.xlsx`;
+    return new NextResponse(buffer, {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+      },
+    });
+  } catch (error) {
+    console.error('账单导出失败:', error);
+    return NextResponse.json({ error: '导出失败' }, { status: 500 });
+  }
 }

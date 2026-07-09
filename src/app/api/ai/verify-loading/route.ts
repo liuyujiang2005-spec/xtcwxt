@@ -3,7 +3,7 @@ import { db } from '@/db/index';
 import { loadingItems, customers } from '@/db/schema';
 import { validateSession } from '@/lib/auth';
 import { aiChat } from '@/lib/ai';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 
 export async function POST(request: NextRequest) {
   const sessionToken = request.cookies.get('session')?.value;
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     const customerIds = [...new Set(items.map((i) => i.customerId))];
     const customerRecords = customerIds.length > 0
       ? await db.select().from(customers)
-          .where(eq(customers.id, customerIds[0])).all()
+          .where(inArray(customers.id, customerIds)).all()
       : [];
     const customerName = customerRecords[0]?.name || '未知客户';
 
@@ -35,8 +35,8 @@ export async function POST(request: NextRequest) {
       体积: item.总体积,
       货型: item.货型 || '-',
       运输方式: item.运输方式 || '-',
-      单价: item.单价_cents ? (item.单价_cents / 100).toFixed(2) : '未填',
-      应收: item.需支付总价_cents ? (item.需支付总价_cents / 100).toFixed(2) : '未填',
+      单价: item.单价_cents ? (item.单价_cents / 100).toFixed(6) : '未填',
+      应收: item.需支付总价_cents ? (item.需支付总价_cents / 100).toFixed(6) : '未填',
     }));
 
     const systemPrompt = `你是一个货运财务系统的 AI 验价助手。你的任务是检查装柜导入数据的合理性。
