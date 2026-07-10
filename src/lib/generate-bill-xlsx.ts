@@ -38,41 +38,51 @@ export async function generateBillXlsx(
   try { await wb.xlsx.readFile(TPL_PATH); } catch (e) { throw new Error(`账单模板加载失败: ${(e as any)?.message || e}`); }
   const ws = wb.worksheets[0];
 
-  // Clear old data from row 8 onwards
+  // ── Save footer content (row 13+) before clearing ──
+  const footerData: { row: number; cells: { col: number; value: any; style?: any }[] }[] = [];
+  const footerMerges: string[] = [];
   const totalExisting = ws.rowCount;
-  for (let r = 8; r <= totalExisting; r++) {
+
+  for (let r = 13; r <= totalExisting; r++) {
+    const row = ws.getRow(r);
+    const cells: { col: number; value: any }[] = [];
+    row.eachCell((cell, col) => {
+      if (cell.value !== null && cell.value !== undefined) {
+        cells.push({ col, value: cell.value });
+      }
+    });
+    if (cells.length > 0) footerData.push({ row: r, cells });
+  }
+
+  // Save merge ranges that involve rows 13+
+  if (ws.model.merges) {
+    for (const m of ws.model.merges as string[]) {
+      const nums = (m.match(/\d+/g) || []).map(Number);
+      if (nums.some((n: number) => n >= 13)) {
+        footerMerges.push(m);
+      }
+    }
+  }
+
+  // ── Clear data area (rows 8-12 only, keep footer) ──
+  for (let r = 8; r <= Math.min(12, totalExisting); r++) {
     for (let c = 1; c <= 21; c++) {
       try { ws.getCell(r, c).value = null; } catch {}
     }
   }
 
+  // ── Write data rows ──
   let currentRow = 7; // data starts at row 8
   for (const row of rows) {
     currentRow++;
     const r = ws.getRow(currentRow);
 
     const vals: any[] = [
-      row.日期,        // 1
-      row.唛头,        // 2
-      row.仓库,        // 3
-      row.运输方式,    // 4
-      row.运单号,      // 5
-      row.货型,        // 6
-      row.品名,        // 7
-      row.尺寸,        // 8
-      row.件数,        // 9
-      row.国内单号,    // 10
-      row.单项体积,    // 11
-      row.单项重量,    // 12
-      row.总体积,      // 13
-      row.总重量,      // 14
-      row.计费体积,    // 15
-      row.总计费体积,  // 16
-      row.单价,        // 17
-      null,            // 18: 单项价格 = formula Q*O
-      row.订单总价,    // 19
-      row.备注,        // 20
-      row.结算状态,    // 21
+      row.日期, row.唛头, row.仓库, row.运输方式, row.运单号,
+      row.货型, row.品名, row.尺寸, row.件数, row.国内单号,
+      row.单项体积, row.单项重量, row.总体积, row.总重量,
+      row.计费体积, row.总计费体积, row.单价,
+      null, row.订单总价, row.备注, row.结算状态,
     ];
 
     vals.forEach((v, i) => {
@@ -81,21 +91,44 @@ export async function generateBillXlsx(
     });
     r.commit();
 
-    // Col 18 (R): 单项价格 = Q(单价) * O(计费体积)
     const priceCell = r.getCell(18);
     priceCell.value = { formula: `Q${currentRow}*O${currentRow}` };
     priceCell.numFmt = '#,##0.00';
-
     r.commit();
   }
 
-  // Place new total row after data
+  // ── Total row ──
   const sumRow = currentRow + 1;
   const rSum = ws.getRow(sumRow);
-  rSum.getCell(17).value = '合计';   // Q column
+  rSum.getCell(17).value = '合计';
   rSum.getCell(18).value = { formula: `SUM(R8:R${currentRow})` };
   rSum.getCell(18).numFmt = '#,##0.00';
-  rSum.getCell(19).value = '';
+
+  // ── Paste footer after total row ──
+  const footerStart = sumRow + 2;
+  const rowOffset = footerStart - 13;
+
+  for (const fd of footerData) {
+    const targetRow = fd.row + rowOffset;
+    for (const c of fd.cells) {
+      ws.getCell(targetRow, c.col).value = c.value;
+    }
+  }
+
+  // Re-apply merge ranges with offset
+  for (const m of footerMerges) {
+    const nums = m.match(/\d+/g) || [];
+    if (nums.length >= 2) {
+      const top = parseInt(nums[0] || '0') + rowOffset;
+      const bottom = parseInt(nums[1] || '0') + rowOffset;
+      const cols = (m.match(/[A-Z]+/g) || []) as string[];
+      if (cols.length >= 2 && cols[0] && cols[1]) {
+        try {
+          ws.mergeCells(cols[0] + top + ':' + cols[1] + bottom);
+        } catch {}
+      }
+    }
+  }
 
   return await wb.xlsx.writeBuffer();
 }
