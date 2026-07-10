@@ -33,11 +33,11 @@ export default async function BillDetailPage({ params }: { params: Promise<{ bil
 
   const allSC = markIds.length > 0
     ? (await db.select().from(sharedContainerItems).where(inArray(sharedContainerItems.markId, markIds)).all())
-        .map(i => ({ ...i, _markNo: markMap.get(i.markId)?.markNo || '', _type: '拼柜' }))
+        .map(i => ({ ...i, _markNo: markMap.get(i.markId)?.markNo || '' }))
     : [];
   const allLD = markIds.length > 0
     ? (await db.select().from(loadingItems).where(inArray(loadingItems.markId, markIds)).all())
-        .map(i => ({ ...i, _markNo: markMap.get(i.markId)?.markNo || '', _type: '装柜' }))
+        .map(i => ({ ...i, _markNo: markMap.get(i.markId)?.markNo || '' }))
     : [];
   const allItems = [...allSC, ...allLD];
 
@@ -113,7 +113,6 @@ export default async function BillDetailPage({ params }: { params: Promise<{ bil
                       <TableHead className="text-right">成本</TableHead>
                       <TableHead className="text-right">应收</TableHead>
                       <TableHead>结算</TableHead>
-                      <TableHead>类型</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -140,9 +139,6 @@ export default async function BillDetailPage({ params }: { params: Promise<{ bil
                             <TableCell className="text-right text-red-600">¥{(item.需支付总价_cents || 0).toFixed(6)}</TableCell>
                             <TableCell className="text-right text-green-600">{formatCents(item.客户应收_cents || 0)}</TableCell>
                             <TableCell>{item.cost_status || item.payment_status || '-'}</TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className="text-xs">{item._type}</Badge>
-                            </TableCell>
                           </TableRow>
                         );
                       });

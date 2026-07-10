@@ -14,6 +14,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { batchId, items } = body;
 
+    const custCache = new Map<number, { priceMatrix: Record<string, number>; enableMinVol: boolean }>();
+
     for (const item of items) {
       // 检查或自动创建客户
       let custId = item.customerId;
@@ -42,6 +44,25 @@ export async function POST(request: NextRequest) {
         if (!mark) throw new Error(`创建唛头失败: ${item.markNo}`);
       }
 
+      // 用价格矩阵算客户应收
+      let custInfo = custCache.get(custId);
+      if (!custInfo) {
+        const cust = await db.select().from(customers).where(eq(customers.id, custId)).get();
+        let pm: Record<string, number> = {};
+        if (cust?.priceMatrix) { try { pm = JSON.parse(cust.priceMatrix); } catch {} }
+        custInfo = { priceMatrix: pm, enableMinVol: cust?.enableMinVolume !== 0 };
+        custCache.set(custId, custInfo);
+      }
+      const transport = item.运输方式 || '海运';
+      const cargo = item.货型 || '普货';
+      const mode = transport === '海运' ? 'sea' : 'land';
+      const type = cargo === '普货' ? 'regular' : cargo === '商检货' ? 'inspection' : 'sensitive';
+      const unitPrice = custInfo.priceMatrix[`${mode}_${type}`] || 0;
+      const vol = item.单箱体积 ?? item.总体积 ?? 0;
+      const minVol = custInfo.enableMinVol ? (transport === '海运' ? 0.5 : 0.3) : 0;
+      const chargeVol = Math.max(vol, minVol);
+      const receivable = item.客户应收_cents ?? Math.round(unitPrice * chargeVol * 100) / 100;
+
       await db.insert(sharedContainerItems).values({
         batchId,
         markId: mark!.id,
@@ -66,7 +87,7 @@ export async function POST(request: NextRequest) {
         运输方式: item.运输方式 || null,
         订单总价_cents: item.订单总价_cents || 0,
         运单号: item.运单号 || '',
-        客户应收_cents: item.客户应收_cents || null,
+        客户应收_cents: receivable,
         cost_status: '待支出',
         ai_verified: item.ai_verified || 0,
         ai_verify_msg: item.ai_verify_msg || null,

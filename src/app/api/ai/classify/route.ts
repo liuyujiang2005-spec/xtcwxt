@@ -14,7 +14,8 @@ export async function POST(request: NextRequest) {
   const { batchId, type = 'shared-container' } = await request.json();
   if (!batchId) return NextResponse.json({ error: '缺少 batchId' }, { status: 400 });
 
-  const items = type === 'shared-container'
+  const isSc = type === 'shared-container';
+  const items = isSc
     ? await db.select().from(sharedContainerItems).where(eq(sharedContainerItems.batchId, batchId)).all()
     : await db.select().from(loadingItems).where(eq(loadingItems.batchId, batchId)).all();
 
@@ -91,13 +92,15 @@ export async function POST(request: NextRequest) {
       const unitPrice = getPrice(transport, cargo);
       const vol = (item as any).单箱体积 || (item as any).总体积 || 0;
       const chargeVol = Math.max(vol, minVol(transport));
-      const receivable = unitPrice * chargeVol;
+      const receivable = isSc
+        ? ((item as any).客户应收_cents || (unitPrice * chargeVol))
+        : ((item as any).需支付总价_cents || (unitPrice * chargeVol));
       const cost = (item as any).需支付总价_cents || 0;
 
       totalReceivable += receivable;
 
       await db.insert(billItems).values({
-        billId, markId, mode: '拼柜',
+        billId, markId, mode: isSc ? '拼柜' : '装柜',
         amountCents: receivable,
         costAmount: cost,
       });
