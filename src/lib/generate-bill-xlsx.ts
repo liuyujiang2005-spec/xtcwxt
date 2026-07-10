@@ -20,37 +20,51 @@ export async function generateBillXlsx(
   try { await wb.xlsx.readFile(TPL_PATH); } catch (e) { throw new Error(`模板加载失败: ${(e as any)?.message || e}`); }
   const ws = wb.worksheets[0];
 
-  // Save QR code
+  // ── Save QR code image ──
   let qrBuf: Buffer | null = null;
   try { const m = (wb as any).model?.media; if (m?.length) qrBuf = m[0].buffer; } catch {}
 
-  // Read footer notice text (row 13 col 1)
-  const footerNotice = String((ws.getCell(13, 1).value || '')) || '如有疑问请在两个工作日之内提出反馈，以便于我们及时核实，修改账单。确认金额后请及时安排付款，以免影响贵司货物运输时效。感谢您的配合，合作愉快！';
-  // Read bank header texts (row 15)
+  // ── Read footer texts from template (rows 13+) ──
+  const footerNotice = String((ws.getCell(13, 1).value || '')).trim() || '如有疑问请在两个工作日之内提出反馈，以便于我们及时核实，修改账单。确认金额后请及时安排付款，以免影响贵司货物运输时效。感谢您的配合，合作愉快！';
   const bankHdrCny = String((ws.getCell(15, 1).value || '')).trim() || '人民币收款账户';
   const bankHdrThb = String((ws.getCell(15, 3).value || '')).trim() || '泰铢收款账户';
   const bankHdrWx = String((ws.getCell(15, 5).value || '')).trim() || '微信支付宝收款码';
   const bankHdrPublic = String((ws.getCell(15, 11).value || '')).trim() || '公户收款账号';
-  // Read bank data (row 16)
   const bankCny = (String(ws.getCell(16, 1).value || '')).trim() || '621226 3602123327850 刘雄\n工商银行广州江南市场支行';
   const bankThb = (String(ws.getCell(16, 3).value || '')).trim() || 'scb\n4301138403 Xiong liu\nSWIFT: SICOTHBK';
   const bankPublic = (String(ws.getCell(16, 11).value || '')).trim() || '暹联出海企业管理咨询(深圳)有限公司\n41015400040090685\n中国农业银行深圳蛇口支行';
 
-  // Clear all merges and images
+  // ── Save footer merge info before clearing ──
+  const footerMerges: string[] = [];
   if (ws.model.merges) {
-    for (const m of [...(ws.model.merges as any[])]) { try { ws.unMergeCells(m); } catch {} }
+    for (const m of ws.model.merges as string[]) {
+      const nums = (m.match(/\d+/g) || []).map(Number);
+      if (nums.some((n: number) => n >= 13)) footerMerges.push(m);
+    }
   }
+
+  // ── ONLY unmerge + clear rows 8+ (never touch rows 1-7) ──
+  if (ws.model.merges) {
+    const toRemove: string[] = [];
+    for (const m of ws.model.merges as string[]) {
+      const nums = (m.match(/\d+/g) || []).map(Number);
+      if (nums.some((n: number) => n >= 8)) toRemove.push(m);
+    }
+    for (const m of toRemove) { try { ws.unMergeCells(m); } catch {} }
+  }
+
+  // Clear old images only if they're in the data/footer area
   (ws as any).model.drawings = [];
   (ws as any).model.media = [];
 
-  // Clear from row 8 onwards
+  // Clear rows 8+ (preserve rows 1-7 completely)
   for (let r = 8; r <= Math.max(ws.rowCount, 20); r++) {
     for (let c = 1; c <= 21; c++) {
       try { const cell = ws.getCell(r, c); cell.value = null; cell.border = {}; cell.font = {}; } catch {}
     }
   }
 
-  // Write data rows
+  // ── Write data rows (row 8+) ──
   let cr = 7;
   for (const row of rows) {
     cr++;
@@ -58,7 +72,7 @@ export async function generateBillXlsx(
     const vals = [row.日期, row.唛头, row.仓库, row.运输方式, row.运单号, row.货型, row.品名, row.尺寸, row.件数, row.国内单号, row.单项体积, row.单项重量, row.总体积, row.总重量, row.计费体积, row.总计费体积, row.单价, null, row.订单总价, row.备注, row.结算状态];
     for (let c = 1; c <= 21; c++) {
       const cell = r.getCell(c);
-      if (c !== 18 && vals[c-1] != null) cell.value = vals[c-1];
+      if (c !== 18 && vals[c - 1] != null) cell.value = vals[c - 1];
       cell.font = { name: FONT, size: 9 };
       cell.border = B;
       cell.alignment = { vertical: 'middle' };
@@ -66,15 +80,16 @@ export async function generateBillXlsx(
     const pc = r.getCell(18); pc.value = { formula: `Q${cr}*O${cr}` }; pc.font = { name: FONT, size: 9 }; pc.border = B; pc.numFmt = '#,##0.00';
   }
 
-  // Total row
+  // ── Total row ──
   const sr = cr + 1;
   const sRow = ws.getRow(sr);
   sRow.getCell(17).value = '合计'; sRow.getCell(17).font = { name: FONT, size: 11, bold: true };
   sRow.getCell(18).value = { formula: `SUM(R8:R${cr})` }; sRow.getCell(18).font = { name: FONT, size: 11, bold: true }; sRow.getCell(18).numFmt = '#,##0.00';
   for (let c = 1; c <= 21; c++) sRow.getCell(c).border = B;
 
-  // Rebuild footer
+  // ── Rebuild footer ──
   const fr = sr + 2;
+
   // Notice
   ws.mergeCells(fr, 1, fr + 1, 12);
   ws.getCell(fr, 1).value = footerNotice;
@@ -82,7 +97,7 @@ export async function generateBillXlsx(
   ws.getCell(fr, 1).alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
   ws.getRow(fr).height = 28;
 
-  // Bank header row
+  // Bank header
   const br = fr + 3;
   const bh = (c1: number, c2: number, text: string) => {
     ws.mergeCells(br, c1, br, c2);
@@ -96,7 +111,7 @@ export async function generateBillXlsx(
   bh(5, 10, bankHdrWx);
   bh(11, 14, bankHdrPublic);
 
-  // Bank data row
+  // Bank data
   const bd = br + 1;
   ws.getRow(bd).height = 75;
   const bv = (c1: number, c2: number, text: string) => {
