@@ -38,41 +38,23 @@ export async function generateBillXlsx(
   try { await wb.xlsx.readFile(TPL_PATH); } catch (e) { throw new Error(`账单模板加载失败: ${(e as any)?.message || e}`); }
   const ws = wb.worksheets[0];
 
-  // ── Save footer content (row 13+) before clearing ──
-  const footerData: { row: number; cells: { col: number; value: any; style?: any }[] }[] = [];
-  const footerMerges: string[] = [];
-  const totalExisting = ws.rowCount;
-
-  for (let r = 13; r <= totalExisting; r++) {
-    const row = ws.getRow(r);
-    const cells: { col: number; value: any }[] = [];
-    row.eachCell((cell, col) => {
-      if (cell.value !== null && cell.value !== undefined) {
-        cells.push({ col, value: cell.value });
-      }
-    });
-    if (cells.length > 0) footerData.push({ row: r, cells });
+  // Calculate needed rows and insert blanks to push footer down
+  const neededRows = rows.length + 1; // +1 for total row
+  const templateDataRows = 5; // rows 8-12
+  const rowDelta = neededRows - templateDataRows;
+  if (rowDelta > 0) {
+    (ws as any).spliceRows(13, 0, rowDelta);
   }
 
-  // Save merge ranges that involve rows 13+
-  if (ws.model.merges) {
-    for (const m of ws.model.merges as string[]) {
-      const nums = (m.match(/\d+/g) || []).map(Number);
-      if (nums.some((n: number) => n >= 13)) {
-        footerMerges.push(m);
-      }
-    }
-  }
-
-  // ── Clear data area (rows 8-12 only, keep footer) ──
-  for (let r = 8; r <= Math.min(12, totalExisting); r++) {
+  // Clear template data area
+  for (let r = 8; r <= 12; r++) {
     for (let c = 1; c <= 21; c++) {
       try { ws.getCell(r, c).value = null; } catch {}
     }
   }
 
-  // ── Write data rows ──
-  let currentRow = 7; // data starts at row 8
+  // Write data from row 8
+  let currentRow = 7;
   for (const row of rows) {
     currentRow++;
     const r = ws.getRow(currentRow);
@@ -97,38 +79,12 @@ export async function generateBillXlsx(
     r.commit();
   }
 
-  // ── Total row ──
+  // Total row
   const sumRow = currentRow + 1;
   const rSum = ws.getRow(sumRow);
   rSum.getCell(17).value = '合计';
   rSum.getCell(18).value = { formula: `SUM(R8:R${currentRow})` };
   rSum.getCell(18).numFmt = '#,##0.00';
-
-  // ── Paste footer after total row ──
-  const footerStart = sumRow + 2;
-  const rowOffset = footerStart - 13;
-
-  for (const fd of footerData) {
-    const targetRow = fd.row + rowOffset;
-    for (const c of fd.cells) {
-      ws.getCell(targetRow, c.col).value = c.value;
-    }
-  }
-
-  // Re-apply merge ranges with offset
-  for (const m of footerMerges) {
-    const nums = m.match(/\d+/g) || [];
-    if (nums.length >= 2) {
-      const top = parseInt(nums[0] || '0') + rowOffset;
-      const bottom = parseInt(nums[1] || '0') + rowOffset;
-      const cols = (m.match(/[A-Z]+/g) || []) as string[];
-      if (cols.length >= 2 && cols[0] && cols[1]) {
-        try {
-          ws.mergeCells(cols[0] + top + ':' + cols[1] + bottom);
-        } catch {}
-      }
-    }
-  }
 
   return await wb.xlsx.writeBuffer();
 }
