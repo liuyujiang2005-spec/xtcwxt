@@ -59,15 +59,16 @@ export async function generateBillXlsx(
   for (const row of rows) {
     cr++;
     const r = ws.getRow(cr);
-    const vals = [row.日期, row.唛头, row.仓库, row.运输方式, row.运单号, row.货型, row.品名, row.尺寸, row.件数, row.国内单号, row.单项体积, row.单项重量, row.总体积, row.总重量, row.计费体积, row.总计费体积, row.单价, null, row.订单总价, row.备注, row.结算状态];
+    const vals = [row.日期, row.唛头, row.仓库, row.运输方式, row.运单号, row.货型, row.品名, row.尺寸, row.件数, row.国内单号, row.单项体积, row.单项重量, row.总体积, row.总重量, row.计费体积, row.总计费体积, row.单价, row.单价 * row.计费体积, row.订单总价, row.备注, row.结算状态];
     for (let c = 1; c <= 21; c++) {
       const cell = r.getCell(c);
-      if (c !== 18 && vals[c - 1] != null) cell.value = vals[c - 1];
+      if (vals[c - 1] != null) cell.value = vals[c - 1];
       cell.font = { name: FONT, size: 9 };
       cell.border = BI;
-      cell.alignment = { vertical: 'middle' };
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
     }
-    const pc = r.getCell(18); pc.value = { formula: `Q${cr}*O${cr}` }; pc.font = { name: FONT, size: 9 }; pc.border = BI; pc.numFmt = '#,##0.00';
+    const pc = r.getCell(18);
+    pc.numFmt = '#,##0.00';
   }
 
   // ── Merge cells by 运单号 (second pass) ──

@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
         运单号: (item as any).运单号 ?? mark?.markNo ?? '',
         货型: cargo,
         品名: (item as any).品名 ?? '',
-         尺寸: dims || '无',
+         尺寸: dims,
          件数: count,
         国内单号: (item as any).国内单号 ?? '',
         单项体积: singleVol,
