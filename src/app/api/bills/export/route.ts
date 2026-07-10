@@ -28,10 +28,27 @@ export async function GET(request: NextRequest) {
   const rows: BillRow[] = [];
   let totalCny = 0;
 
+  let priceMatrix: Record<string, number> = {};
+  if (customer?.priceMatrix) { try { priceMatrix = JSON.parse(customer.priceMatrix); } catch {} }
+  const getPrice = (t: string, c: string): number => {
+    const m = t === '海运' ? 'sea' : 'land';
+    const ty = c === '普货' ? 'regular' : c === '商检货' ? 'inspection' : 'sensitive';
+    return priceMatrix[m + '_' + ty] || 0;
+  };
+
   for (const mId of markIds) {
     const mark = markMap.get(mId);
     const scItems = await db.select().from(sharedContainerItems).where(eq(sharedContainerItems.markId, mId)).all();
     const ldItems = await db.select().from(loadingItems).where(eq(loadingItems.markId, mId)).all();
+
+    // Compute order-level receivable totals (price × volume per运单号)
+    const orderReceivable = new Map<string, number>();
+    for (const item of [...scItems, ...ldItems]) {
+      const key = (item as any).运单号 || '_' + (item as any).id;
+      const up2 = getPrice((item as any).运输方式 || '', (item as any).货型 || '');
+      const sv2 = (item as any).单箱体积 || 0;
+      orderReceivable.set(key, (orderReceivable.get(key) || 0) + up2 * sv2);
+    }
 
     const orderTotalVol = new Map<string, number>();
     for (const item of [...scItems, ...ldItems]) {
@@ -45,8 +62,8 @@ export async function GET(request: NextRequest) {
       const ct = (item as any).箱数 ?? 0;
       const okey = (item as any).运单号 || '_' + (item as any).id;
       const tv = orderTotalVol.get(okey) || sv;
-      const up = (item as any).成本单价_cents ?? 0;
-      const amt = (item as any).需支付总价_cents ?? 0;
+      const up = getPrice((item as any).运输方式 || '', (item as any).货型 || '');
+      const amt = orderReceivable.get(okey) || 0;
 
       totalCny += amt;
 
