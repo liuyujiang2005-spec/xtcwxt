@@ -54,34 +54,12 @@ export async function generateBillXlsx(
   // ── Sort rows by 运单号 for grouping ──
   rows.sort((a, b) => a.运单号.localeCompare(b.运单号));
 
-  // ── Write data with merge groups ──
-  // Merged columns: 1=日期, 2=唛头, 3=仓库, 4=运输方式, 5=运单号, 13=总体积, 14=总重量, 16=总计费体积, 19=订单总价
-  const mergeCols = [1, 2, 3, 4, 5, 13, 14, 16, 19];
+  // ── Write data rows (row 8+) ──
   let cr = 7;
-  let groupStart = cr + 1;
-  let lastOrder = '';
-
-  for (let i = 0; i < rows.length; i++) {
+  for (const row of rows) {
     cr++;
-    const row = rows[i];
     const r = ws.getRow(cr);
-
-    // Check if new 运单号 group starts
-    if (i > 0 && row.运单号 !== lastOrder) {
-      // Merge previous group
-      if (cr - 1 > groupStart) {
-        mergeCols.forEach(c => {
-          try { ws.mergeCells(groupStart, c, cr - 1, c); } catch {}
-        });
-      }
-      groupStart = cr;
-    }
-    lastOrder = row.运单号;
-
-    // 21 columns: 1=日期 2=唛头 3=仓库 4=运输 5=运单号 6=货型 7=品名 8=尺寸 9=件数 10=国内单号
-    // 11=单项体积 12=单项重量 13=总体积 14=总重量 15=计费体积 16=总计费体积 17=单价 18=单项价格(公式) 19=订单总价 20=备注 21=结算
     const vals = [row.日期, row.唛头, row.仓库, row.运输方式, row.运单号, row.货型, row.品名, row.尺寸, row.件数, row.国内单号, row.单项体积, row.单项重量, row.总体积, row.总重量, row.计费体积, row.总计费体积, row.单价, null, row.订单总价, row.备注, row.结算状态];
-
     for (let c = 1; c <= 21; c++) {
       const cell = r.getCell(c);
       if (c !== 18 && vals[c - 1] != null) cell.value = vals[c - 1];
@@ -92,11 +70,36 @@ export async function generateBillXlsx(
     const pc = r.getCell(18); pc.value = { formula: `Q${cr}*O${cr}` }; pc.font = { name: FONT, size: 9 }; pc.border = BI; pc.numFmt = '#,##0.00';
   }
 
+  // ── Merge cells by 运单号 (second pass) ──
+  const mergeCols = [1, 2, 3, 4, 5, 13, 14, 16, 19]; // 日期/唛头/仓库/运输/运单号/总体积/总重量/总计费体积/订单总价
+  let groupStartRow = 8;
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i].运单号 !== rows[i - 1].运单号) {
+      const groupEndRow = 7 + i; // last row of previous group
+      if (groupEndRow > groupStartRow) {
+        mergeCols.forEach(col => {
+          try { ws.mergeCells(groupStartRow, col, groupEndRow, col); } catch {}
+        });
+        // Set merged cells alignment to center
+        for (let r = groupStartRow; r <= groupEndRow; r++) {
+          mergeCols.forEach(col => {
+            try { ws.getCell(r, col).alignment = { vertical: 'middle', horizontal: 'center' }; } catch {}
+          });
+        }
+      }
+      groupStartRow = 7 + i + 1; // next group starts here
+    }
+  }
   // Merge last group
-  if (cr > groupStart) {
-    mergeCols.forEach(c => {
-      try { ws.mergeCells(groupStart, c, cr, c); } catch {}
+  if (cr > groupStartRow) {
+    mergeCols.forEach(col => {
+      try { ws.mergeCells(groupStartRow, col, cr, col); } catch {}
     });
+    for (let r = groupStartRow; r <= cr; r++) {
+      mergeCols.forEach(col => {
+        try { ws.getCell(r, col).alignment = { vertical: 'middle', horizontal: 'center' }; } catch {}
+      });
+    }
   }
 
   // ── Total row ──
