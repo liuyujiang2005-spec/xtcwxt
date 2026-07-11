@@ -64,7 +64,6 @@ export default function CustomerDialog({ mode, customer }: Props) {
   const [prices, setPrices] = useState<Record<string, number>>(initPrices);
 
   const updatePrice = (key: string, value: string) => {
-    if (value.trim() === '') return;
     setPrices({ ...prices, [key]: parseFloat(value) || 0 });
   };
 

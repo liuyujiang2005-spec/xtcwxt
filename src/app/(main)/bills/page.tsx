@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ReceiptUploader } from './ReceiptUploader';
+import { RefreshBillButton } from './RefreshBillButton';
 import { Download } from 'lucide-react';
 import Link from 'next/link';
 
@@ -104,6 +105,7 @@ export default async function BillsPage({ searchParams }: { searchParams: Promis
                 <div className="flex gap-2 mt-3">
                   <a href={`/api/bills/export?billId=${b.id}`} className="flex-1"><Button variant="outline" size="sm" className="w-full"><Download className="h-3.5 w-3.5 mr-1" />导出</Button></a>
                   <ReceiptUploader apiPath="/api/bills" entityId={b.id} currentUrl={(b as any).receiptUrl} updateField="receiptUrl" />
+                  <RefreshBillButton billId={b.id} />
                   <Link href={`/bills/${b.billNo}`} className="flex-1"><Button variant="ghost" size="sm" className="w-full">详情</Button></Link>
                 </div>
               </CardContent>
