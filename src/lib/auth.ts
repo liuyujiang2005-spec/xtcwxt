@@ -1,4 +1,4 @@
-import { eq, lte, and } from 'drizzle-orm';
+import { eq, gt, and } from 'drizzle-orm';
 import { db } from '@/db/index';
 import { sessions, users } from '@/db/schema';
 import { hash, compare } from 'bcryptjs';
@@ -15,26 +15,21 @@ export async function hashPassword(password: string): Promise<string> {
   return hash(password, 10);
 }
 
-export async function verifyPassword(password: string, hash: string): Promise<boolean> {
-  return compare(password, hash);
+export async function verifyPassword(password: string, hashStr: string): Promise<boolean> {
+  return compare(password, hashStr);
 }
 
 export async function createSession(userId: number): Promise<string> {
   const sessionId = crypto.randomUUID();
-  const expiresAt = Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60; // 30 days
-
-  await db.insert(sessions).values({
-    id: sessionId,
-    userId,
-    expiresAt,
-  });
-
+  const expiresAt = Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60;
+  await db.insert(sessions).values({ id: sessionId, userId, expiresAt });
   return sessionId;
 }
 
 export async function validateSession(sessionId: string): Promise<User | null> {
   const now = Math.floor(Date.now() / 1000);
 
+  // 🔴修复：在 SQL 层直接过滤过期 session（原来是取出后内存判断）
   const result = await db
     .select({
       user: {
@@ -43,23 +38,19 @@ export async function validateSession(sessionId: string): Promise<User | null> {
         displayName: users.displayName,
         role: users.role,
       },
-      session: {
-        id: sessions.id,
-        expiresAt: sessions.expiresAt,
-      },
     })
     .from(sessions)
     .innerJoin(users, eq(sessions.userId, users.id))
-    .where(and(eq(sessions.id, sessionId), eq(users.active, 1)))
+    .where(
+      and(
+        eq(sessions.id, sessionId),
+        eq(users.active, 1),
+        gt(sessions.expiresAt, now), // ← 新增：SQL 层过滤过期
+      )
+    )
     .get();
 
   if (!result) return null;
-
-  if (result.session.expiresAt < now) {
-    await db.delete(sessions).where(eq(sessions.id, sessionId));
-    return null;
-  }
-
   return result.user as User;
 }
 

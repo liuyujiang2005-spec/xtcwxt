@@ -15,7 +15,9 @@ export async function refreshCustomerMetrics(customerId: number) {
     if (mark?.createdAt) {
       const createdDate = new Date(mark.createdAt);
       const paidDate = new Date(p.receivedDate);
-      totalPaymentDays += Math.round((paidDate.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
+      // 🟡修复：用 Math.max(0, ...) 保护，避免录入错误导致负天数影响评级
+      const days = Math.max(0, Math.round((paidDate.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24)));
+      totalPaymentDays += days;
       paymentCount++;
     }
   }
@@ -24,9 +26,8 @@ export async function refreshCustomerMetrics(customerId: number) {
   const now = new Date();
   const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
   const recentMarks = allMarks.filter((m) => m.createdAt && new Date(m.createdAt) >= sixMonthsAgo);
-  const recentMarkIds = recentMarks.map((m) => m.id);
   let totalVolume = 0;
-  if (recentMarkIds.length > 0) {
+  if (recentMarks.length > 0) {
     const sixMonthsAgoStr = sixMonthsAgo.toISOString().substring(0, 10);
     const scVol = await db.select().from(sharedContainerItems)
       .where(and(eq(sharedContainerItems.customerId, customerId), gte(sharedContainerItems.createdAt, sixMonthsAgoStr))).all();
@@ -53,8 +54,11 @@ export async function refreshCustomerMetrics(customerId: number) {
 
   const existing = await db.select().from(customerMetrics).where(eq(customerMetrics.customerId, customerId)).get();
   if (existing) {
-    await db.update(customerMetrics).set({ avgPaymentDays, monthlyVolume, monthlyShipments, overdueCount, overallRating, lastUpdated: new Date().toISOString() }).where(eq(customerMetrics.customerId, customerId));
+    await db.update(customerMetrics)
+      .set({ avgPaymentDays, monthlyVolume, monthlyShipments, overdueCount, overallRating, lastUpdated: new Date().toISOString() })
+      .where(eq(customerMetrics.customerId, customerId));
   } else {
-    await db.insert(customerMetrics).values({ customerId, avgPaymentDays, monthlyVolume, monthlyShipments, overdueCount, overallRating, lastUpdated: new Date().toISOString() });
+    await db.insert(customerMetrics)
+      .values({ customerId, avgPaymentDays, monthlyVolume, monthlyShipments, overdueCount, overallRating, lastUpdated: new Date().toISOString() });
   }
 }

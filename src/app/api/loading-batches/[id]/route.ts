@@ -10,7 +10,8 @@ export async function GET(
 ) {
   const sessionToken = request.cookies.get('session')?.value;
   if (!sessionToken) return NextResponse.json({ error: '未登录' }, { status: 401 });
-  await validateSession(sessionToken);
+  const user = await validateSession(sessionToken);
+  if (!user) return NextResponse.json({ error: '登录过期' }, { status: 401 });
 
   const { id } = await params;
   const batch = await db.select().from(loadingBatches).where(eq(loadingBatches.id, parseInt(id))).get();
@@ -43,12 +44,22 @@ export async function DELETE(
   const sessionToken = request.cookies.get('session')?.value;
   if (!sessionToken) return NextResponse.json({ error: '未登录' }, { status: 401 });
   const user = await validateSession(sessionToken);
-  if (!user || (user.role !== 'admin' && user.role !== 'finance')) return NextResponse.json({ error: '无权限' }, { status: 403 });
+  if (!user || (user.role !== 'admin' && user.role !== 'finance'))
+    return NextResponse.json({ error: '无权限' }, { status: 403 });
 
   const { id } = await params;
   const batchId = parseInt(id);
-  await db.delete(loadingItems).where(eq(loadingItems.batchId, batchId));
-  await db.delete(expenses).where(eq(expenses.loadingBatchId, batchId));
-  await db.delete(loadingBatches).where(eq(loadingBatches.id, batchId));
-  return NextResponse.json({ success: true });
+
+  // 🟡修复：三步删除改为事务，避免中途失败留下孤立数据
+  try {
+    db.transaction((tx) => {
+      tx.delete(loadingItems).where(eq(loadingItems.batchId, batchId)).run();
+      tx.delete(expenses).where(eq(expenses.loadingBatchId, batchId)).run();
+      tx.delete(loadingBatches).where(eq(loadingBatches.id, batchId)).run();
+    });
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('删除批次失败:', error);
+    return NextResponse.json({ error: '删除失败，请重试' }, { status: 500 });
+  }
 }

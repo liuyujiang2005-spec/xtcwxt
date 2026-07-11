@@ -11,8 +11,12 @@ export async function GET(request: NextRequest) {
   const user = await validateSession(sessionToken);
   if (!user) return NextResponse.json({ error: '登录已过期' }, { status: 401 });
 
-  const billId = parseInt(request.nextUrl.searchParams.get('billId') || '0');
-  if (!billId) return NextResponse.json({ error: '缺少 billId' }, { status: 400 });
+  // 🔵修复：校验 billId 为正整数
+  const billIdRaw = request.nextUrl.searchParams.get('billId') || '';
+  const billId = parseInt(billIdRaw);
+  if (!billId || billId <= 0 || String(billId) !== billIdRaw.trim()) {
+    return NextResponse.json({ error: '无效的 billId' }, { status: 400 });
+  }
 
   const bill = await db.select().from(bills).where(eq(bills.id, billId)).get();
   if (!bill) return NextResponse.json({ error: '账单不存在' }, { status: 404 });
@@ -24,9 +28,6 @@ export async function GET(request: NextRequest) {
   const markList = await db.select().from(marks).where(inArray(marks.id, markIds)).all();
   const markMap = new Map(markList.map(m => [m.id, m]));
   const customer = await db.select().from(customers).where(eq(customers.id, bill.customerId)).get();
-
-  const rows: BillRow[] = [];
-  let totalCny = 0;
 
   let priceMatrix: Record<string, number> = {};
   if (customer?.priceMatrix) { try { priceMatrix = JSON.parse(customer.priceMatrix); } catch {} }
@@ -41,37 +42,60 @@ export async function GET(request: NextRequest) {
     return t === '海运' ? 0.5 : 0.3;
   };
 
+  // 🟡修复：批量查询所有 mark 的 sc/ld items，避免循环内 N*2 次查询
+  const allScItems = markIds.length > 0
+    ? await db.select().from(sharedContainerItems).where(inArray(sharedContainerItems.markId, markIds)).all()
+    : [];
+  const allLdItems = markIds.length > 0
+    ? await db.select().from(loadingItems).where(inArray(loadingItems.markId, markIds)).all()
+    : [];
+
+  const scByMark = new Map<number, typeof allScItems>();
+  allScItems.forEach(i => {
+    if (!scByMark.has(i.markId)) scByMark.set(i.markId, []);
+    scByMark.get(i.markId)!.push(i);
+  });
+  const ldByMark = new Map<number, typeof allLdItems>();
+  allLdItems.forEach(i => {
+    if (!ldByMark.has(i.markId)) ldByMark.set(i.markId, []);
+    ldByMark.get(i.markId)!.push(i);
+  });
+
+  const rows: BillRow[] = [];
+  // 🟡修复：totalCny 正确累加，不再始终为 0
+  let totalCny = 0;
+
   for (const mId of markIds) {
     const mark = markMap.get(mId);
-    const scItems = await db.select().from(sharedContainerItems).where(eq(sharedContainerItems.markId, mId)).all();
-    const ldItems = await db.select().from(loadingItems).where(eq(loadingItems.markId, mId)).all();
-
-    // Compute order-level receivable totals (price × volume per运单号)
-    const orderReceivable = new Map<string, number>();
-    for (const item of [...scItems, ...ldItems]) {
-      const key = (item as any).运单号 || '_' + (item as any).id;
-      const up2 = getPrice((item as any).运输方式 || '', (item as any).货型 || '');
-      const sv2 = (item as any).单箱体积 || 0;
-      const transp2 = (item as any).运输方式 || '海运';
-      const cv2 = Math.max(sv2, minVol(transp2));
-      orderReceivable.set(key, (orderReceivable.get(key) || 0) + up2 * cv2);
-    }
+    const scItems = scByMark.get(mId) || [];
+    const ldItems = ldByMark.get(mId) || [];
 
     const orderTotalVol = new Map<string, number>();
+    const orderReceivable = new Map<string, number>();
+
     for (const item of [...scItems, ...ldItems]) {
       const key = (item as any).运单号 || '_' + (item as any).id;
-      orderTotalVol.set(key, (orderTotalVol.get(key) || 0) + ((item as any).单箱体积 || 0));
+      const sv = (item as any).单箱体积 || 0;
+      const transport = (item as any).运输方式 || '海运';
+      const cv = Math.max(sv, minVol(transport));
+      const up = getPrice(transport, (item as any).货型 || '');
+      orderTotalVol.set(key, (orderTotalVol.get(key) || 0) + sv);
+      orderReceivable.set(key, (orderReceivable.get(key) || 0) + up * cv);
     }
 
     for (const item of [...scItems, ...ldItems]) {
       const vol = (item as any).总体积 ?? 0;
       const sv = (item as any).单箱体积 ?? 0;
-      const cv = Math.max(sv, minVol((item as any).运输方式 || '海运'));
+      const transport = (item as any).运输方式 || '海运';
+      const cv = Math.max(sv, minVol(transport));
       const ct = (item as any).箱数 ?? 0;
       const okey = (item as any).运单号 || '_' + (item as any).id;
       const tv = orderTotalVol.get(okey) || sv;
-      const up = getPrice((item as any).运输方式 || '', (item as any).货型 || '');
+      const up = getPrice(transport, (item as any).货型 || '');
       const amt = orderReceivable.get(okey) || 0;
+
+      // 累加到账单总额
+      totalCny += amt;
 
       const dims = [(item as any).尺寸_长, (item as any).尺寸_宽, (item as any).尺寸_高]
         .filter((d: any) => d != null && d > 0)
@@ -102,6 +126,17 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // 去重：同一运单号只计一次总额
+  const seenOrders = new Set<string>();
+  let dedupedTotal = 0;
+  for (const row of rows) {
+    const key = row.运单号 || row.唛头;
+    if (!seenOrders.has(key)) {
+      seenOrders.add(key);
+      dedupedTotal += row.订单总价;
+    }
+  }
+
   try {
     await db.update(bills).set({ exportedAt: new Date().toISOString() }).where(eq(bills.id, billId));
 
@@ -110,7 +145,7 @@ export async function GET(request: NextRequest) {
       customer?.name ?? '未知客户',
       bill.monthTag,
       rows,
-      totalCny,
+      dedupedTotal, // 修复：使用实际计算的总额
       0,
     );
 
@@ -119,7 +154,7 @@ export async function GET(request: NextRequest) {
       status: 200,
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'Content-Disposition': 'attachment; filename*=UTF-8\'\'' + encodeURIComponent(fileName),
+        'Content-Disposition': "attachment; filename*=UTF-8''" + encodeURIComponent(fileName),
       },
     });
   } catch (error) {

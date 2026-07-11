@@ -11,22 +11,27 @@ export async function POST(request: NextRequest) {
   if (!user || user.role === 'viewer') return NextResponse.json({ error: '无权限' }, { status: 403 });
 
   const { billId, paymentStatus, paidAmount } = await request.json();
-  const validStatus = ['待付款','付一部分','已付款'];
-  if (paymentStatus && !validStatus.includes(paymentStatus)) return NextResponse.json({ error: '无效付款状态' }, { status: 400 });
+  const validStatus = ['待付款', '付一部分', '已付款'];
+  if (paymentStatus && !validStatus.includes(paymentStatus))
+    return NextResponse.json({ error: '无效付款状态' }, { status: 400 });
   if (!billId) return NextResponse.json({ error: '缺少参数' }, { status: 400 });
 
-  const data: any = {};
+  // 🟡修复：提前查账单，为 null 时返回 404，避免后续金额变 0
+  const bill = await db.select().from(bills).where(eq(bills.id, billId)).get();
+  if (!bill) return NextResponse.json({ error: '账单不存在' }, { status: 404 });
+
+  const data: Record<string, unknown> = {};
   if (paymentStatus) data.paymentStatus = paymentStatus;
+
   if (typeof paidAmount === 'number') {
     data.paidAmount = paidAmount;
-    const bill = await db.select().from(bills).where(eq(bills.id, billId)).get();
-    if (bill) data.remainingAmount = (bill.totalAmountCents || 0) - paidAmount;
+    data.remainingAmount = (bill.totalAmountCents || 0) - paidAmount;
   }
+
   if (paymentStatus === '已付款') {
     data.paidAt = new Date().toISOString();
     if (typeof paidAmount !== 'number') {
-      const bill = await db.select().from(bills).where(eq(bills.id, billId)).get();
-      data.paidAmount = bill?.totalAmountCents || 0;
+      data.paidAmount = bill.totalAmountCents || 0;
       data.remainingAmount = 0;
     }
   }

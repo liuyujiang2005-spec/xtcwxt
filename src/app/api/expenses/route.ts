@@ -20,9 +20,18 @@ export async function POST(request: NextRequest) {
   if (!user || user.role === 'viewer') return NextResponse.json({ error: '无权限' }, { status: 403 });
 
   const body = await request.json();
+
+  // 🟡修复：加输入校验，避免写入空类型或负金额
+  if (!body.expenseType || typeof body.expenseType !== 'string' || body.expenseType.trim() === '') {
+    return NextResponse.json({ error: '费用类型不能为空' }, { status: 400 });
+  }
+  if (typeof body.amountCents !== 'number' || body.amountCents <= 0) {
+    return NextResponse.json({ error: '金额必须大于 0' }, { status: 400 });
+  }
+
   const result = await db.insert(expenses).values({
     loadingBatchId: body.loadingBatchId || null,
-    expenseType: body.expenseType,
+    expenseType: body.expenseType.trim(),
     amountCents: body.amountCents,
     currency: body.currency || 'CNY',
     supplierId: body.supplierId || null,

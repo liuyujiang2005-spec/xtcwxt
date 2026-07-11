@@ -19,11 +19,27 @@ export async function POST(request: NextRequest) {
     }
 
     const allCustomers = await db.select().from(customers).all();
-    let count = 0;
-    for (const c of allCustomers) {
-      try { await refreshCustomerMetrics(c.id); count++; } catch (e) { console.error(`刷新客户 ${c.id} 失败:`, e); }
-    }
-    return NextResponse.json({ success: true, refreshed: count });
+
+    // 🔵修复：改为并发执行（Promise.allSettled），客户多时不会串行超时
+    // allSettled 保证即使某个客户失败也不影响其他的
+    const results = await Promise.allSettled(
+      allCustomers.map((c) => refreshCustomerMetrics(c.id))
+    );
+
+    const succeeded = results.filter((r) => r.status === 'fulfilled').length;
+    const failed = results
+      .map((r, i) => ({ r, id: allCustomers[i].id }))
+      .filter(({ r }) => r.status === 'rejected')
+      .map(({ r, id }) => {
+        console.error(`刷新客户 ${id} 失败:`, (r as PromiseRejectedResult).reason);
+        return id;
+      });
+
+    return NextResponse.json({
+      success: true,
+      refreshed: succeeded,
+      failed: failed.length > 0 ? failed : undefined,
+    });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || '刷新失败' }, { status: 500 });
   }

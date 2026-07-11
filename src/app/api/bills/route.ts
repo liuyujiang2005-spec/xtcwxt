@@ -46,35 +46,61 @@ export async function POST(request: NextRequest) {
 
   const billNo = `${monthTag.replace('-', '')}-${String(customerId).padStart(4, '0')}`;
 
-  const existing = await db.select().from(bills)
-    .where(and(eq(bills.customerId, customerId), eq(bills.monthTag, monthTag)))
-    .get();
+  // 修复1（编译）：billId 初始化为 0，避免 TS 严格模式报 used before assigned
+  let billId: number = 0;
+  let isUpdate = false;
 
-  let billId: number;
-  if (existing) {
-    await db.update(bills).set({
-      totalAmountCents: totalCents,
-      status: '已生成',
-      createdAt: new Date().toISOString(),
-      paidAmount: 0,
-      remainingAmount: totalCents,
-      paymentStatus: '待付款',
-      paidAt: null,
-    }).where(eq(bills.id, existing.id));
-    await db.delete(billItems).where(eq(billItems.billId, existing.id));
-    billId = existing.id;
-  } else {
-    const result = await db.insert(bills).values({
-      billNo, customerId, monthTag, totalAmountCents: totalCents, currency: 'CNY', status: '已生成',
+  try {
+    db.transaction((tx) => {
+      const existing = tx.select().from(bills)
+        .where(and(eq(bills.customerId, customerId), eq(bills.monthTag, monthTag)))
+        .get();
+
+      if (existing) {
+        // 修复2（业务风险）：重新生成账单时，保留已付款金额，只更新总额和剩余额
+        const keepPaid = existing.paidAmount ?? 0;
+        const newRemaining = Math.max(0, totalCents - keepPaid);
+
+        tx.update(bills).set({
+          totalAmountCents: totalCents,
+          status: '已生成',
+          createdAt: new Date().toISOString(),
+          remainingAmount: newRemaining,
+          // ⚠️ paidAmount 不重置，保留客户已付的钱
+          paymentStatus: newRemaining <= 0 ? '已付款' : keepPaid > 0 ? '付一部分' : '待付款',
+        }).where(eq(bills.id, existing.id)).run();
+        tx.delete(billItems).where(eq(billItems.billId, existing.id)).run();
+        billId = existing.id;
+        isUpdate = true;
+      } else {
+        const result = tx.insert(bills).values({
+          billNo, customerId, monthTag,
+          totalAmountCents: totalCents,
+          currency: 'CNY',
+          status: '已生成',
+          paidAmount: 0,
+          remainingAmount: totalCents,
+          paymentStatus: '待付款',
+        }).run();
+        billId = Number(result.lastInsertRowid);
+      }
+
+      for (const item of items) {
+        tx.insert(billItems).values({
+          billId, markId: item.markId, mode: item.mode, amountCents: item.amountCents,
+        }).run();
+      }
     });
-    billId = Number(result.lastInsertRowid);
+  } catch (error) {
+    console.error('生成账单失败:', error);
+    return NextResponse.json({ error: '生成账单失败，请重试' }, { status: 500 });
   }
 
-  for (const item of items) {
-    await db.insert(billItems).values({ billId, markId: item.markId, mode: item.mode, amountCents: item.amountCents });
+  if (!billId) {
+    return NextResponse.json({ error: '账单创建异常，请重试' }, { status: 500 });
   }
 
-  return NextResponse.json({ success: true, billId, totalCents, itemCount: items.length, isUpdate: !!existing });
+  return NextResponse.json({ success: true, billId, totalCents, itemCount: items.length, isUpdate });
 }
 
 export async function PATCH(request: NextRequest) {
@@ -86,6 +112,9 @@ export async function PATCH(request: NextRequest) {
 
   const body = await request.json();
   if (body.receiptUrl !== undefined) {
+    if (typeof body.receiptUrl !== 'string' || (body.receiptUrl && !body.receiptUrl.startsWith('/uploads/'))) {
+      return NextResponse.json({ error: '无效的文件路径' }, { status: 400 });
+    }
     await db.update(bills).set({ receiptUrl: body.receiptUrl }).where(eq(bills.id, body.id));
   }
   return NextResponse.json({ success: true });

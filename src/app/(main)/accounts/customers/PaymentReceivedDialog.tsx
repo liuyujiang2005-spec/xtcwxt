@@ -23,14 +23,16 @@ export function PaymentReceivedDialog({ customerId, customerName, marks }: {
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
-    const amountNum = parseFloat(amount);
-    if (!amountNum || amountNum <= 0) { alert('请输入有效金额'); return; }
+    // 🔵修复：parseFloat('abc') 返回 NaN，用 Number() + isNaN 更严格
+    const amountNum = Number(amount);
+    if (isNaN(amountNum) || amountNum <= 0) { alert('请输入有效金额'); return; }
     if (!receivedDate) { alert('请选择日期'); return; }
 
     setSaving(true);
     try {
       const r = await fetch('/api/payments/received', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           customerId,
           markId: markId ? parseInt(markId) : null,
@@ -63,7 +65,15 @@ export function PaymentReceivedDialog({ customerId, customerName, marks }: {
           <div className="space-y-2">
             <Label>回款金额</Label>
             <div className="flex gap-2">
-              <Input type="number" step="0.01" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)} className="flex-1" />
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                value={amount}
+                onChange={e => setAmount(e.target.value)}
+                className="flex-1"
+              />
               <select className="h-9 rounded-lg border px-2 text-sm" value={currency} onChange={e => setCurrency(e.target.value)}>
                 <option value="CNY">CNY</option>
                 <option value="THB">THB</option>
