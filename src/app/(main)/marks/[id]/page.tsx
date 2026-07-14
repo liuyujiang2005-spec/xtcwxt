@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScItemsTable } from './ScItemsTable';
+import { formatAmount } from '@/lib/format';
 
 export default async function MarkDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
@@ -22,9 +23,9 @@ export default async function MarkDetailPage({ params }: { params: Promise<{ id:
   const ldItems = await db.select().from(loadingItems).where(eq(loadingItems.markId, mark.id)).all();
   const diItems = await db.select().from(directIncome).where(eq(directIncome.markId, mark.id)).all();
 
-  const costTotal = [...scItems, ...ldItems].reduce((s: number, i: any) => s + (i.需支付总价_cents || i.成本单价_cents || i.单价_cents || 0), 0);
-  const receivableTotal = [...scItems, ...ldItems].reduce((s: number, i: any) => s + (i.客户应收_cents || 0), 0);
-  const directTotal = diItems.reduce((s, i) => s + i.amountCents, 0);
+  const costTotal = [...scItems, ...ldItems].reduce((s: number, i: any) => s + (i.需支付总价 || i.成本单价 || i.单价 || 0), 0);
+  const receivableTotal = [...scItems, ...ldItems].reduce((s: number, i: any) => s + (i.客户应收 || 0), 0);
+  const directTotal = diItems.reduce((s, i) => s + i.amount, 0);
 
   return (
     <div className="space-y-6">
@@ -40,13 +41,13 @@ export default async function MarkDetailPage({ params }: { params: Promise<{ id:
 
       <div className="grid grid-cols-3 gap-4">
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm">总成本</CardTitle></CardHeader>
-          <CardContent><span className="text-xl font-bold text-red-600">¥{costTotal.toFixed(6)}</span></CardContent></Card>
+          <CardContent><span className="text-xl font-bold text-red-600">{formatAmount(costTotal)}</span></CardContent></Card>
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm">总应收</CardTitle></CardHeader>
-          <CardContent><span className="text-xl font-bold text-green-600">¥{receivableTotal.toFixed(6)}</span></CardContent></Card>
+          <CardContent><span className="text-xl font-bold text-green-600">{formatAmount(receivableTotal)}</span></CardContent></Card>
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm">利润</CardTitle></CardHeader>
           <CardContent>
             <span className={`text-xl font-bold ${receivableTotal + directTotal - costTotal >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              ¥{(receivableTotal + directTotal - costTotal).toFixed(6)}
+              {formatAmount((receivableTotal + directTotal - costTotal))}
             </span>
           </CardContent></Card>
       </div>
@@ -67,7 +68,7 @@ export default async function MarkDetailPage({ params }: { params: Promise<{ id:
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>品名</TableHead><TableHead className="text-right">体积</TableHead>
+                  <TableHead>品名</TableHead><TableHead>仓库</TableHead><TableHead className="text-right">体积</TableHead>
                   <TableHead>货型</TableHead><TableHead>运输</TableHead>
                   <TableHead className="text-right">应收</TableHead>
                 </TableRow>
@@ -76,10 +77,11 @@ export default async function MarkDetailPage({ params }: { params: Promise<{ id:
                 {ldItems.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell>{item.品名 || '-'}</TableCell>
+                    <TableCell>{(item as any).仓库 || '-'}</TableCell>
                     <TableCell className="text-right">{(item.总体积 ?? 0).toFixed(6)}</TableCell>
                     <TableCell>{item.货型 || '-'}</TableCell>
                     <TableCell>{item.运输方式 || '-'}</TableCell>
-                    <TableCell className="text-right text-green-600">¥{(item.需支付总价_cents || 0).toFixed(6)}</TableCell>
+                    <TableCell className="text-right text-green-600">{formatAmount((item.需支付总价 || 0))}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -102,7 +104,7 @@ export default async function MarkDetailPage({ params }: { params: Promise<{ id:
               <TableBody>
                 {diItems.map((item) => (
                   <TableRow key={item.id}>
-                    <TableCell className="text-right text-green-600">¥{item.amountCents.toFixed(6)}</TableCell>
+                    <TableCell className="text-right text-green-600">{formatAmount(item.amount)}</TableCell>
                     <TableCell>{item.currency}</TableCell>
                     <TableCell className="text-right">{item.volume ? `${item.volume.toFixed(6)}m³` : '-'}</TableCell>
                     <TableCell className="text-sm">{item.incomeDate}</TableCell>

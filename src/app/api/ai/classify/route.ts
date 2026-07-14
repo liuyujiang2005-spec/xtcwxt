@@ -11,13 +11,18 @@ export async function POST(request: NextRequest) {
   const user = await validateSession(sessionToken);
   if (!user || user.role === 'viewer') return NextResponse.json({ error: '无权限' }, { status: 403 });
 
-  const { batchId, type = 'shared-container' } = await request.json();
-  if (!batchId) return NextResponse.json({ error: '缺少 batchId' }, { status: 400 });
+  const { batchId, batchIds, type = 'shared-container', month } = await request.json();
+  const allBatchIds: number[] = batchIds && batchIds.length > 0 ? batchIds : (batchId ? [batchId] : []);
+  if (allBatchIds.length === 0) return NextResponse.json({ error: '缺少 batchId 或 batchIds' }, { status: 400 });
 
   const isSc = type === 'shared-container';
-  const items = isSc
-    ? await db.select().from(sharedContainerItems).where(eq(sharedContainerItems.batchId, batchId)).all()
-    : await db.select().from(loadingItems).where(eq(loadingItems.batchId, batchId)).all();
+  const sourceTable = isSc ? sharedContainerItems : loadingItems;
+  const batchField = isSc ? sharedContainerItems.batchId : loadingItems.batchId;
+  let items: any[] = [];
+  for (const bid of allBatchIds) {
+    const batchItems = await db.select().from(sourceTable).where(eq(batchField, bid)).all();
+    items = items.concat(batchItems);
+  }
 
   if (items.length === 0) return NextResponse.json({ error: '无数据' }, { status: 404 });
 
@@ -41,16 +46,25 @@ export async function POST(request: NextRequest) {
 
     let custId = group[0].customerId;
     const customer = custMap.get(custId || 0);
-    let priceMatrix: Record<string, number> = {};
-    if (customer?.priceMatrix) {
-      try { priceMatrix = JSON.parse(customer.priceMatrix); } catch {}
+    let pm: any = {};
+    if (customer?.defaultCurrency === 'THB' && customer?.priceMatrixThb) {
+      try { pm = JSON.parse(customer.priceMatrixThb); } catch {}
+    } else if (customer?.priceMatrix) {
+      try { pm = JSON.parse(customer.priceMatrix); } catch {}
     }
     const enableMinVol = customer?.enableMinVolume !== 0;
 
-    const getPrice = (transport: string, cargo: string): number => {
+    const getPrice = (wh: string | null, transport: string, cargo: string): number => {
       const m = transport === '海运' ? 'sea' : 'land';
       const t = cargo === '普货' ? 'regular' : cargo === '商检货' ? 'inspection' : 'sensitive';
-      return priceMatrix[`${m}_${t}`] || 0;
+      const key = m + '_' + t;
+      // 按仓库取价
+      if (wh && typeof pm[wh] === 'object' && pm[wh] !== null) {
+        const whPrices = pm[wh] as any;
+        if (typeof whPrices[key] === 'number') return whPrices[key];
+      }
+      // 兼容旧格式
+      return typeof pm[key] === 'number' ? pm[key] : 0;
     };
     const minVol = (transport: string): number => {
       if (!enableMinVol) return 0;
@@ -60,7 +74,7 @@ export async function POST(request: NextRequest) {
     const totalVol = group.reduce((s, i) => s + (i.单箱体积 || i.总体积 || 0), 0);
     let totalReceivable = 0;
 
-    const monthTag = mark?.monthTag ?? new Date().toISOString().substring(0, 7);
+    const monthTag = month || mark?.monthTag || new Date().toISOString().substring(0, 7);
     const billNo = `${markNo}-${monthTag}`;
 
     if (!custId || custId <= 0) {
@@ -71,42 +85,40 @@ export async function POST(request: NextRequest) {
     const existing = await db.select().from(bills).where(eq(bills.billNo, billNo)).get();
     let billId: number;
     if (existing) {
-      await db.update(bills).set({ totalAmountCents: 0, status: '已生成', paidAmount: 0, remainingAmount: 0, paymentStatus: '待付款', paidAt: null }).where(eq(bills.id, existing.id));
-      await db.delete(billItems).where(eq(billItems.billId, existing.id));
+      // 同唛头同月份账单已存在，累加金额，不覆盖
+      totalReceivable += (existing.totalAmount || 0);
       billId = existing.id;
     } else {
       const r = await db.insert(bills).values({
-        billNo, customerId: custId, monthTag, totalAmountCents: 0, currency: 'CNY', status: '已生成',
+        billNo, customerId: custId, monthTag, totalAmount: 0, currency: customer?.defaultCurrency || 'CNY', status: '已生成',
       });
       billId = Number(r.lastInsertRowid);
     }
 
-    const insertedOrders = new Set<string>();
     for (const item of group) {
-      const orderKey = (item as any).运单号 || `_${item.id}`;
-      if (insertedOrders.has(orderKey)) continue;
-      insertedOrders.add(orderKey);
-
       const transport = (item as any).运输方式 || '海运';
       const cargo = (item as any).货型 || '普货';
-      const unitPrice = getPrice(transport, cargo);
+      const warehouse = (item as any).仓库 || null;
+      const unitPrice = getPrice(warehouse, transport, cargo);
       const vol = (item as any).单箱体积 || (item as any).总体积 || 0;
       const chargeVol = Math.max(vol, minVol(transport));
       const receivable = isSc
-        ? ((item as any).客户应收_cents || (unitPrice * chargeVol))
-        : ((item as any).需支付总价_cents || (unitPrice * chargeVol));
-      const cost = (item as any).需支付总价_cents || 0;
+        ? ((item as any).客户应收 || (unitPrice * chargeVol))
+        : ((item as any).需支付总价 || (unitPrice * chargeVol));
+      const cost = (item as any).需支付总价 || 0;
 
       totalReceivable += receivable;
 
       await db.insert(billItems).values({
         billId, markId, mode: isSc ? '拼柜' : '装柜',
-        amountCents: receivable,
+        amount: receivable,
         costAmount: cost,
       });
     }
 
-    await db.update(bills).set({ totalAmountCents: totalReceivable }).where(eq(bills.id, billId));
+    const keepPaid = (existing as any)?.paidAmount || 0;
+    const newStatus = keepPaid > 0 ? (totalReceivable > keepPaid ? '付一部分' : '已付款') : '待付款';
+    await db.update(bills).set({ totalAmount: totalReceivable, status: '已生成', remainingAmount: Math.max(0, totalReceivable - keepPaid), paymentStatus: newStatus }).where(eq(bills.id, billId));
 
     results.push({ markId,
       billId, billNo, markNo, customerName: custMap.get(custId)?.name || markNo,

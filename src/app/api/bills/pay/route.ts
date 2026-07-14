@@ -25,13 +25,13 @@ export async function POST(request: NextRequest) {
 
   if (typeof paidAmount === 'number') {
     data.paidAmount = paidAmount;
-    data.remainingAmount = (bill.totalAmountCents || 0) - paidAmount;
+    data.remainingAmount = (bill.totalAmount || 0) - paidAmount;
   }
 
   if (paymentStatus === '已付款') {
     data.paidAt = new Date().toISOString();
     if (typeof paidAmount !== 'number') {
-      data.paidAmount = bill.totalAmountCents || 0;
+      data.paidAmount = bill.totalAmount || 0;
       data.remainingAmount = 0;
     }
   }

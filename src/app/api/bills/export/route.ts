@@ -5,6 +5,14 @@ import { validateSession } from '@/lib/auth';
 import { eq, inArray } from 'drizzle-orm';
 import { generateBillXlsx, type BillRow } from '@/lib/generate-bill-xlsx';
 
+function getMatrixPrice(pm: any, warehouse: string | null, transport: string, cargo: string): number {
+  const m = transport === '海运' ? 'sea' : 'land';
+  const t = cargo === '普货' ? 'regular' : cargo === '商检货' ? 'inspection' : 'sensitive';
+  const key = m + '_' + t;
+  if (warehouse && pm[warehouse] && typeof pm[warehouse][key] === 'number') return pm[warehouse][key];
+  return typeof pm[key] === 'number' ? pm[key] : 0;
+}
+
 export async function GET(request: NextRequest) {
   const sessionToken = request.cookies.get('session')?.value;
   if (!sessionToken) return NextResponse.json({ error: '未登录' }, { status: 401 });
@@ -29,13 +37,12 @@ export async function GET(request: NextRequest) {
   const markMap = new Map(markList.map(m => [m.id, m]));
   const customer = await db.select().from(customers).where(eq(customers.id, bill.customerId)).get();
 
-  let priceMatrix: Record<string, number> = {};
-  if (customer?.priceMatrix) { try { priceMatrix = JSON.parse(customer.priceMatrix); } catch {} }
-  const getPrice = (t: string, c: string): number => {
-    const m = t === '海运' ? 'sea' : 'land';
-    const ty = c === '普货' ? 'regular' : c === '商检货' ? 'inspection' : 'sensitive';
-    return priceMatrix[m + '_' + ty] || 0;
-  };
+  let pm: any = {};
+  if (customer?.defaultCurrency === 'THB' && customer?.priceMatrixThb) {
+    try { pm = JSON.parse(customer.priceMatrixThb); } catch {}
+  } else if (customer?.priceMatrix) {
+    try { pm = JSON.parse(customer.priceMatrix); } catch {} }
+
   const enableMinVol = customer?.enableMinVolume !== 0;
   const minVol = (t: string): number => {
     if (!enableMinVol) return 0;
@@ -77,8 +84,9 @@ export async function GET(request: NextRequest) {
       const key = (item as any).运单号 || '_' + (item as any).id;
       const sv = (item as any).单箱体积 || 0;
       const transport = (item as any).运输方式 || '海运';
+      const warehouse = (item as any).仓库 || null;
       const cv = Math.max(sv, minVol(transport));
-      const up = getPrice(transport, (item as any).货型 || '');
+      const up = getMatrixPrice(pm, warehouse, transport, (item as any).货型 || '');
       orderTotalVol.set(key, (orderTotalVol.get(key) || 0) + sv);
       orderReceivable.set(key, (orderReceivable.get(key) || 0) + up * cv);
     }
@@ -88,10 +96,11 @@ export async function GET(request: NextRequest) {
       const sv = (item as any).单箱体积 ?? 0;
       const transport = (item as any).运输方式 || '海运';
       const cv = Math.max(sv, minVol(transport));
+      const warehouse = (item as any).仓库 || null;
       const ct = (item as any).箱数 ?? 0;
       const okey = (item as any).运单号 || '_' + (item as any).id;
       const tv = orderTotalVol.get(okey) || sv;
-      const up = getPrice(transport, (item as any).货型 || '');
+      const up = getMatrixPrice(pm, warehouse, transport, (item as any).货型 || '');
       const amt = orderReceivable.get(okey) || 0;
 
       // 累加到账单总额

@@ -1,6 +1,7 @@
 'use client';
+import { formatAmount } from '@/lib/format';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -18,7 +19,17 @@ export function ClassifyButton({ batchId, type = 'shared-container', items = [],
   const [loading, setLoading] = useState(false);
   const [bills, setBills] = useState<any[] | null>(null);
   const [error, setError] = useState('');
+  const [month, setMonth] = useState(new Date().toISOString().substring(0, 7));
+  const [batches, setBatches] = useState<any[]>([]);
+  const [selectedBatches, setSelectedBatches] = useState<number[]>([batchId]);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
+
+  // Load all batches for multi-select
+  useEffect(() => { fetch('/api/shared-containers').then(r => r.json()).then(setBatches).catch(() => {}); }, []);
+
+  const toggleBatch = (bid: number) => {
+    setSelectedBatches(prev => prev.includes(bid) ? prev.filter(b => b !== bid) : [...prev, bid]);
+  };
 
   const toggleExpand = (markId: number) => {
     const next = new Set(expanded);
@@ -33,7 +44,7 @@ export function ClassifyButton({ batchId, type = 'shared-container', items = [],
     try {
       const res = await fetch('/api/ai/classify', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ batchId, type }),
+        body: JSON.stringify({ batchIds: selectedBatches, type, month }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -77,10 +88,21 @@ export function ClassifyButton({ batchId, type = 'shared-container', items = [],
 
   return (
     <div>
-      <Button size="sm" variant="outline" onClick={classify} disabled={loading}>
+      <div className="flex items-center gap-2">
+        <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm w-36" />
+        <div className="flex items-center gap-1 flex-wrap">
+          {batches.map((b: any) => (
+            <label key={b.id} className="flex items-center gap-1 text-xs cursor-pointer">
+              <input type="checkbox" checked={selectedBatches.includes(b.id)} onChange={() => toggleBatch(b.id)} className="h-3 w-3" />
+              {b.batchNo}
+            </label>
+          ))}
+        </div>
+        <Button size="sm" variant="outline" onClick={classify} disabled={loading}>
         {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : bills ? <Download className="h-3.5 w-3.5 mr-1" /> : <BarChart3 className="h-3.5 w-3.5 mr-1" />}
         {bills ? '收起' : '生成账单'}
       </Button>
+      </div>
       {error && <span className="text-xs text-red-500 ml-2">{error}</span>}
 
       {bills && (

@@ -73,8 +73,8 @@ export async function POST(request: NextRequest) {
         货型: item.货型 || '-',
         运输方式: item.运输方式 || '-',
         ...(isSc
-          ? { 成本单价: item.成本单价_cents ?? item.单价 ?? '-', 需支付总价: item.需支付总价_cents ?? item.单项价格 ?? '-' }
-          : { 单价: item.单价_cents ?? item.单价 ?? '-', 应收: item.需支付总价_cents ?? item.单项价格 ?? '-' }
+          ? { 成本单价: item.成本单价 ?? item.单价 ?? '-', 需支付总价: item.需支付总价 ?? item.单项价格 ?? '-' }
+          : { 单价: item.单价 ?? item.单价 ?? '-', 应收: item.需支付总价 ?? item.单项价格 ?? '-' }
         ),
       }));
 

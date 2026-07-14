@@ -1,3 +1,4 @@
+import { formatAmount } from '@/lib/format';
 import { getCurrentUser } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { db } from '@/db/index';
@@ -48,6 +49,9 @@ export default async function BillsPage({ searchParams }: { searchParams: Promis
     }
   }
 
+
+  const cnyBills = allBills.filter(b => (b as any).currency !== 'THB');
+  const thbBills = allBills.filter(b => (b as any).currency === 'THB');
   const availableMonths = [...new Set(allBills.map(b => b.monthTag))].sort().reverse();
 
   return (
@@ -72,10 +76,11 @@ export default async function BillsPage({ searchParams }: { searchParams: Promis
         {(q || month) && <a href="/bills"><Button variant="ghost" size="sm">清除</Button></a>}
       </form>
 
+      <h2 className="text-lg font-bold">人民币账单 ({cnyBills.length})</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {allBills.map((b) => {
+        {cnyBills.map((b) => {
           const paid = (b as any).paidAmount || 0;
-          const total = b.totalAmountCents || 0;
+          const total = b.totalAmount || 0;
           const remaining = total - paid;
           const pStatus = (b as any).paymentStatus || '待付款';
           const exportedAt = (b as any).exportedAt;
@@ -113,6 +118,46 @@ export default async function BillsPage({ searchParams }: { searchParams: Promis
           );
         })}
       </div>
+            {thbBills.length > 0 && (
+        <>
+          <h2 className="text-lg font-bold mt-4 text-orange-600">泰铢账单 ({thbBills.length})</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {thbBills.map((b) => {
+              const paid = (b as any).paidAmount || 0;
+              const total = b.totalAmount || 0;
+              const remaining = total - paid;
+              const pStatus = (b as any).paymentStatus || '待付款';
+              const custName = customerMap.get(b.customerId) || '-';
+              return (
+                <Card key={b.id} className="hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center justify-between">
+                      <span>{b.billNo}</span>
+                      <Badge className={b.status === '已生成' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}>{b.status}</Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-1 text-sm">
+                    <div className="flex justify-between"><span className="text-muted-foreground">客户</span><span>{custName}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">月份</span><span>{b.monthTag}</span></div>
+                    <div className="flex justify-between font-bold"><span className="text-muted-foreground">金额</span><span>THB {formatAmount(total, 'THB')}</span></div>
+                    {paid > 0 && <div className="flex justify-between"><span className="text-muted-foreground">已付</span><span className="text-green-600">THB {formatAmount(paid, 'THB')}</span></div>}
+                    {paid > 0 && remaining > 0 && <div className="flex justify-between"><span className="text-muted-foreground">剩余</span><span className="text-orange-600">THB {formatAmount(remaining, 'THB')}</span></div>}
+                    <div className="flex justify-between"><span className="text-muted-foreground">付款</span>
+                      <Badge className={pStatus === '已付款' ? 'bg-green-100 text-green-700' : pStatus === '付一部分' ? 'bg-orange-100 text-orange-700' : 'bg-red-100 text-red-700'}>{pStatus}</Badge>
+                    </div>
+                    <div className="flex gap-2 mt-3">
+                      <a href={`/api/bills/export?billId=${b.id}`} className="flex-1"><Button variant="outline" size="sm" className="w-full"><Download className="h-3.5 w-3.5 mr-1" />导出</Button></a>
+                      <RefreshBillButton billId={b.id} />
+                      <Link href={`/bills/${b.billNo}`} className="flex-1"><Button variant="ghost" size="sm" className="w-full">详情</Button></Link>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </>
+      )}
+
       {allBills.length === 0 && <Card><CardContent className="py-8 text-center text-muted-foreground">暂无账单{q || month ? '，无匹配结果' : ''}</CardContent></Card>}
     </div>
   );

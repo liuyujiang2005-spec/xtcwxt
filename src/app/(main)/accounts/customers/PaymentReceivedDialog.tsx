@@ -36,7 +36,7 @@ export function PaymentReceivedDialog({ customerId, customerName, marks }: {
         body: JSON.stringify({
           customerId,
           markId: markId ? parseInt(markId) : null,
-          amountCents: amountNum,
+          amount: amountNum,
           currency,
           receivedDate,
           remark: remark || null,

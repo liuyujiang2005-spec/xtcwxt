@@ -47,12 +47,12 @@ export async function POST(request: NextRequest) {
       const sv = (item as any).单箱体积 || 0;
       const cv = Math.max(sv, mv(tp));
       const rec = up * cv;
-      const cost = (item as any).需支付总价_cents || 0;
+      const cost = (item as any).需支付总价 || 0;
       tr += rec;
-      await db.insert(billItems).values({ billId, markId: mid, mode: '拼柜', amountCents: rec, costAmount: cost });
+      await db.insert(billItems).values({ billId, markId: mid, mode: '拼柜', amount: rec, costAmount: cost });
     }
   }
 
-  await db.update(bills).set({ totalAmountCents: tr }).where(eq(bills.id, billId));
-  return NextResponse.json({ success: true, totalAmountCents: tr });
+  await db.update(bills).set({ totalAmount: tr }).where(eq(bills.id, billId));
+  return NextResponse.json({ success: true, totalAmount: tr });
 }

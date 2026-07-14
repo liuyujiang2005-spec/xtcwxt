@@ -49,12 +49,14 @@ export function ReceiptUploader({ apiPath, entityId, currentUrl, updateField = '
   };
 
   const removeImage = async () => {
-    const ur = await fetch(apiPath, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: entityId, [updateField]: null }),
-    });
-    if (ur.ok) { setPreview(null); router.refresh(); }
+    try {
+      const ur = await fetch(apiPath, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: entityId, [updateField]: null }),
+      });
+      if (ur.ok) { setPreview(null); router.refresh(); } else { alert('删除失败'); }
+    } catch { alert('网络错误'); }
   };
 
   return (

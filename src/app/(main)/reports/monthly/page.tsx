@@ -5,6 +5,7 @@ import { directIncome, expenses, customers, sharedContainerItems, loadingItems }
 import { sql, like, and, eq } from 'drizzle-orm';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { formatAmount } from '@/lib/format';
 
 // 🔴修复：改用 SQL 按月分组聚合，不再全表加载到内存
 export default async function MonthlyReportPage() {
@@ -21,7 +22,7 @@ export default async function MonthlyReportPage() {
     .select({
       month: sql<string>`substr(income_date, 1, 7)`,
       currency: directIncome.currency,
-      total: sql<number>`sum(amount_cents)`,
+      total: sql<number>`sum(amount)`,
     })
     .from(directIncome)
     .groupBy(sql`substr(income_date, 1, 7)`, directIncome.currency)
@@ -32,7 +33,7 @@ export default async function MonthlyReportPage() {
     .select({
       month: sql<string>`substr(created_at, 1, 7)`,
       currency: expenses.currency,
-      total: sql<number>`sum(amount_cents)`,
+      total: sql<number>`sum(amount)`,
     })
     .from(expenses)
     .groupBy(sql`substr(created_at, 1, 7)`, expenses.currency)
@@ -42,7 +43,7 @@ export default async function MonthlyReportPage() {
   const scReceivableByMonth = await db
     .select({
       month: sql<string>`substr(created_at, 1, 7)`,
-      total: sql<number>`sum(客户应收_cents)`,
+      total: sql<number>`sum(客户应收)`,
     })
     .from(sharedContainerItems)
     .groupBy(sql`substr(created_at, 1, 7)`)
@@ -52,7 +53,7 @@ export default async function MonthlyReportPage() {
   const scCostByMonth = await db
     .select({
       month: sql<string>`substr(created_at, 1, 7)`,
-      total: sql<number>`sum(需支付总价_cents)`,
+      total: sql<number>`sum(需支付总价)`,
     })
     .from(sharedContainerItems)
     .groupBy(sql`substr(created_at, 1, 7)`)
@@ -62,7 +63,7 @@ export default async function MonthlyReportPage() {
   const ldReceivableByMonth = await db
     .select({
       month: sql<string>`substr(created_at, 1, 7)`,
-      total: sql<number>`sum(需支付总价_cents)`,
+      total: sql<number>`sum(需支付总价)`,
     })
     .from(loadingItems)
     .groupBy(sql`substr(created_at, 1, 7)`)
@@ -74,7 +75,7 @@ export default async function MonthlyReportPage() {
       month: sql<string>`substr(income_date, 1, 7)`,
       customerId: directIncome.customerId,
       currency: directIncome.currency,
-      total: sql<number>`sum(amount_cents)`,
+      total: sql<number>`sum(amount)`,
     })
     .from(directIncome)
     .groupBy(sql`substr(income_date, 1, 7)`, directIncome.customerId, directIncome.currency)
@@ -119,18 +120,19 @@ export default async function MonthlyReportPage() {
           <Card key={month}>
             <CardHeader><CardTitle>{month}</CardTitle></CardHeader>
             <CardContent className="space-y-4">
+              <p className="text-sm font-bold text-muted-foreground">人民币</p>
               <div className="grid grid-cols-3 gap-4">
                 <div className="text-center p-3 bg-muted rounded-lg">
                   <p className="text-sm text-muted-foreground">营收</p>
-                  <p className="text-lg font-bold">¥{revenueCNY.toFixed(2)}{revenueTHB > 0 ? ` + THB ${revenueTHB.toFixed(2)}` : ''}</p>
+                  <p className="text-lg font-bold">{formatAmount(revenueCNY)}</p>
                 </div>
                 <div className="text-center p-3 bg-muted rounded-lg">
                   <p className="text-sm text-muted-foreground">支出</p>
-                  <p className="text-lg font-bold text-red-600">¥{costCNY.toFixed(2)}{costTHB > 0 ? ` + THB ${costTHB.toFixed(2)}` : ''}</p>
+                  <p className="text-lg font-bold text-red-600">{formatAmount(costCNY)}</p>
                 </div>
                 <div className="text-center p-3 bg-muted rounded-lg">
                   <p className="text-sm text-muted-foreground">利润</p>
-                  <p className={`text-lg font-bold ${profitCNY >= 0 ? 'text-green-600' : 'text-red-600'}`}>¥{profitCNY.toFixed(2)}</p>
+                  <p className={`text-lg font-bold ${profitCNY >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatAmount(profitCNY)}</p>
                 </div>
               </div>
               {byCustomer.size > 0 && (
@@ -139,15 +141,46 @@ export default async function MonthlyReportPage() {
                     <TableRow>
                       <TableHead>客户</TableHead>
                       <TableHead className="text-right">CNY</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {Array.from(byCustomer.entries()).filter(([_, v]) => v.CNY > 0).map(([cid, v]) => (
+                      <TableRow key={cid}>
+                        <TableCell>{customerMap.get(cid) || '-'}</TableCell>
+                        <TableCell className="text-right">{formatAmount(v.CNY)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+              <p className="text-sm font-bold text-orange-600">泰铢</p>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="text-center p-3 bg-muted rounded-lg">
+                  <p className="text-sm text-muted-foreground text-orange-600">营收</p>
+                  <p className="text-lg font-bold text-orange-600">{formatAmount(revenueTHB, 'THB')}</p>
+                </div>
+                <div className="text-center p-3 bg-muted rounded-lg">
+                  <p className="text-sm text-muted-foreground text-orange-600">支出</p>
+                  <p className="text-lg font-bold text-orange-600">{formatAmount(costTHB, 'THB')}</p>
+                </div>
+                <div className="text-center p-3 bg-muted rounded-lg">
+                  <p className="text-sm text-muted-foreground text-orange-600">利润</p>
+                  <p className={`text-lg font-bold ${(revenueTHB - costTHB) >= 0 ? 'text-orange-600' : 'text-red-600'}`}>{formatAmount(revenueTHB - costTHB, 'THB')}</p>
+                </div>
+              </div>
+              {byCustomer.size > 0 && (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>客户</TableHead>
                       <TableHead className="text-right">THB</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {Array.from(byCustomer.entries()).map(([cid, v]) => (
+                    {Array.from(byCustomer.entries()).filter(([_, v]) => v.THB > 0).map(([cid, v]) => (
                       <TableRow key={cid}>
                         <TableCell>{customerMap.get(cid) || '-'}</TableCell>
-                        <TableCell className="text-right">¥{v.CNY.toFixed(2)}</TableCell>
-                        <TableCell className="text-right">THB {v.THB.toFixed(2)}</TableCell>
+                        <TableCell className="text-right">{formatAmount(v.THB, 'THB')}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

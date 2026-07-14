@@ -14,7 +14,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const body = await request.json();
   const updates: any = {};
   if (body.payment_status !== undefined) updates.payment_status = body.payment_status;
-  if (body.需支付总价_cents !== undefined) updates.需支付总价_cents = body.需支付总价_cents;
+  if (body.需支付总价 !== undefined) updates.需支付总价 = body.需支付总价;
   await db.update(loadingItems).set(updates).where(eq(loadingItems.id, parseInt(id)));
   return NextResponse.json({ success: true });
 }

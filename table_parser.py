@@ -20,6 +20,8 @@
 """
 
 import json, os, sys, io, argparse, base64
+from dotenv import load_dotenv
+load_dotenv('/root/xtcwxt/.env')
 from pathlib import Path
 from typing import Optional
 from openai import OpenAI

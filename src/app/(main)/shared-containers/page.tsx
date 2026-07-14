@@ -59,7 +59,7 @@ export default async function SharedContainersPage({ searchParams }: { searchPar
         {q && <Link href="/shared-containers"><Button variant="ghost" size="sm">清除</Button></Link>}
       </form>
 
-      {searchedMarks && (
+      {searchedMarks && searchedMarks.length > 0 && (
         <Card>
           <div className="p-4 border-b"><h2 className="font-semibold">搜索结果：{searchedMarks.length} 个唛头</h2></div>
           <CardContent className="p-0">

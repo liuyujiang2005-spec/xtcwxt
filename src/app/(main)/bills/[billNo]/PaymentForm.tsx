@@ -1,4 +1,5 @@
 'use client';
+import { formatAmount } from '@/lib/format';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -74,7 +75,7 @@ export function PaymentForm({ billId, totalAmount, currentPaid, currentStatus }:
           </div>
           <div className="space-y-1">
             <Label className="text-xs">剩余金额</Label>
-            <div className="h-8 flex items-center text-sm font-bold text-orange-600">¥{remaining.toFixed(6)}</div>
+            <div className="h-8 flex items-center text-sm font-bold text-orange-600">{formatAmount(remaining)}</div>
           </div>
           <Button onClick={save} disabled={saving} size="sm">
             {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}保存

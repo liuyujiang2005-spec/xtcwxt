@@ -28,6 +28,7 @@ sqlite.exec(`
     name TEXT NOT NULL,
     contact TEXT,
     price_matrix TEXT,
+    price_matrix_thb TEXT,
     enable_min_volume INTEGER DEFAULT 1,
     default_currency TEXT DEFAULT 'CNY',
     remark TEXT
@@ -81,12 +82,12 @@ sqlite.exec(`
     仓库 TEXT,
     单项重量 REAL,
     备注 TEXT,
-    成本单价_cents REAL,
-    需支付总价_cents REAL,
+    成本单价 REAL,
+    需支付总价 REAL,
     货型 TEXT,
     运输方式 TEXT,
-    客户应收_cents INTEGER,
-    订单总价_cents INTEGER,
+    客户应收 INTEGER,
+    订单总价 REAL,
     运单号 TEXT,
     cost_status TEXT DEFAULT '待支出',
     ai_verified INTEGER DEFAULT 0,
@@ -118,8 +119,8 @@ sqlite.exec(`
     总重量 REAL,
     箱数 INTEGER,
     pcs数量 INTEGER,
-    单价_cents REAL,
-    需支付总价_cents REAL,
+    单价 REAL,
+    需支付总价 REAL,
     货型 TEXT,
     运输方式 TEXT,
     payment_status TEXT DEFAULT '待支付',
@@ -130,7 +131,7 @@ sqlite.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     mark_id INTEGER REFERENCES marks(id),
     customer_id INTEGER NOT NULL REFERENCES customers(id),
-    amount_cents INTEGER NOT NULL,
+    amount INTEGER NOT NULL,
     currency TEXT DEFAULT 'CNY',
     volume REAL,
     income_date TEXT NOT NULL,
@@ -143,7 +144,7 @@ sqlite.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     loading_batch_id INTEGER REFERENCES loading_batches(id),
     expense_type TEXT NOT NULL,
-    amount_cents INTEGER NOT NULL,
+    amount INTEGER NOT NULL,
     currency TEXT DEFAULT 'CNY',
     supplier_id INTEGER REFERENCES suppliers(id),
     status TEXT DEFAULT '待支付',
@@ -157,7 +158,7 @@ sqlite.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     mark_id INTEGER REFERENCES marks(id),
     customer_id INTEGER REFERENCES customers(id),
-    amount_cents INTEGER NOT NULL,
+    amount INTEGER NOT NULL,
     currency TEXT DEFAULT 'CNY',
     received_date TEXT NOT NULL,
     remark TEXT
@@ -167,7 +168,7 @@ sqlite.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     supplier_id INTEGER REFERENCES suppliers(id),
     expense_id INTEGER REFERENCES expenses(id),
-    amount_cents INTEGER NOT NULL,
+    amount INTEGER NOT NULL,
     currency TEXT DEFAULT 'CNY',
     paid_date TEXT NOT NULL,
     remark TEXT
@@ -178,7 +179,7 @@ sqlite.exec(`
     bill_no TEXT NOT NULL UNIQUE,
     customer_id INTEGER NOT NULL REFERENCES customers(id),
     month_tag TEXT NOT NULL,
-    total_amount_cents REAL NOT NULL,
+    total_amount REAL NOT NULL,
     cost_amount REAL DEFAULT 0,
     paid_amount REAL DEFAULT 0,
     remaining_amount REAL DEFAULT 0,
@@ -196,7 +197,7 @@ sqlite.exec(`
     bill_id INTEGER NOT NULL REFERENCES bills(id),
     mark_id INTEGER NOT NULL REFERENCES marks(id),
     mode TEXT NOT NULL,
-    amount_cents REAL NOT NULL,
+    amount REAL NOT NULL,
     cost_amount REAL DEFAULT 0
   );
 
@@ -229,7 +230,7 @@ sqlite.exec(`
 
 const existingAdmin = sqlite.prepare('SELECT id FROM users WHERE username = ?').get('admin');
 if (!existingAdmin) {
-  const passwordHash = hashSync('admin123', 10);
+  const passwordHash = hashSync('Aa112233', 10);
   sqlite.prepare(
     'INSERT INTO users (username, password_hash, display_name, role) VALUES (?, ?, ?, ?)'
   ).run('admin', passwordHash, '系统管理员', 'admin');

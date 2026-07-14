@@ -14,6 +14,8 @@ interface Customer {
   name: string;
 }
 
+const WAREHOUSES = ['义乌仓', '广州仓', '东莞仓', '深圳仓'];
+
 export function NewIncomeDialog() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -22,11 +24,11 @@ export function NewIncomeDialog() {
   const [amount, setAmount] = useState('');
   const [currency, setCurrency] = useState('CNY');
   const [volume, setVolume] = useState('');
+  const [warehouse, setWarehouse] = useState('');
   const [incomeDate, setIncomeDate] = useState(new Date().toISOString().substring(0, 10));
   const [remark, setRemark] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // 🟡修复：打开弹窗时加载客户列表，改为下拉选择器
   useEffect(() => {
     if (open && customers.length === 0) {
       fetch('/api/customers')
@@ -45,8 +47,9 @@ export function NewIncomeDialog() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           customerId: parseInt(customerId),
-          amountCents: parseFloat(amount),
+          amount: parseFloat(amount),
           currency,
+          warehouse,
           volume: volume ? parseFloat(volume) : null,
           incomeDate,
           remark,
@@ -57,6 +60,7 @@ export function NewIncomeDialog() {
         setCustomerId('');
         setAmount('');
         setVolume('');
+        setWarehouse('');
         setRemark('');
         router.refresh();
       } else {
@@ -78,7 +82,6 @@ export function NewIncomeDialog() {
       <DialogContent>
         <DialogHeader><DialogTitle>新建收入</DialogTitle></DialogHeader>
         <div className="space-y-4 py-4">
-          {/* 🟡修复：客户改为下拉选择器，不再需要用户知道 ID */}
           <div className="space-y-2">
             <Label>客户 *</Label>
             <Select value={customerId} onValueChange={v => setCustomerId(v || '')}>
@@ -109,6 +112,15 @@ export function NewIncomeDialog() {
           <div className="space-y-2">
             <Label>体积 (m³)</Label>
             <Input type="number" step="0.000001" value={volume} onChange={e => setVolume(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label>仓库</Label>
+            <Select value={warehouse} onValueChange={v => setWarehouse(v || '')}>
+              <SelectTrigger><SelectValue placeholder="选择仓库" /></SelectTrigger>
+              <SelectContent>
+                {WAREHOUSES.map(w => <SelectItem key={w} value={w}>{w}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-2">
             <Label>日期</Label>

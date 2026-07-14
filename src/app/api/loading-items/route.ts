@@ -51,15 +51,16 @@ export async function POST(request: NextRequest) {
           // 🔴修复：mark 为 null 时抛出明确错误，而非使用 mark! 非空断言
           if (!mark) throw new Error(`创建唛头失败: ${cleanMarkNo}`);
         }
+        custId = mark.customerId;
 
         const cust = tx.select().from(customers).where(eq(customers.id, custId)).get();
-        let unitPriceCents = 0;
+        let unitPrice = 0;
         if (cust?.priceMatrix) {
           try {
             const matrix = JSON.parse(cust.priceMatrix);
             const mode = item.运输方式 === '海运' ? 'sea' : 'land';
             const type = item.货型 === '普货' ? 'regular' : item.货型 === '商检货' ? 'inspection' : 'sensitive';
-            unitPriceCents = matrix[`${mode}_${type}`] || 0;
+            unitPrice = matrix[`${mode}_${type}`] || 0;
           } catch { /* 价格矩阵解析失败，使用默认值 0 */ }
         }
 
@@ -78,8 +79,8 @@ export async function POST(request: NextRequest) {
           总重量: item.总重量 || null,
           箱数: item.箱数 ?? null,
           pcs数量: item.pcs数量 ?? null,
-          单价_cents: unitPriceCents,
-          需支付总价_cents: item.需支付总价_cents || 0,
+          单价: unitPrice,
+          需支付总价: item.需支付总价 || 0,
           货型: item.货型 || null,
           运输方式: item.运输方式 || null,
           payment_status: '待支付',

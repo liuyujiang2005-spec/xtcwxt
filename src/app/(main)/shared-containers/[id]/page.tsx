@@ -12,6 +12,7 @@ import { ArrowLeft } from 'lucide-react';
 import { DeleteItemButton } from './DeleteButton';
 import { ReviewActions } from './ReviewActions';
 import { ClassifyButton } from './ClassifyButton';
+import { formatAmount } from '@/lib/format';
 
 const STATUS_COLORS: Record<string, string> = {
   '待验证': 'bg-gray-100 text-gray-700',
@@ -27,7 +28,7 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
   const batch = await db.select().from(sharedContainerBatches).where(eq(sharedContainerBatches.id, parseInt(id))).get();
   if (!batch) notFound();
 
-  const items = await db.select().from(sharedContainerItems).where(eq(sharedContainerItems.batchId, batch.id)).all();
+  const items = await db.select().from(sharedContainerItems).where(eq(sharedContainerItems.batchId, batch.id)).orderBy(sharedContainerItems.markId).all();
   const allCustomers = await db.select().from(customers).all();
   const customerMap = new Map(allCustomers.map((c) => [c.id, c.name]));
 
@@ -46,7 +47,7 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
   const orderCosts = new Map<string, number>();
   items.forEach(i => { 
     const key = i.运单号 || `mark_${i.markId}`;
-    if (i.订单总价_cents != null && !orderCosts.has(key)) orderCosts.set(key, i.订单总价_cents); 
+    if (i.订单总价 != null && !orderCosts.has(key)) orderCosts.set(key, i.订单总价); 
   });
   const totalCost = Array.from(orderCosts.values()).reduce((s, v) => s + v, 0);
 
@@ -83,7 +84,7 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm">总立方</CardTitle></CardHeader>
           <CardContent><span className="text-xl font-bold">{totalVolume.toFixed(6)} m³</span></CardContent></Card>
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm">总成本</CardTitle></CardHeader>
-          <CardContent><span className="text-xl font-bold text-red-600">¥{(totalCost ?? 0).toFixed(6)}</span></CardContent></Card>
+          <CardContent><span className="text-xl font-bold text-red-600">{formatAmount((totalCost ?? 0))}</span></CardContent></Card>
       </div>
 
       {markStats.length > 0 && (
@@ -94,7 +95,7 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
           </TableRow></TableHeader><TableBody>
             {markStats.map((m) => (<TableRow key={m.markNo}>
               <TableCell className="font-medium">{m.markNo}</TableCell><TableCell className="text-right">{m.count}</TableCell>
-              <TableCell className="text-right font-bold">{(m.volume ?? 0).toFixed(6)} m³</TableCell><TableCell className="text-right">¥{(m.cost ?? 0).toFixed(6)}</TableCell>
+              <TableCell className="text-right font-bold">{(m.volume ?? 0).toFixed(6)} m³</TableCell><TableCell className="text-right">{formatAmount((m.cost ?? 0))}</TableCell>
             </TableRow>))}
           </TableBody></Table></CardContent>
         </Card>
@@ -111,7 +112,7 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
           ) : (
             <Table>
               <TableHeader><TableRow>
-                <TableHead>唛头</TableHead><TableHead>品名</TableHead><TableHead>货型</TableHead><TableHead>运输</TableHead>
+                <TableHead>唛头</TableHead><TableHead>品名</TableHead><TableHead>仓库</TableHead><TableHead>货型</TableHead><TableHead>运输</TableHead>
                 <TableHead className="text-right">总体积</TableHead><TableHead className="text-right">单箱体积</TableHead>
                 <TableHead className="text-right">箱数</TableHead><TableHead className="text-right">单箱数量</TableHead>
                 <TableHead>国内单号</TableHead><TableHead className="text-right">总重量</TableHead>
@@ -122,6 +123,7 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
                 {(() => { const groups: { markId: number; rows: typeof items }[] = []; let last = -1; for (const i of items) { if (i.markId !== last) { groups.push({ markId: i.markId, rows: [] }); last = i.markId; } groups[groups.length - 1].rows.push(i); } return groups.map(g => g.rows.map((item, ri) => (<TableRow key={item.id}>
                   {ri === 0 ? <TableCell className="font-medium" rowSpan={g.rows.length}>{markMap.get(item.markId) || '-'}</TableCell> : null}
                   <TableCell className="max-w-[120px] truncate" title={item.品名 || ''}>{item.品名 || '-'}</TableCell>
+                  <TableCell>{item.仓库 || '-'}</TableCell>
                   <TableCell>{item.货型 || '-'}</TableCell><TableCell>{item.运输方式 || '-'}</TableCell>
                   <TableCell className="text-right">{(item.总体积 ?? 0).toFixed(6)}</TableCell>
                   <TableCell className="text-right">{item.单箱体积 || '-'}</TableCell>
@@ -129,8 +131,8 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
                   <TableCell className="text-right">{item.单箱数量 || '-'}</TableCell>
                   <TableCell className="text-xs">{item.国内单号 || '-'}</TableCell>
                   <TableCell className="text-right">{item.总重量 || '-'}</TableCell>
-                  <TableCell className="text-right">¥{(item.成本单价_cents || 0).toFixed(6)}</TableCell>
-                  <TableCell className="text-right">¥{(item.需支付总价_cents || 0).toFixed(6)}</TableCell>
+                  <TableCell className="text-right">{formatAmount((item.成本单价 || 0))}</TableCell>
+                  <TableCell className="text-right">{formatAmount((item.需支付总价 || 0))}</TableCell>
                   <TableCell>{item.cost_status || '-'}</TableCell>
                   <TableCell><Badge className={item.cost_status === '已支出' ? 'bg-gray-100 text-gray-700' : 'bg-yellow-100 text-yellow-700'}>{item.cost_status || '-'}</Badge></TableCell>
                   <TableCell><DeleteItemButton itemId={item.id} apiPath="/api/shared-container-items" /></TableCell>

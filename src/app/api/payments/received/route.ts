@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     await db.insert(paymentsReceived).values({
       customerId: body.customerId,
       markId: body.markId || null,
-      amountCents: body.amountCents,
+      amount: body.amount,
       currency: body.currency || 'CNY',
       receivedDate: body.receivedDate,
       remark: body.remark || null,

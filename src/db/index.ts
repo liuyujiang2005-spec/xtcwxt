@@ -20,3 +20,6 @@ export function getDb() {
 export function getRawDb() {
   return rawDb;
 }
+
+process.on('SIGTERM', () => { rawDb.close(); });
+process.on('SIGINT', () => { rawDb.close(); });

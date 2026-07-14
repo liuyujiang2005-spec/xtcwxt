@@ -34,7 +34,7 @@ export async function PUT(
   await db.update(directIncome)
     .set({
       customerId: body.customerId,
-      amountCents: body.amountCents,
+      amount: body.amount,
       currency: body.currency,
       volume: body.volume ?? null,
       incomeDate: body.incomeDate,

@@ -25,14 +25,14 @@ export async function POST(request: NextRequest) {
   if (!body.expenseType || typeof body.expenseType !== 'string' || body.expenseType.trim() === '') {
     return NextResponse.json({ error: '费用类型不能为空' }, { status: 400 });
   }
-  if (typeof body.amountCents !== 'number' || body.amountCents <= 0) {
+  if (typeof body.amount !== 'number' || body.amount <= 0) {
     return NextResponse.json({ error: '金额必须大于 0' }, { status: 400 });
   }
 
   const result = await db.insert(expenses).values({
     loadingBatchId: body.loadingBatchId || null,
     expenseType: body.expenseType.trim(),
-    amountCents: body.amountCents,
+    amount: body.amount,
     currency: body.currency || 'CNY',
     supplierId: body.supplierId || null,
     status: '待支付',

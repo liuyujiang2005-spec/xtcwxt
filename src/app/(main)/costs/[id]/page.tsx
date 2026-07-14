@@ -21,6 +21,7 @@ export default function EditCostPage({ params }: { params: Promise<{ id: string 
   const [remark, setRemark] = useState('');
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
   const [id, setId] = useState('');
 
   useEffect(() => {
@@ -29,16 +30,18 @@ export default function EditCostPage({ params }: { params: Promise<{ id: string 
 
   useEffect(() => {
     if (!id) return;
+    const controller = new AbortController();
     fetch(`/api/expenses/${id}`)
-      .then(r => r.json())
+      .then(r => { if (!r.ok) throw new Error('加载失败'); return r.json(); })
       .then(data => {
         setExpenseType(data.expenseType || '');
-        setAmountYuan(String(data.amountCents || ''));
+        setAmountYuan(String(data.amount || ''));
         setCurrency(data.currency || 'CNY');
         setRemark(data.remark || '');
       })
-      .catch(() => alert('加载失败'))
+      .catch(() => setFetchError(true))
       .finally(() => setFetching(false));
+    return () => controller.abort();
   }, [id]);
 
   const handleSubmit = async () => {
@@ -49,7 +52,7 @@ export default function EditCostPage({ params }: { params: Promise<{ id: string 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           expenseType,
-          amountCents: parseFloat(amountYuan || '0'),
+          amount: parseFloat(amountYuan || '0'),
           currency,
           remark,
         }),

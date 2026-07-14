@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
   const result = await db.insert(directIncome).values({
     markId: body.markId || null,
     customerId: body.customerId,
-    amountCents: body.amountCents,
+    amount: body.amount,
     currency: body.currency || 'CNY',
     volume: body.volume || null,
     incomeDate: body.incomeDate,

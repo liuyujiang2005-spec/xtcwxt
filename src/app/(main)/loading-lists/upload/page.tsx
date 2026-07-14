@@ -23,7 +23,7 @@ interface ScItem {
 
 interface ScSummary { totalItems: number; abnormalCount: number; }
 
-export default function UploadSharedContainerPage() {
+export default function UploadLoadingListPage() {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [phase, setPhase] = useState<'idle' | 'parsing' | 'preview' | 'importing'>('idle');
@@ -54,7 +54,7 @@ export default function UploadSharedContainerPage() {
     abortRef.current = controller;
     try {
       const base64 = await toBase64(file);
-      const res = await fetch('/api/ai/extract-sc', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fileName: file.name, fileData: base64 }), signal: controller.signal });
+      const res = await fetch('/api/ai/extract-loading', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fileName: file.name, fileData: base64 }), signal: controller.signal });
       if (!res.ok) { const err = await res.json().catch(() => ({})); setResult({ passed: false, msg: err.error || 'AI 解析失败' }); setPhase('idle'); processingRef.current = false; return; }
       const data = await res.json();
       const items: ScItem[] = (data.items || []).map((i: any, idx: number) => ({ ...i, rowIndex: idx + 1 }));
@@ -70,7 +70,7 @@ export default function UploadSharedContainerPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           items: items.map(i => ({ 品名: i.品名, 总体积: i.总体积, 货型: i.货型, 运输方式: i.运输方式, 运单号: i.运单号, 成本单价: i.单价, 需支付总价: i.单项价格 })),
-          type: 'shared-container',
+          type: 'loading',
         }),
         signal: controller.signal,
       }).then(async (verifyRes) => {
@@ -99,14 +99,13 @@ export default function UploadSharedContainerPage() {
     processingRef.current = true; setPhase('importing');
     abortRef.current?.abort(); const controller = new AbortController(); abortRef.current = controller;
     try {
-      const batchNo = `SC-${new Date().toISOString().substring(0, 10).replace(/-/g, '')}-${Date.now().toString().slice(-4)}`;
+      const batchNo = `LD-${new Date().toISOString().substring(0, 10).replace(/-/g, '')}-${Date.now().toString().slice(-4)}`;
       const items = preview.map(item => ({
         markNo: item.唛头 || item.运单号,
         customerId,
         品名: item.品名,
         货型: item.货型 || '',
         运输方式: item.运输方式 || '',
-        仓库: item.仓库 || '',
         尺寸_长: item.尺寸_长 || 0,
         尺寸_宽: item.尺寸_宽 || 0,
         尺寸_高: item.尺寸_高 || 0,
@@ -115,24 +114,20 @@ export default function UploadSharedContainerPage() {
         国内单号: item.国内单号 || '',
         单箱数量: item.件数 || 0,
         总重量: item.总重量 || 0,
-        单项重量: item.单项重量 || 0,
         箱数: item.件数 || 0,
         pcs数量: 0,
-        备注: item.备注 || '',
-        成本单价: item.单价 || 0,
+        单价: item.单价 || 0,
         需支付总价: item.单项价格 || 0,
-        订单总价: item.订单总价 || 0,
         运单号: item.运单号 || '',
-        结算状态: item.结算状态 || '',
         ai_verified: item.verdict === '通过' ? 1 : 0,
         ai_verify_msg: item.reason || '',
       }));
       const totalVol = items.reduce((s: number, i: any) => s + (i.总体积 || i.单项体积 || 0), 0);
-      const batchRes = await fetch('/api/shared-containers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ batchNo, totalVolumeUploaded: totalVol, originalFilename: file.name }), signal: controller.signal });
+      const batchRes = await fetch('/api/loading-lists', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ batchNo, totalVolumeUploaded: totalVol, originalFilename: file.name }), signal: controller.signal });
       const batchData = await batchRes.json().catch(() => ({}));
       if (!batchData.id) throw new Error('批次创建失败');
-      const importRes = await fetch('/api/shared-container-items', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ batchId: batchData.id, items }), signal: controller.signal });
-      if (importRes.ok) { setResult({ passed: true, msg: `导入成功！共 ${items.length} 条记录` }); setPhase('idle'); setTimeout(() => router.push('/shared-containers'), 2000); }
+      const importRes = await fetch('/api/loading-items', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ batchId: batchData.id, items }), signal: controller.signal });
+      if (importRes.ok) { setResult({ passed: true, msg: `导入成功！共 ${items.length} 条记录` }); setPhase('idle'); setTimeout(() => router.push('/loading-lists'), 2000); }
       else { const err = await importRes.json(); setResult({ passed: false, msg: err.error || '导入失败' }); setPhase('preview'); }
     } catch (err: any) { if (err?.name !== 'AbortError') { setResult({ passed: false, msg: '导入失败' }); setPhase('preview'); } }
     processingRef.current = false;
@@ -151,7 +146,7 @@ export default function UploadSharedContainerPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3"><Link href="/shared-containers"><Button variant="ghost" size="icon" className="h-8 w-8"><ArrowLeft className="h-5 w-5" /></Button></Link><h1 className="text-2xl font-bold">上传拼柜表格</h1></div>
+      <div className="flex items-center gap-3"><Link href="/loading-lists"><Button variant="ghost" size="icon" className="h-8 w-8"><ArrowLeft className="h-5 w-5" /></Button></Link><h1 className="text-2xl font-bold">上传装柜表格</h1></div>
       {phase === 'preview' || phase === 'importing' ? (
         <Card><CardHeader><CardTitle>预览数据 <span className="ml-2 text-sm font-normal text-muted-foreground">共 {summary.totalItems} 条{summary.abnormalCount > 0 ? `，${summary.abnormalCount} 条异常` : '，全部通过'}</span></CardTitle></CardHeader>
           <CardContent className="space-y-4">

@@ -30,7 +30,7 @@ function LoginForm() {
 
       if (res.ok) {
         const redirect = searchParams.get('redirect') || '/';
-        router.push(redirect);
+        const safe = redirect.startsWith('/') ? redirect : '/'; router.push(safe);
         router.refresh();
       } else {
         const data = await res.json();

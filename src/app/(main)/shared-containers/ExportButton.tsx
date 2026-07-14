@@ -11,7 +11,7 @@ export function ExportButton({ apiPath, label }: { apiPath: string; label: strin
     setLoading(true);
     try {
       const res = await fetch(apiPath);
-      if (!res.ok) { alert('导出失败'); return; }
+      if (!res.ok) { alert('导出失败'); setLoading(false); return; }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');

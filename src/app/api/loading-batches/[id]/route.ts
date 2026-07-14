@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db/index';
-import { loadingBatches, loadingItems, expenses } from '@/db/schema';
+import { loadingBatches, loadingItems, expenses, bills, billItems } from '@/db/schema';
 import { validateSession } from '@/lib/auth';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 
 export async function GET(
   request: NextRequest,
@@ -50,16 +50,39 @@ export async function DELETE(
   const { id } = await params;
   const batchId = parseInt(id);
 
-  // 🟡修复：三步删除改为事务，避免中途失败留下孤立数据
   try {
     db.transaction((tx) => {
+      // 1. 查出本批次所有明细的 markId
+      const items = tx.select({ markId: loadingItems.markId })
+        .from(loadingItems)
+        .where(eq(loadingItems.batchId, batchId))
+        .all();
+
+      const markIds = [...new Set(items.map(i => i.markId))];
+
+      // 2. 查出这些 markId 关联的 billItems 和 bills，一并删除
+      if (markIds.length > 0) {
+        const biRows = tx.select({ billId: billItems.billId })
+          .from(billItems)
+          .where(inArray(billItems.markId, markIds))
+          .all();
+
+        const billIds = [...new Set(biRows.map(bi => bi.billId))];
+
+        if (billIds.length > 0) {
+          tx.delete(billItems).where(inArray(billItems.billId, billIds)).run();
+          tx.delete(bills).where(inArray(bills.id, billIds)).run();
+        }
+      }
+
+      // 3. 删除明细、支出和批次
       tx.delete(loadingItems).where(eq(loadingItems.batchId, batchId)).run();
       tx.delete(expenses).where(eq(expenses.loadingBatchId, batchId)).run();
       tx.delete(loadingBatches).where(eq(loadingBatches.id, batchId)).run();
     });
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('删除批次失败:', error);
+    console.error('删除装柜批次失败:', error);
     return NextResponse.json({ error: '删除失败，请重试' }, { status: 500 });
   }
 }

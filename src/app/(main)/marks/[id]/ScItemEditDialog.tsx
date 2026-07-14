@@ -1,4 +1,5 @@
 'use client';
+import { formatAmount } from '@/lib/format';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -8,29 +9,29 @@ import { Label } from '@/components/ui/label';
 import { Pencil } from 'lucide-react';
 
 export function ScItemEditDialog({
-  itemId, volume, 成本单价_cents, 客户应收_cents,
+  itemId, volume, 成本单价, 客户应收,
 }: {
   itemId: number;
   volume: number;
-  成本单价_cents: number;
-  客户应收_cents: number;
+  成本单价: number;
+  客户应收: number;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [cost, setCost] = useState(String((成本单价_cents ?? 0)));
-  const [receivable, setReceivable] = useState(String((客户应收_cents ?? 0)));
+  const [cost, setCost] = useState(String((成本单价 ?? 0)));
+  const [receivable, setReceivable] = useState(String((客户应收 ?? 0)));
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
     setSaving(true);
-    const costCents = parseFloat(cost || '0');
-    const receivableCents = parseFloat(receivable || '0');
+    const costAmount = parseFloat(cost || '0');
+    const receivableAmount = parseFloat(receivable || '0');
 
     try {
       const r = await fetch(`/api/shared-container-items/${itemId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 成本单价_cents: costCents, 客户应收_cents: receivableCents, 总体积: volume }),
+        body: JSON.stringify({ 成本单价: costAmount, 客户应收: receivableAmount, 总体积: volume }),
       });
       if (r.ok) { router.refresh(); setOpen(false); } else { const e = await r.json().catch(()=>({error:'保存失败'})); alert(e.error); }
     } catch (e) {
@@ -62,8 +63,8 @@ export function ScItemEditDialog({
           <Input type="number" step="0.01" value={receivable} onChange={(e) => setReceivable(e.target.value)} />
         </div>
         <div className="space-y-1 text-xs text-muted-foreground">
-          <p>成本合计: ¥{(parseFloat(cost || '0') * volume).toFixed(6)}</p>
-          <p>应收合计: ¥{(parseFloat(receivable || '0') * volume).toFixed(6)}</p>
+          <p>成本合计: {formatAmount((parseFloat(cost || '0') * volume))}</p>
+          <p>应收合计: {formatAmount((parseFloat(receivable || '0') * volume))}</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" className="flex-1" onClick={() => setOpen(false)}>取消</Button>

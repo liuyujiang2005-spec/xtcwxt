@@ -17,7 +17,7 @@ export async function PUT(
   const body = await request.json();
   const updates: any = {};
   if (body.expenseType !== undefined) updates.expenseType = body.expenseType;
-  if (body.amountCents !== undefined) updates.amountCents = body.amountCents;
+  if (body.amount !== undefined) updates.amount = body.amount;
   if (body.currency !== undefined) updates.currency = body.currency;
   if (body.supplierId !== undefined) updates.supplierId = body.supplierId || null;
   if (body.status !== undefined) updates.status = body.status;
@@ -44,7 +44,7 @@ export async function PATCH(
 
     await db.update(expenses)
       .set({
-        amountCents: body.amountCents,
+        amount: body.amount,
         currency: body.currency || 'CNY',
         status: body.status || '待支付',
         remark: body.remark || null,

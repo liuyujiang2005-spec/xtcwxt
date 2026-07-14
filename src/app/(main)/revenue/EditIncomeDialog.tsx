@@ -11,7 +11,7 @@ import { Loader2, Pencil } from 'lucide-react';
 export function EditIncomeDialog({ income }: { income: any }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [amount, setAmount] = useState(String(income.amountCents));
+  const [amount, setAmount] = useState(String(income.amount));
   const [currency, setCurrency] = useState(income.currency || 'CNY');
   const [volume, setVolume] = useState(String(income.volume || ''));
   const [incomeDate, setIncomeDate] = useState(income.incomeDate);
@@ -20,12 +20,14 @@ export function EditIncomeDialog({ income }: { income: any }) {
 
   const handleSave = async () => {
     setLoading(true);
-    const r = await fetch('/api/direct-income/' + income.id, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ customerId: income.customerId, amountCents: parseFloat(amount), currency, volume: volume ? parseFloat(volume) : null, incomeDate, remark }),
-    });
-    if (r.ok) { setOpen(false); router.refresh(); } else { alert('保存失败'); }
+    try {
+      const r = await fetch('/api/direct-income/' + income.id, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customerId: income.customerId, amount: parseFloat(amount), currency, volume: volume ? parseFloat(volume) : null, incomeDate, remark }),
+      });
+      if (r.ok) { setOpen(false); router.refresh(); } else { alert('保存失败'); }
+    } catch { alert('网络错误，请重试'); }
     setLoading(false);
   };
 

@@ -3,7 +3,7 @@ import { db } from '@/db/index';
 import { customers } from '@/db/schema';
 import { validateSession } from '@/lib/auth';
 import { eq } from 'drizzle-orm';
-import { writeFile } from 'fs/promises';
+import { writeFile, unlink } from 'fs/promises';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
 import { parseViaPythonService, mapPythonResult } from '@/lib/table-parser-client';

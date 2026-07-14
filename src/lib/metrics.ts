@@ -1,5 +1,5 @@
 import { db } from '@/db/index';
-import { marks, paymentsReceived, customerMetrics, sharedContainerItems, loadingItems } from '@/db/schema';
+import { marks, paymentsReceived, customerMetrics, sharedContainerItems, loadingItems, bills, billItems } from '@/db/schema';
 import { eq, and, gte } from 'drizzle-orm';
 
 export async function refreshCustomerMetrics(customerId: number) {
@@ -8,14 +8,46 @@ export async function refreshCustomerMetrics(customerId: number) {
 
   const allPayments = await db.select().from(paymentsReceived).where(eq(paymentsReceived.customerId, customerId)).all();
 
+  // 收集付款记录：{ markId, paymentDate }
+  type PaymentRecord = { markId: number; paymentDate: string };
+  const paymentRecords: PaymentRecord[] = [];
+
+  // 来自 paymentsReceived
+  for (const p of allPayments) {
+    if (p.receivedDate && p.markId) {
+      paymentRecords.push({ markId: p.markId, paymentDate: p.receivedDate });
+    }
+  }
+
+  // 来自 bills（已付款账单），通过 bill_items.mark_id 关联唛头
+  const paidBills = await db
+    .select({
+      billId: bills.id,
+      paidAt: bills.paidAt,
+      markId: billItems.markId,
+    })
+    .from(bills)
+    .innerJoin(billItems, eq(billItems.billId, bills.id))
+    .where(and(
+      eq(bills.customerId, customerId),
+      eq(bills.paymentStatus, '已付款'),
+    ))
+    .all();
+
+  for (const row of paidBills) {
+    if (row.paidAt && row.markId && !paymentRecords.some(r => r.markId === row.markId && r.paymentDate === row.paidAt)) {
+      paymentRecords.push({ markId: row.markId, paymentDate: row.paidAt });
+    }
+  }
+
+  // 计算平均回款天数
   let totalPaymentDays = 0;
   let paymentCount = 0;
-  for (const p of allPayments) {
-    const mark = allMarks.find((m) => m.id === p.markId);
+  for (const rec of paymentRecords) {
+    const mark = allMarks.find((m) => m.id === rec.markId);
     if (mark?.createdAt) {
       const createdDate = new Date(mark.createdAt);
-      const paidDate = new Date(p.receivedDate);
-      // 🟡修复：用 Math.max(0, ...) 保护，避免录入错误导致负天数影响评级
+      const paidDate = new Date(rec.paymentDate);
       const days = Math.max(0, Math.round((paidDate.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24)));
       totalPaymentDays += days;
       paymentCount++;
@@ -36,15 +68,16 @@ export async function refreshCustomerMetrics(customerId: number) {
     totalVolume = [...scVol, ...ldVol].reduce((s, i) => s + (i.总体积 || 0), 0);
   }
   const monthlyVolume = recentMarks.length > 0 ? (totalVolume / 6) : 0;
-  const monthlyShipments = recentMarks.length > 0 ? Math.round(recentMarks.length / 6) : 0;
+  const monthlyShipments = recentMarks.length > 0 ? Math.ceil(recentMarks.length / 6) : 0;
+
+  const paidMarkIds = new Set(paymentRecords.map(r => r.markId));
 
   const overdueCount = allMarks.filter((m) => {
     if (!m.createdAt) return false;
     const created = new Date(m.createdAt);
     const daysSinceCreated = (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24);
     if (daysSinceCreated < 60) return false;
-    const hasPayment = allPayments.some((p) => p.markId === m.id);
-    return !hasPayment;
+    return !paidMarkIds.has(m.id);
   }).length;
 
   let overallRating = 'C';

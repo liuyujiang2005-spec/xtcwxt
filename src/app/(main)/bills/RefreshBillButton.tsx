@@ -1,12 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, Loader2 } from 'lucide-react';
 
 export function RefreshBillButton({ billId }: { billId: number }) {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   const handleRefresh = async () => {
@@ -17,12 +15,12 @@ export function RefreshBillButton({ billId }: { billId: number }) {
       body: JSON.stringify({ id: billId, recalculate: true }),
     });
     if (r.ok) {
-      router.refresh();
+      window.location.reload();
     } else {
       const e = await r.json().catch(() => ({ error: '刷新失败' }));
       alert(e.error || '刷新失败');
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (

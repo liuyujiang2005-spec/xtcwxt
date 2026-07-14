@@ -12,8 +12,9 @@ const THB_FORMATTER = new Intl.NumberFormat('th-TH', {
   maximumFractionDigits: 6,
 });
 
-export function formatCents(cents: number, currency: string = 'CNY'): string {
-  const amount = cents;
+export function formatAmount(amount: number, currency: string = 'CNY'): string {
+  if (!isFinite(amount)) return currency + " —";
+  
   if (currency === 'THB') {
     return THB_FORMATTER.format(amount);
   }
@@ -24,8 +25,8 @@ export function formatNumber(n: number, decimals: number = 2): string {
   return n.toFixed(decimals);
 }
 
-export function centsToYuan(cents: number): number {
-  return cents;
+export function centsToYuan(amount: number): number {
+  return amount;
 }
 
 export function getMonthTag(date?: Date): string {

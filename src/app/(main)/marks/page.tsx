@@ -14,17 +14,36 @@ const MODE_COLORS: Record<string, string> = {
   '装柜': 'bg-purple-100 text-purple-700',
 };
 
-export default async function MarksPage() {
+export default async function MarksPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
-  const allMarks = await db.select().from(marks).orderBy(desc(marks.createdAt)).all();
+  const sp = await searchParams;
+  const q = sp.q || '';
+
+  const allMarks = await db.select().from(marks).orderBy(marks.markNo).all();
   const allCustomers = await db.select().from(customers).all();
   const customerMap = new Map(allCustomers.map((c) => [c.id, c.name]));
+
+  const filtered = q
+    ? allMarks.filter(m =>
+        m.markNo?.includes(q) ||
+        (customerMap.get(m.customerId) || '').includes(q)
+      )
+    : allMarks;
 
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">唛头管理</h1>
+
+      <form method="get" className="flex gap-2 items-end">
+        <div className="space-y-1">
+          <label className="text-xs text-muted-foreground">唛头/客户</label>
+          <input name="q" defaultValue={q} placeholder="搜索唛头或客户..." className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm w-48" />
+        </div>
+        <Button type="submit" variant="outline" size="sm">筛选</Button>
+        {q && <Link href="/marks"><Button variant="ghost" size="sm">清除</Button></Link>}
+      </form>
 
       <Card>
         <CardContent className="p-0">
@@ -41,7 +60,7 @@ export default async function MarksPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {allMarks.map((m) => (
+              {filtered.map((m) => (
                 <TableRow key={m.id}>
                   <TableCell className="font-mono text-xs">{m.markNo}</TableCell>
                   <TableCell className="font-medium">{customerMap.get(m.customerId) || '-'}</TableCell>
@@ -58,7 +77,7 @@ export default async function MarksPage() {
                   </TableCell>
                 </TableRow>
               ))}
-              {allMarks.length === 0 && (
+              {filtered.length === 0 && (
                 <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">暂无唛头数据</TableCell></TableRow>
               )}
             </TableBody>

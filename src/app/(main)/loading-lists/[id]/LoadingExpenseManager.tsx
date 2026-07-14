@@ -15,7 +15,7 @@ export function LoadingExpenseManager({
   initialExpenses,
 }: {
   batchId: number;
-  initialExpenses: { id: number; expenseType: string; amountCents: number; currency: string; status: string }[];
+  initialExpenses: { id: number; expenseType: string; amount: number; currency: string; status: string }[];
 }) {
   const router = useRouter();
   const expenseMap = new Map(initialExpenses.map((e) => [e.expenseType, e]));
@@ -24,7 +24,7 @@ export function LoadingExpenseManager({
     for (const type of EXPENSE_TYPES) {
       const existing = expenseMap.get(type);
       map[type] = {
-        amount: existing ? String(existing.amountCents) : '',
+        amount: existing ? String(existing.amount) : '',
         currency: existing?.currency || 'CNY',
         status: existing?.status || '待支付',
       };
@@ -35,7 +35,7 @@ export function LoadingExpenseManager({
 
   const handleSave = async (expenseType: string) => {
     const entry = entries[expenseType];
-    const amountCents = Math.round(parseFloat(entry.amount || '0'));
+    const amount = Math.round(parseFloat(entry.amount || '0'));
     const existing = expenseMap.get(expenseType);
 
     setSaving(true);
@@ -44,13 +44,13 @@ export function LoadingExpenseManager({
         await fetch(`/api/expenses/${existing.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ amountCents, currency: entry.currency }),
+          body: JSON.stringify({ amount, currency: entry.currency }),
         });
-      } else if (amountCents > 0) {
+      } else if (amount > 0) {
         await fetch('/api/expenses', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ loadingBatchId: batchId, expenseType, amountCents, currency: entry.currency }),
+          body: JSON.stringify({ loadingBatchId: batchId, expenseType, amount, currency: entry.currency }),
         });
       }
     } catch {

@@ -69,11 +69,11 @@ export async function GET(request: NextRequest) {
         item.单箱体积 ?? '',
         item.总重量 ?? '',
         item.总体积 ?? '',
-        item.成本单价_cents ?? '',
-        item.需支付总价_cents ?? '',
-        item.订单总价_cents ?? '',
+        item.成本单价 ?? '',
+        item.需支付总价 ?? '',
+        item.订单总价 ?? '',
         item.cost_status || '',
-        item.客户应收_cents ?? '',
+        item.客户应收 ?? '',
       ]);
     }
 

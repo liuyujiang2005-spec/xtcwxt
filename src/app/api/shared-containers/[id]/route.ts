@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db/index';
-import { sharedContainerBatches, sharedContainerItems, marks } from '@/db/schema';
+import { sharedContainerBatches, sharedContainerItems, marks, bills, billItems } from '@/db/schema';
 import { validateSession } from '@/lib/auth';
 import { eq, inArray } from 'drizzle-orm';
 
@@ -54,9 +54,32 @@ export async function DELETE(
   const { id } = await params;
   const batchId = parseInt(id);
 
-  // 🟡修复：两步删除改为事务
   try {
     db.transaction((tx) => {
+      // 1. 查出本批次所有明细的 markId
+      const items = tx.select({ markId: sharedContainerItems.markId })
+        .from(sharedContainerItems)
+        .where(eq(sharedContainerItems.batchId, batchId))
+        .all();
+
+      const markIds = [...new Set(items.map(i => i.markId))];
+
+      // 2. 查出这些 markId 关联的 billItems 和 bills，一并删除
+      if (markIds.length > 0) {
+        const biRows = tx.select({ id: billItems.id, billId: billItems.billId })
+          .from(billItems)
+          .where(inArray(billItems.markId, markIds))
+          .all();
+
+        const billIds = [...new Set(biRows.map(bi => bi.billId))];
+
+        if (billIds.length > 0) {
+          tx.delete(billItems).where(inArray(billItems.billId, billIds)).run();
+          tx.delete(bills).where(inArray(bills.id, billIds)).run();
+        }
+      }
+
+      // 3. 删除明细和批次
       tx.delete(sharedContainerItems).where(eq(sharedContainerItems.batchId, batchId)).run();
       tx.delete(sharedContainerBatches).where(eq(sharedContainerBatches.id, batchId)).run();
     });

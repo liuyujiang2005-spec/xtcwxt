@@ -49,11 +49,8 @@ export default function LoadingManualPage({ params }: { params: Promise<{ id: st
     setRows(next);
   };
 
-  const addRow = () => setRows([...rows, emptyRow()]);
-  const removeRow = (i: number) => {
-    if (rows.length <= 1) return;
-    setRows(rows.filter((_, idx) => idx !== i));
-  };
+  const addRow = () => setRows(prev => [...prev, emptyRow()]);
+  const removeRow = (i: number) => setRows(prev => { if (prev.length <= 1) return prev; return prev.filter((_, idx) => idx !== i); });
 
   const handleSubmit = async () => {
     const valid = rows.filter(r => r.markNo.trim() && r.品名.trim());
@@ -68,7 +65,7 @@ export default function LoadingManualPage({ params }: { params: Promise<{ id: st
         件数: parseInt(r.件数) || 0,
         总体积: parseFloat(r.总体积) || 0,
         总重量: parseFloat(r.总重量) || 0,
-        单价_cents: parseFloat(r.单价) || 0,
+        单价: parseFloat(r.单价) || 0,
         运单号: r.运单号.trim(),
         国内单号: r.国内单号.trim(),
         备注: r.备注.trim(),

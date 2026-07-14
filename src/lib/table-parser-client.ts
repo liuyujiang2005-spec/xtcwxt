@@ -37,16 +37,17 @@ function round6(n: number): number {
   return Math.round(n * 1000000) / 1000000;
 }
 
-function parseSize(s: string | null | undefined): { l: number; w: number; h: number } | null {
+function parseSize(s: string | number | null | undefined): { l: number; w: number; h: number } | null {
   if (!s) return null;
-  const cleaned = s.replace(/[×xX*]/g, '×').trim();
+  const str = String(s);
+  const cleaned = str.replace(/[×xX*]/g, '×').trim();
   const parts = cleaned.split('×');
   if (parts.length >= 3) {
     const l = parseFloat(parts[0]), w = parseFloat(parts[1]), h = parseFloat(parts[2]);
     if (!isNaN(l) && !isNaN(w) && !isNaN(h) && l > 0 && w > 0 && h > 0) return { l, w, h };
   }
   // Try "553326" format
-  const digits = s.replace(/\D/g, '');
+  const digits = str.replace(/\D/g, '');
   if (digits.length === 6) {
     return { l: +digits.slice(0, 2), w: +digits.slice(2, 4), h: +digits.slice(4, 6) };
   }
@@ -78,7 +79,7 @@ export function mapPythonResult(pyData: any): { items: any[]; summary: { totalIt
         运单号: row.运单号 || row.国内单号 || row.单号 || '',
         货型: row.货型 || row.货物类型 || '',
         尺寸: dimStr,
-        件数: parseInt(row.件数 || row.箱数 || 0),
+        件数: parseInt(row.件数 || '0', 10) || row.箱数 || 0,
         国内单号: row.国内单号 || row.单号 || '',
         单项体积: round6(parseFloat(row.单项体积 || row.单箱体积 || 0)),
         单项重量: round6(parseFloat(row.单项重量 || row.单箱重量 || 0)),

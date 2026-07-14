@@ -67,7 +67,7 @@ export async function generateBillXlsx(
   try {
     const m = (wb as any).model?.media;
     if (m?.length) qrBuf = m[0].buffer;
-  } catch {}
+  } catch (e: any) { console.warn('generate-bill-xlsx:', e?.message) }
 
   // ── 读取模板页脚 ──
   const footerNotice  = String(ws.getCell(13, 1).value  || '').trim() || '如有疑问请在两个工作日之内提出反馈，以便于我们及时核实，修改账单。确认金额后请及时安排付款，以免影响贵司货物运输时效。感谢您的配合，合作愉快！';
@@ -85,7 +85,7 @@ export async function generateBillXlsx(
     for (const m of ws.model.merges as string[]) {
       if ((m.match(/\d+/g) || []).map(Number).some(n => n >= 8)) toRemove.push(m);
     }
-    for (const m of toRemove) { try { ws.unMergeCells(m); } catch {} }
+    for (const m of toRemove) { try { ws.unMergeCells(m); } catch (e: any) { console.warn('generate-bill-xlsx:', e?.message) } }
   }
   (ws as any).model.drawings = [];
   (ws as any).model.media = [];
@@ -94,7 +94,7 @@ export async function generateBillXlsx(
       try {
         const cell = ws.getCell(r, c);
         cell.value = null; cell.border = {}; cell.font = {};
-      } catch {}
+      } catch (e: any) { console.warn('generate-bill-xlsx:', e?.message) }
     }
   }
 
@@ -104,7 +104,7 @@ export async function generateBillXlsx(
   }
 
   // ── 按运单号排序并分组 ──
-  rows.sort((a, b) => a.运单号.localeCompare(b.运单号));
+  rows.sort((a, b) => (a.运单号 ?? '').localeCompare(b.运单号 ?? ''));
 
   type Group = { 运单号: string; rows: BillRow[] };
   const groups: Group[] = [];
@@ -177,7 +177,7 @@ export async function generateBillXlsx(
     // 合并同运单号内的非品名列
     if (groupEndRow > groupStartRow) {
       for (const col of MERGE_COLS) {
-        try { ws.mergeCells(groupStartRow, col, groupEndRow, col); } catch {}
+        try { ws.mergeCells(groupStartRow, col, groupEndRow, col); } catch (e: any) { console.warn('generate-bill-xlsx:', e?.message) }
       }
     }
     // 合并后设置垂直居中
@@ -188,7 +188,7 @@ export async function generateBillXlsx(
           horizontal: NUMBER_COLS.has(col) ? 'right' : 'center',
           wrapText: false,
         };
-      } catch {}
+      } catch (e: any) { console.warn('generate-bill-xlsx:', e?.message) }
     }
   }
 
@@ -259,7 +259,7 @@ export async function generateBillXlsx(
     try {
       const imgId = wb.addImage({ buffer: qrBuf as any, extension: 'png' });
       ws.addImage(imgId, { tl: { col: 5, row: br - 0.5 }, ext: { width: 180, height: 180 } });
-    } catch {}
+    } catch (e: any) { console.warn('generate-bill-xlsx:', e?.message) }
   }
 
   return await wb.xlsx.writeBuffer();

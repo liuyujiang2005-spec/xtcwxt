@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
     const volume = item.总体积 ?? 0;
     const singleVolume = item.单箱体积 ?? 0;
     const count = item.箱数 ?? 0;
-    const amountYuan = item.客户应收_cents ?? item.需支付总价_cents ?? 0;
+    const amountYuan = item.客户应收 ?? item.需支付总价 ?? 0;
 
     // 🟡修复：volume 为 0 时不计算单价，避免 Infinity/NaN 写入 Excel
     const unitPrice = (volume > 0 && amountYuan > 0) ? amountYuan / volume : 0;
@@ -87,10 +87,10 @@ export async function GET(request: NextRequest) {
     const volume = item.总体积 ?? 0;
     const singleVolume = item.单箱体积 ?? 0;
     const count = item.箱数 ?? 0;
-    const amountYuan = item.需支付总价_cents ?? 0;
+    const amountYuan = item.需支付总价 ?? 0;
 
     // 🟡修复：同样防止 volume 为 0
-    const unitPrice = (volume > 0 && amountYuan > 0) ? amountYuan / volume : (item.单价_cents ?? 0);
+    const unitPrice = (volume > 0 && amountYuan > 0) ? amountYuan / volume : (item.单价 ?? 0);
     totalCny += amountYuan;
 
     const dimensions = [item.尺寸_长, item.尺寸_宽, item.尺寸_高]

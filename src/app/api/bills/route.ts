@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db/index';
-import { bills, billItems, marks, sharedContainerItems, loadingItems } from '@/db/schema';
+import { bills, billItems, marks, sharedContainerItems, loadingItems, customers } from '@/db/schema';
 import { validateSession } from '@/lib/auth';
 import { eq, and } from 'drizzle-orm';
+
+function getMatrixPrice(pm: any, warehouse: string | null, transport: string, cargo: string): number {
+  const m = transport === '海运' ? 'sea' : 'land';
+  const t = cargo === '普货' ? 'regular' : cargo === '商检货' ? 'inspection' : 'sensitive';
+  const key = m + '_' + t;
+  if (warehouse && pm[warehouse] && typeof pm[warehouse][key] === 'number') return pm[warehouse][key];
+  return typeof pm[key] === 'number' ? pm[key] : 0;
+}
 
 export async function POST(request: NextRequest) {
   const sessionToken = request.cookies.get('session')?.value;
@@ -23,8 +31,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: '该客户在所选月份没有唛头数据' }, { status: 404 });
   }
 
-  let totalCents = 0;
-  const items: { markId: number; mode: string; amountCents: number }[] = [];
+  let total = 0;
+  const items: { markId: number; mode: string; amount: number }[] = [];
 
   for (const mark of markList) {
     const scItems = await db.select().from(sharedContainerItems)
@@ -33,14 +41,14 @@ export async function POST(request: NextRequest) {
       .where(eq(loadingItems.markId, mark.id)).all();
 
     scItems.forEach((i) => {
-      const amount = i.客户应收_cents || 0;
-      totalCents += amount;
-      items.push({ markId: mark.id, mode: '拼柜', amountCents: amount });
+      const amount = i.客户应收 || 0;
+      total += amount;
+      items.push({ markId: mark.id, mode: '拼柜', amount: amount });
     });
     ldItems.forEach((i) => {
-      const amount = i.需支付总价_cents || 0;
-      totalCents += amount;
-      items.push({ markId: mark.id, mode: '装柜', amountCents: amount });
+      const amount = i.需支付总价 || 0;
+      total += amount;
+      items.push({ markId: mark.id, mode: '装柜', amount: amount });
     });
   }
 
@@ -59,10 +67,10 @@ export async function POST(request: NextRequest) {
       if (existing) {
         // 修复2（业务风险）：重新生成账单时，保留已付款金额，只更新总额和剩余额
         const keepPaid = existing.paidAmount ?? 0;
-        const newRemaining = Math.max(0, totalCents - keepPaid);
+        const newRemaining = Math.max(0, total - keepPaid);
 
         tx.update(bills).set({
-          totalAmountCents: totalCents,
+          totalAmount: total,
           status: '已生成',
           createdAt: new Date().toISOString(),
           remainingAmount: newRemaining,
@@ -75,11 +83,11 @@ export async function POST(request: NextRequest) {
       } else {
         const result = tx.insert(bills).values({
           billNo, customerId, monthTag,
-          totalAmountCents: totalCents,
+          totalAmount: total,
           currency: 'CNY',
           status: '已生成',
           paidAmount: 0,
-          remainingAmount: totalCents,
+          remainingAmount: total,
           paymentStatus: '待付款',
         }).run();
         billId = Number(result.lastInsertRowid);
@@ -87,7 +95,7 @@ export async function POST(request: NextRequest) {
 
       for (const item of items) {
         tx.insert(billItems).values({
-          billId, markId: item.markId, mode: item.mode, amountCents: item.amountCents,
+          billId, markId: item.markId, mode: item.mode, amount: item.amount,
         }).run();
       }
     });
@@ -100,7 +108,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: '账单创建异常，请重试' }, { status: 500 });
   }
 
-  return NextResponse.json({ success: true, billId, totalCents, itemCount: items.length, isUpdate });
+  return NextResponse.json({ success: true, billId, total, itemCount: items.length, isUpdate });
 }
 
 export async function PATCH(request: NextRequest) {
@@ -111,6 +119,54 @@ export async function PATCH(request: NextRequest) {
   if (u.role === 'viewer') return NextResponse.json({ error: '无权限' }, { status: 403 });
 
   const body = await request.json();
+  if (body.recalculate && body.id) {
+    const bill = await db.select().from(bills).where(eq(bills.id, body.id)).get();
+    if (!bill) return NextResponse.json({ error: '账单不存在' }, { status: 404 });
+
+    const customer = await db.select().from(customers).where(eq(customers.id, bill.customerId)).get();
+    let pm: any = {};
+    if (customer?.defaultCurrency === 'THB' && customer?.priceMatrixThb) {
+      try { pm = JSON.parse(customer.priceMatrixThb); } catch {}
+    } else if (customer?.priceMatrix) {
+      try { pm = JSON.parse(customer.priceMatrix); } catch {} }
+    const em = customer?.enableMinVolume !== 0;
+    const minVol = (transport: string): number => { if (!em) return 0; return transport === '海运' ? 0.5 : 0.3; };
+    const bits = await db.select().from(billItems).where(eq(billItems.billId, body.id)).all();
+    const markIds = [...new Set(bits.map(i => i.markId))];
+    await db.delete(billItems).where(eq(billItems.billId, body.id));
+    let totalReceivable = 0;
+    for (const mid of markIds) {
+      const scItems = await db.select().from(sharedContainerItems).where(eq(sharedContainerItems.markId, mid)).all();
+      const ldItems = await db.select().from(loadingItems).where(eq(loadingItems.markId, mid)).all();
+      for (const item of scItems) {
+        const transport = (item as any).运输方式 || '海运';
+        const cargo = (item as any).货型 || '普货';
+        const warehouse = (item as any).仓库 || null;
+        const unitPrice = getMatrixPrice(pm, warehouse, transport, cargo);
+        const singleVol = (item as any).单箱体积 || 0;
+        const chargeVol = Math.max(singleVol, minVol(transport));
+        const receivable = unitPrice * chargeVol;
+        const cost = (item as any).需支付总价 || 0;
+        totalReceivable += receivable;
+        await db.insert(billItems).values({ billId: body.id, markId: mid, mode: '拼柜', amount: receivable, costAmount: cost });
+      }
+      for (const item of ldItems) {
+        const transport = (item as any).运输方式 || '海运';
+        const cargo = (item as any).货型 || '普货';
+        const warehouse = (item as any).仓库 || null;
+        const unitPrice = getMatrixPrice(pm, warehouse, transport, cargo);
+        const singleVol = (item as any).单箱体积 || 0;
+        const chargeVol = Math.max(singleVol, minVol(transport));
+        const receivable = unitPrice * chargeVol;
+        const cost = (item as any).需支付总价 || 0;
+        totalReceivable += receivable;
+        await db.insert(billItems).values({ billId: body.id, markId: mid, mode: '装柜', amount: receivable, costAmount: cost });
+      }
+    }
+    await db.update(bills).set({ totalAmount: totalReceivable }).where(eq(bills.id, body.id));
+    return NextResponse.json({ success: true, totalAmount: totalReceivable });
+  }
+
   if (body.receiptUrl !== undefined) {
     if (typeof body.receiptUrl !== 'string' || (body.receiptUrl && !body.receiptUrl.startsWith('/uploads/'))) {
       return NextResponse.json({ error: '无效的文件路径' }, { status: 400 });

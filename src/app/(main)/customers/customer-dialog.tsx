@@ -16,6 +16,7 @@ interface Customer {
   name: string;
   contact: string | null;
   priceMatrix: string | null;
+  priceMatrixThb: string | null;
   defaultCurrency: string | null;
   remark: string | null;
   enableMinVolume: number | null;
@@ -26,14 +27,21 @@ interface Props {
   customer?: Customer;
 }
 
-const DEFAULT_PRICE_MATRIX = {
-  sea_regular: 300,
-  sea_inspection: 450,
-  sea_sensitive: 600,
-  land_regular: 400,
-  land_inspection: 550,
-  land_sensitive: 700,
+const WAREHOUSES = ['义乌仓', '广州仓', '东莞仓', '深圳仓'];
+
+const EMPTY_PRICES = {
+  sea_regular: 0,
+  sea_inspection: 0,
+  sea_sensitive: 0,
+  land_regular: 0,
+  land_inspection: 0,
+  land_sensitive: 0,
 };
+
+const DEFAULT_PRICE_MATRIX: Record<string, Record<string, number>> = {};
+for (const wh of WAREHOUSES) {
+  DEFAULT_PRICE_MATRIX[wh] = { ...EMPTY_PRICES };
+}
 
 const PRICE_LABELS: Record<string, string> = {
   sea_regular: '海运 - 普货',
@@ -54,17 +62,61 @@ export default function CustomerDialog({ mode, customer }: Props) {
   const [enableMin, setEnableMin] = useState(customer?.enableMinVolume !== 0);
   const [loading, setLoading] = useState(false);
 
-  const initPrices = () => {
+  const initThbPrices = (): Record<string, Record<string, number>> => {
     try {
-      return customer?.priceMatrix ? JSON.parse(customer.priceMatrix) : { ...DEFAULT_PRICE_MATRIX };
+      if (customer?.priceMatrixThb) {
+        const parsed = JSON.parse(customer.priceMatrixThb);
+        if (parsed[WAREHOUSES[0]] && typeof parsed[WAREHOUSES[0]] === 'object') {
+          const result: Record<string, Record<string, number>> = {};
+          for (const wh of WAREHOUSES) {
+            result[wh] = {};
+            for (const k of Object.keys(EMPTY_PRICES)) {
+              result[wh][k] = parsed[wh]?.[k] ?? 0;
+            }
+          }
+          return result;
+        }
+      }
+      return JSON.parse(JSON.stringify(DEFAULT_PRICE_MATRIX));
     } catch {
-      return { ...DEFAULT_PRICE_MATRIX };
+      return JSON.parse(JSON.stringify(DEFAULT_PRICE_MATRIX));
     }
   };
-  const [prices, setPrices] = useState<Record<string, number>>(initPrices);
+
+  const initPrices = (): Record<string, Record<string, number>> => {
+    try {
+      if (customer?.priceMatrix) {
+        const parsed = JSON.parse(customer.priceMatrix);
+        // 检查是否已经是新格式（有仓库 key）
+        if (parsed[WAREHOUSES[0]] && typeof parsed[WAREHOUSES[0]] === 'object') {
+          // 确保每个仓库都有完整的 6 个 key
+          const result: Record<string, Record<string, number>> = {};
+          for (const wh of WAREHOUSES) {
+            result[wh] = {};
+            for (const k of Object.keys(EMPTY_PRICES)) {
+              result[wh][k] = parsed[wh]?.[k] ?? 0;
+            }
+          }
+          return result;
+        }
+      }
+      // 默认新格式
+      return JSON.parse(JSON.stringify(DEFAULT_PRICE_MATRIX));
+    } catch {
+      return JSON.parse(JSON.stringify(DEFAULT_PRICE_MATRIX));
+    }
+  };
+  const [prices, setPrices] = useState<Record<string, Record<string, number>>>(initPrices);
+  const [thbPrices, setThbPrices] = useState<Record<string, Record<string, number>>>(initThbPrices);
+  const [activeWarehouse, setActiveWarehouse] = useState(WAREHOUSES[0]);
+  const [activeTab, setActiveTab] = useState<'cny' | 'thb'>('cny');
 
   const updatePrice = (key: string, value: string) => {
-    setPrices({ ...prices, [key]: parseFloat(value) || 0 });
+    const current = activeTab === 'cny' ? prices : thbPrices;
+    const setter = activeTab === 'cny' ? setPrices : setThbPrices;
+    const newPrices = { ...current };
+    newPrices[activeWarehouse] = { ...newPrices[activeWarehouse], [key]: parseFloat(value) || 0 };
+    setter(newPrices);
   };
 
   const handleSubmit = async () => {
@@ -75,6 +127,7 @@ export default function CustomerDialog({ mode, customer }: Props) {
         name,
         contact,
         priceMatrix: JSON.stringify(prices),
+        priceMatrixThb: JSON.stringify(thbPrices),
         enableMinVolume: enableMin ? 1 : 0,
         defaultCurrency,
         remark,
@@ -89,59 +142,29 @@ export default function CustomerDialog({ mode, customer }: Props) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id: customer?.id }),
         });
-        if (res.ok) {
-          setOpen(false);
-          router.refresh();
-        } else {
-          alert('删除失败');
-        }
+        if (res.ok) { setOpen(false); router.refresh(); } else { alert('删除失败'); }
         return;
       }
 
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-
-      if (res.ok) {
-        setOpen(false);
-        router.refresh();
-      } else {
-        alert('操作失败');
-      }
-    } catch {
-      alert('网络错误');
-    } finally {
-      setLoading(false);
-    }
+      const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (res.ok) { setOpen(false); router.refresh(); } else { alert('操作失败'); }
+    } catch { alert('网络错误'); } finally { setLoading(false); }
   };
 
-  const buttonVariant = mode === 'delete' ? 'destructive' : 'default';
-  const Icon = mode === 'create' ? Plus : mode === 'delete' ? Trash2 : Pencil;
   const title = mode === 'create' ? '新建客户' : mode === 'delete' ? '删除客户' : '编辑客户';
 
   if (mode === 'create') {
     return (
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger>
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            新建客户
-          </Button>
-        </DialogTrigger>
+        <DialogTrigger><Button><Plus className="h-4 w-4 mr-2" />新建客户</Button></DialogTrigger>
         <DialogContent className="max-w-lg max-h-[80vh] overflow-auto">
           <DialogHeader><DialogTitle>{title}</DialogTitle></DialogHeader>
-          <CustomerForm
-            name={name} setName={setName}
-            contact={contact} setContact={setContact}
-            currency={defaultCurrency} setCurrency={setDefaultCurrency}
-            remark={remark} setRemark={setRemark}
-            prices={prices} updatePrice={updatePrice} enableMin={enableMin} setEnableMin={setEnableMin}
-          />
+          <CustomerForm name={name} setName={setName} contact={contact} setContact={setContact}
+            currency={defaultCurrency} setCurrency={setDefaultCurrency} remark={remark} setRemark={setRemark}
+            prices={prices} thbPrices={thbPrices} updatePrice={updatePrice} activeWarehouse={activeWarehouse} setActiveWarehouse={setActiveWarehouse} activeTab={activeTab} setActiveTab={setActiveTab}
+          enableMin={enableMin} setEnableMin={setEnableMin} />
           <Button onClick={handleSubmit} disabled={loading || !name} className="w-full">
-            {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-            创建
+            {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}创建
           </Button>
         </DialogContent>
       </Dialog>
@@ -151,17 +174,12 @@ export default function CustomerDialog({ mode, customer }: Props) {
   if (mode === 'delete') {
     return (
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger>
-          <Button variant="destructive" size="sm">
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </DialogTrigger>
+        <DialogTrigger><Button variant="destructive" size="sm"><Trash2 className="h-4 w-4" /></Button></DialogTrigger>
         <DialogContent>
           <DialogHeader><DialogTitle>{title}</DialogTitle></DialogHeader>
           <p className="py-4">确定要删除客户 "{customer?.name}" 吗？此操作不可撤销。</p>
           <Button onClick={handleSubmit} disabled={loading} variant="destructive" className="w-full">
-            {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-            确认删除
+            {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}确认删除
           </Button>
         </DialogContent>
       </Dialog>
@@ -170,23 +188,15 @@ export default function CustomerDialog({ mode, customer }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger>
-        <Button variant="outline" size="sm">
-          <Pencil className="h-4 w-4" />
-        </Button>
-      </DialogTrigger>
+      <DialogTrigger><Button variant="outline" size="sm"><Pencil className="h-4 w-4" /></Button></DialogTrigger>
       <DialogContent className="max-w-lg max-h-[80vh] overflow-auto">
         <DialogHeader><DialogTitle>{title}</DialogTitle></DialogHeader>
-        <CustomerForm
-          name={name} setName={setName}
-          contact={contact} setContact={setContact}
-          currency={defaultCurrency} setCurrency={setDefaultCurrency}
-          remark={remark} setRemark={setRemark}
-          prices={prices} updatePrice={updatePrice} enableMin={enableMin} setEnableMin={setEnableMin}
-        />
+        <CustomerForm name={name} setName={setName} contact={contact} setContact={setContact}
+          currency={defaultCurrency} setCurrency={setDefaultCurrency} remark={remark} setRemark={setRemark}
+          prices={prices} thbPrices={thbPrices} updatePrice={updatePrice} activeWarehouse={activeWarehouse} setActiveWarehouse={setActiveWarehouse} activeTab={activeTab} setActiveTab={setActiveTab}
+          enableMin={enableMin} setEnableMin={setEnableMin} />
         <Button onClick={handleSubmit} disabled={loading || !name} className="w-full">
-          {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-          保存
+          {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}保存
         </Button>
       </DialogContent>
     </Dialog>
@@ -195,13 +205,17 @@ export default function CustomerDialog({ mode, customer }: Props) {
 
 function CustomerForm({
   name, setName, contact, setContact, currency, setCurrency, remark, setRemark,
-  prices, updatePrice, enableMin, setEnableMin,
+  prices, thbPrices, updatePrice, activeWarehouse, setActiveWarehouse, activeTab, setActiveTab, enableMin, setEnableMin,
 }: {
   name: string; setName: (v: string) => void;
   contact: string; setContact: (v: string) => void;
   currency: string; setCurrency: (v: string) => void;
   remark: string; setRemark: (v: string) => void;
-  prices: Record<string, number>; updatePrice: (k: string, v: string) => void;
+  prices: Record<string, Record<string, number>>;
+  thbPrices: Record<string, Record<string, number>>;
+  updatePrice: (k: string, v: string) => void;
+  activeWarehouse: string; setActiveWarehouse: (v: string) => void;
+  activeTab: string; setActiveTab: (v: any) => void;
   enableMin: boolean; setEnableMin: (v: boolean) => void;
 }) {
   return (
@@ -221,21 +235,31 @@ function CustomerForm({
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="CNY">CNY</SelectItem>
-              <SelectItem value="THB">THB</SelectItem>
             </SelectContent>
           </Select>
         </div>
       </div>
       <div className="space-y-2">
         <Label>价格矩阵 (元/m³)</Label>
-        <div className="grid grid-cols-3 gap-2">
-          {Object.entries(prices).map(([key, value]) => (
+        <div className="flex gap-1 mb-2">
+            <Button type="button" variant={activeTab === 'cny' ? 'default' : 'outline'} size="sm" onClick={() => setActiveTab('cny')}>人民币</Button>
+            <Button type="button" variant={activeTab === 'thb' ? 'default' : 'outline'} size="sm" onClick={() => setActiveTab('thb')}>泰铢</Button>
+          </div>
+          <div className="flex gap-1 mb-2">
+          {WAREHOUSES.map(w => (
+            <Button key={w} type="button" variant={activeWarehouse === w ? 'default' : 'outline'} size="sm" onClick={() => setActiveWarehouse(w)}>
+              {w}
+            </Button>
+          ))}
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {Object.entries((activeTab === 'cny' ? prices : thbPrices)[activeWarehouse] || {}).map(([key, value]) => (
             <div key={key} className="space-y-1">
               <Label className="text-xs">{PRICE_LABELS[key]}</Label>
               <Input
                 type="text"
                 inputMode="decimal"
-                value={String(prices[key])}
+                value={String(value)}
                 onChange={(e) => updatePrice(key, e.target.value)}
                 className="h-8 text-xs"
               />

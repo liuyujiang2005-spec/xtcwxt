@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import Link from 'next/link';
 import { ArrowLeft, Download } from 'lucide-react';
 import { PaymentForm } from './PaymentForm';
-import { formatCents } from '@/lib/format';
+import { formatAmount } from '@/lib/format';
 
 export default async function BillDetailPage({ params }: { params: Promise<{ billNo: string }> }) {
   const user = await getCurrentUser();
@@ -42,7 +42,7 @@ export default async function BillDetailPage({ params }: { params: Promise<{ bil
   const allItems = [...allSC, ...allLD];
 
   const paid = (bill as any).paidAmount || 0;
-  const totalAmount = bill.totalAmountCents || 0;
+  const totalAmount = bill.totalAmount || 0;
   const remaining = totalAmount - paid;
   const pStatus = (bill as any).paymentStatus || '待付款';
   const exportedAt = (bill as any).exportedAt;
@@ -59,9 +59,9 @@ export default async function BillDetailPage({ params }: { params: Promise<{ bil
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <Card><CardHeader className="py-2 px-3"><CardTitle className="text-xs">总金额</CardTitle></CardHeader><CardContent className="py-2 px-3"><span className="text-lg font-bold">¥{totalAmount.toFixed(6)}</span></CardContent></Card>
-        <Card><CardHeader className="py-2 px-3"><CardTitle className="text-xs">已付</CardTitle></CardHeader><CardContent className="py-2 px-3"><span className="text-lg font-bold text-green-600">¥{paid.toFixed(6)}</span></CardContent></Card>
-        <Card><CardHeader className="py-2 px-3"><CardTitle className="text-xs">剩余</CardTitle></CardHeader><CardContent className="py-2 px-3"><span className="text-lg font-bold text-orange-600">¥{remaining.toFixed(6)}</span></CardContent></Card>
+        <Card><CardHeader className="py-2 px-3"><CardTitle className="text-xs">总金额</CardTitle></CardHeader><CardContent className="py-2 px-3"><span className="text-lg font-bold">{formatAmount(totalAmount)}</span></CardContent></Card>
+        <Card><CardHeader className="py-2 px-3"><CardTitle className="text-xs">已付</CardTitle></CardHeader><CardContent className="py-2 px-3"><span className="text-lg font-bold text-green-600">{formatAmount(paid)}</span></CardContent></Card>
+        <Card><CardHeader className="py-2 px-3"><CardTitle className="text-xs">剩余</CardTitle></CardHeader><CardContent className="py-2 px-3"><span className="text-lg font-bold text-orange-600">{formatAmount(remaining)}</span></CardContent></Card>
         <Card><CardHeader className="py-2 px-3"><CardTitle className="text-xs">导出时间</CardTitle></CardHeader><CardContent className="py-2 px-3"><span className="text-sm">{exportedAt ? new Date(exportedAt).toLocaleDateString('zh-CN') : '-'}</span></CardContent></Card>
         <Card><CardHeader className="py-2 px-3"><CardTitle className="text-xs">付款时间</CardTitle></CardHeader><CardContent className="py-2 px-3"><span className="text-sm">{paidAt ? new Date(paidAt).toLocaleDateString('zh-CN') : '-'}</span></CardContent></Card>
       </div>
@@ -99,10 +99,12 @@ export default async function BillDetailPage({ params }: { params: Promise<{ bil
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
-                <Table>
+                <Table className="border">
                   <TableHeader>
                     <TableRow>
                       <TableHead>品名</TableHead>
+                      <TableHead>仓库</TableHead>
+                      <TableHead>运单号</TableHead>
                       <TableHead>货型</TableHead>
                       <TableHead>运输</TableHead>
                       <TableHead className="text-right">总体积</TableHead>
@@ -122,25 +124,32 @@ export default async function BillDetailPage({ params }: { params: Promise<{ bil
                       return group.map((item: any, ri: number) => {
                         const orderKey = item.运单号 || `#${item.id}`;
                         const isFirstInOrder = orderKey !== lastOrder;
+                        const orderRowSpan = group.filter((it: any) => (it.运单号 || `#${it.id}`) === orderKey).length;
                         lastOrder = orderKey;
                         return (
                           <TableRow key={item.id || ri}>
-                            <TableCell className="max-w-[100px] truncate" title={item.品名 || ''}>{item.品名 || '-'}</TableCell>
-                            <TableCell>{item.货型 || '-'}</TableCell>
-                            <TableCell>{item.运输方式 || '-'}</TableCell>
+                            <TableCell className="border max-w-[100px] truncate" title={item.品名 || ''}>{item.品名 || '-'}</TableCell>
                             {isFirstInOrder ? (
-                              <TableCell className="text-right font-medium" rowSpan={group.filter((it: any) => (it.运单号 || `#${it.id}`) === orderKey).length}>
+                              <TableCell className="border" rowSpan={orderRowSpan}>{item.仓库 || '-'}</TableCell>
+                            ) : null}
+                            {isFirstInOrder ? (
+                              <TableCell className="border text-xs font-mono" rowSpan={orderRowSpan}>{item.运单号 || '-'}</TableCell>
+                            ) : null}
+                            <TableCell className="border">{item.货型 || '-'}</TableCell>
+                            <TableCell className="border">{item.运输方式 || '-'}</TableCell>
+                            {isFirstInOrder ? (
+                              <TableCell className="border text-right font-medium" rowSpan={orderRowSpan}>
                                 {(item.总体积 ?? 0).toFixed(6)}
                               </TableCell>
                             ) : null}
-                            <TableCell className="text-right">{item.单箱体积 ?? '-'}</TableCell>
-                            <TableCell className="text-right">{item.箱数 || '-'}</TableCell>
-                            <TableCell className="text-xs">{item.国内单号 || '-'}</TableCell>
-                            <TableCell className="text-right">{item.总重量 || '-'}</TableCell>
-                            <TableCell className="text-right text-red-600">¥{(item.需支付总价_cents || 0).toFixed(6)}</TableCell>
-                            <TableCell className="text-right text-green-600">{formatCents(item.客户应收_cents || 0)}</TableCell>
-                            <TableCell>{item.cost_status || item.payment_status || '-'}</TableCell>
-                            <TableCell>
+                            <TableCell className="border text-right">{item.单箱体积 ?? '-'}</TableCell>
+                            <TableCell className="border text-right">{item.箱数 || '-'}</TableCell>
+                            <TableCell className="border text-xs">{item.国内单号 || '-'}</TableCell>
+                            <TableCell className="border text-right">{item.总重量 || '-'}</TableCell>
+                            <TableCell className="border text-right text-red-600">{formatAmount((item.需支付总价 || 0))}</TableCell>
+                            <TableCell className="border text-right text-green-600">{formatAmount(item.客户应收 || 0)}</TableCell>
+                            <TableCell className="border">{item.cost_status || item.payment_status || '-'}</TableCell>
+                            <TableCell className="border">
                               <Badge variant="outline" className="text-xs">{item._type}</Badge>
                             </TableCell>
                           </TableRow>

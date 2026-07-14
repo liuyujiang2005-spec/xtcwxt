@@ -16,9 +16,9 @@ export async function POST(request: NextRequest) {
   }
 
   const setData: any = {};
-  if (typeof updates.成本单价_cents === 'number') setData.成本单价_cents = updates.成本单价_cents;
-  if (typeof updates.客户应收_cents === 'number') setData.客户应收_cents = updates.客户应收_cents;
-  if (typeof updates.需支付总价_cents === 'number') setData.需支付总价_cents = updates.需支付总价_cents;
+  if (typeof updates.成本单价 === 'number') setData.成本单价 = updates.成本单价;
+  if (typeof updates.客户应收 === 'number') setData.客户应收 = updates.客户应收;
+  if (typeof updates.需支付总价 === 'number') setData.需支付总价 = updates.需支付总价;
   if (Object.keys(setData).length === 0) {
     return NextResponse.json({ error: '没有要更新的字段' }, { status: 400 });
   }

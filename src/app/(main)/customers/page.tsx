@@ -5,25 +5,45 @@ import { customers } from '@/db/schema';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 import CustomerDialog from './customer-dialog';
 import { RefreshMetricsButton } from './RefreshMetricsButton';
 
-function parsePrice(c: any, key: string): string {
-  if (!c.priceMatrix) return '-';
-  try {
-    const m = JSON.parse(c.priceMatrix);
-    const v = m[key];
+const WAREHOUSES = ['义乌仓', '广州仓', '东莞仓', '深圳仓'];
+const PRICE_KEYS = [
+  { key: 'sea_regular', label: '海运普货' },
+  { key: 'sea_sensitive', label: '海运敏感' },
+  { key: 'sea_inspection', label: '海运商检' },
+  { key: 'land_regular', label: '陆运普货' },
+  { key: 'land_sensitive', label: '陆运敏感' },
+  { key: 'land_inspection', label: '陆运商检' },
+];
+
+function getPrice(pm: any, warehouse: string, key: string): string {
+  if (!pm || typeof pm !== 'object') return '-';
+  if (pm[warehouse] && typeof pm[warehouse] === 'object') {
+    const v = pm[warehouse][key];
     return v != null ? String(v) : '-';
-  } catch { return '-'; }
+  }
+  const v = pm[key];
+  return v != null ? String(v) : '-';
 }
 
-export default async function CustomersPage() {
+export default async function CustomersPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
-  const allCustomers = await db.select().from(customers).all();
+  const sp = await searchParams;
+  const q = sp.q || '';
+
+  const allCustomers = await db.select().from(customers).orderBy(customers.name).all();
   const canEdit = user.role === 'admin' || user.role === 'finance';
   const canDelete = user.role === 'admin';
+
+  const filtered = q
+    ? allCustomers.filter(c => c.name?.includes(q) || c.contact?.includes(q))
+    : allCustomers;
 
   return (
     <div className="space-y-6">
@@ -35,62 +55,104 @@ export default async function CustomersPage() {
         </div>
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>客户名称</TableHead>
-                <TableHead>联系人</TableHead>
-                <TableHead className="text-right">海运普货</TableHead>
-                <TableHead className="text-right">海运商检</TableHead>
-                <TableHead className="text-right">海运敏感</TableHead>
-                <TableHead className="text-right">陆运普货</TableHead>
-                <TableHead className="text-right">陆运商检</TableHead>
-                <TableHead className="text-right">陆运敏感</TableHead>
-                <TableHead>低消</TableHead>
-                <TableHead>币种</TableHead>
-                <TableHead className="text-right">操作</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {allCustomers.map((c) => (
-                <TableRow key={c.id}>
-                  <TableCell className="font-medium">{c.name}</TableCell>
-                  <TableCell className="text-xs">{c.contact || '-'}</TableCell>
-                  <TableCell className="text-right text-xs">¥{parsePrice(c, 'sea_regular')}</TableCell>
-                  <TableCell className="text-right text-xs">¥{parsePrice(c, 'sea_inspection')}</TableCell>
-                  <TableCell className="text-right text-xs">¥{parsePrice(c, 'sea_sensitive')}</TableCell>
-                  <TableCell className="text-right text-xs">¥{parsePrice(c, 'land_regular')}</TableCell>
-                  <TableCell className="text-right text-xs">¥{parsePrice(c, 'land_inspection')}</TableCell>
-                  <TableCell className="text-right text-xs">¥{parsePrice(c, 'land_sensitive')}</TableCell>
-                  <TableCell>
-                    {c.enableMinVolume !== 0 ? <Badge className="bg-green-100 text-green-700 text-xs">启用</Badge> : <Badge variant="outline" className="text-xs">关闭</Badge>}
-                  </TableCell>
-                  <TableCell>
+      <form method="get" className="flex gap-2 items-end">
+        <div className="space-y-1">
+          <label className="text-xs text-muted-foreground">客户名</label>
+          <input name="q" defaultValue={q} placeholder="搜索客户..." className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm w-48" />
+        </div>
+        <Button type="submit" variant="outline" size="sm">筛选</Button>
+        {q && <Link href="/customers"><Button variant="ghost" size="sm">清除</Button></Link>}
+      </form>
+
+      <div className="space-y-4">
+        {filtered.map((c) => {
+          let pm: any = {};
+          let pmThb: any = {};
+          if (c.priceMatrix) { try { pm = JSON.parse(c.priceMatrix); } catch {} }
+          if ((c as any).priceMatrixThb) { try { pmThb = JSON.parse((c as any).priceMatrixThb); } catch {} }
+
+          return (
+            <Card key={c.id}>
+              <CardContent className="py-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-lg font-bold">{c.name}</h3>
+                    {c.contact && <span className="text-sm text-muted-foreground">{c.contact}</span>}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {!!c.enableMinVolume ? (
+                      <Badge className="bg-green-100 text-green-700 text-xs">低消</Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-xs">无低消</Badge>
+                    )}
                     <Badge variant="outline">{c.defaultCurrency}</Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
                     {canEdit && (
-                      <div className="flex gap-1 justify-end">
+                      <div className="flex gap-1">
                         <CustomerDialog mode="edit" customer={c} />
-                        {canDelete && (
-                          <CustomerDialog mode="delete" customer={c} />
-                        )}
+                        {canDelete && <CustomerDialog mode="delete" customer={c} />}
                       </div>
                     )}
-                  </TableCell>
-                </TableRow>
-              ))}
-              {allCustomers.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={11} className="text-center text-muted-foreground py-8">暂无客户数据</TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                  </div>
+                </div>
+                <Table className="border">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="border">仓库</TableHead>
+                      {PRICE_KEYS.map((pk) => (
+                        <TableHead key={pk.key} className="border text-right">{pk.label}</TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {WAREHOUSES.map((wh) => (
+                      <TableRow key={wh}>
+                        <TableCell className="border font-medium">{wh}</TableCell>
+                        {PRICE_KEYS.map((pk) => (
+                          <TableCell key={pk.key} className="border text-right text-sm">
+                            {getPrice(pm, wh, pk.key)}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            <Card key={`${c.id}-thb`}>
+              <CardContent className="py-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-lg font-bold">{c.name} <span className="text-sm text-orange-500">(THB)</span></h3>
+                </div>
+                <Table className="border">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="border">仓库</TableHead>
+                      {PRICE_KEYS.map((pk) => (
+                        <TableHead key={pk.key} className="border text-right">{pk.label}</TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {WAREHOUSES.map((wh) => (
+                      <TableRow key={wh}>
+                        <TableCell className="border font-medium">{wh}</TableCell>
+                        {PRICE_KEYS.map((pk) => (
+                          <TableCell key={pk.key} className="border text-right text-sm">
+                            {getPrice(pmThb, wh, pk.key)}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+            </Card>
+          );
+        })}
+        {filtered.length === 0 && (
+          <Card><CardContent className="py-8 text-center text-muted-foreground">暂无客户数据</CardContent></Card>
+        )}
+      </div>
     </div>
   );
 }
