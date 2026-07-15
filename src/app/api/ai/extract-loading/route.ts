@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const { fileName, fileData, customerId: cid, customerName: cname } = await request.json();
-    const customerId = parseInt(String(cid) || '0');
+    const customerId = cid ? parseInt(String(cid), 10) : 0;
     const customerName = String(cname || '');
     if (!fileData) return NextResponse.json({ error: '缺少上传数据' }, { status: 400 });
 

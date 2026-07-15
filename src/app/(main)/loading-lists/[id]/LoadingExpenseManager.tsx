@@ -35,7 +35,7 @@ export function LoadingExpenseManager({
 
   const handleSave = async (expenseType: string) => {
     const entry = entries[expenseType];
-    const amount = Math.round(parseFloat(entry.amount || '0'));
+    const amount = parseFloat(entry.amount || '0');
     const existing = expenseMap.get(expenseType);
 
     setSaving(true);

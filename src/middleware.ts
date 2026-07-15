@@ -20,7 +20,9 @@ export function middleware(request: NextRequest) {
   if (!sessionToken || sessionToken.trim() === '') {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('redirect', pathname);
-    return NextResponse.redirect(loginUrl);
+    const response = NextResponse.redirect(loginUrl);
+    response.cookies.delete("session");
+    return response;
   }
 
   // 基本格式校验：UUID 格式（crypto.randomUUID 生成的格式）

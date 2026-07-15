@@ -160,7 +160,7 @@ export function Sidebar({ user }: SidebarProps) {
       <div className="p-2">
         <div className={cn('flex items-center gap-2 px-3 py-2', collapsed && 'justify-center')}>
           <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-sm font-medium flex-shrink-0">
-            {user.displayName.charAt(0)}
+            {(user.displayName || '?').charAt(0)}
           </div>
           {!collapsed && (
             <div className="flex-1 min-w-0">

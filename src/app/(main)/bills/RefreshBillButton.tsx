@@ -9,16 +9,21 @@ export function RefreshBillButton({ billId }: { billId: number }) {
 
   const handleRefresh = async () => {
     setLoading(true);
-    const r = await fetch('/api/bills', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: billId, recalculate: true }),
-    });
-    if (r.ok) {
-      window.location.reload();
-    } else {
-      const e = await r.json().catch(() => ({ error: '刷新失败' }));
-      alert(e.error || '刷新失败');
+    try {
+      const r = await fetch('/api/bills', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: billId, recalculate: true }),
+      });
+      if (r.ok) {
+        window.location.reload();
+      } else {
+        const e = await r.json().catch(() => ({ error: '刷新失败' }));
+        alert(e.error || '刷新失败');
+        setLoading(false);
+      }
+    } catch {
+      alert('网络错误，请重试');
       setLoading(false);
     }
   };

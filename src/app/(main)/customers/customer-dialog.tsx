@@ -59,7 +59,7 @@ export default function CustomerDialog({ mode, customer }: Props) {
   const [contact, setContact] = useState(customer?.contact || '');
   const [defaultCurrency, setDefaultCurrency] = useState(customer?.defaultCurrency || 'CNY');
   const [remark, setRemark] = useState(customer?.remark || '');
-  const [enableMin, setEnableMin] = useState(customer?.enableMinVolume !== 0);
+  const [enableMin, setEnableMin] = useState(customer?.enableMinVolume === 1);
   const [loading, setLoading] = useState(false);
 
   const initThbPrices = (): Record<string, Record<string, number>> => {
