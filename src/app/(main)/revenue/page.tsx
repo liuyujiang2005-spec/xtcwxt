@@ -21,6 +21,14 @@ export default async function RevenuePage() {
   const cnyIncome = allIncome.filter(i => i.currency !== 'THB');
   const thbIncome = allIncome.filter(i => i.currency === 'THB');
 
+  const thbSummary = new Map();
+  thbIncome.forEach((i) => {
+    const e = thbSummary.get(i.customerId) || { THB: 0, count: 0 };
+    e.count++;
+    e.THB += i.amount;
+    thbSummary.set(i.customerId, e);
+  });
+
   const summary = new Map();
   allIncome.forEach((i) => {
     const e = summary.get(i.customerId) || { CNY: 0, THB: 0, count: 0 };
@@ -105,9 +113,7 @@ export default async function RevenuePage() {
         </CardContent>
       </Card>
 
-      {thbIncome.length > 0 && (
-        <>
-          <h2 className="text-lg font-bold mt-4 text-orange-600">泰铢收入</h2>
+              <h2 className="text-lg font-bold mt-4 text-orange-600">泰铢收入</h2>
           <Card>
             <div className="p-4 border-b"><h2 className="font-semibold">明细（{thbIncome.length} 条）</h2></div>
             <CardContent className="p-0">
@@ -146,8 +152,6 @@ export default async function RevenuePage() {
               </Table>
             </CardContent>
           </Card>
-        </>
-      )}
-    </div>
-  );
+        </div>
+      );
 }

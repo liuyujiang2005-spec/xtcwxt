@@ -331,7 +331,7 @@ def run_cli(file_path: str, output_path: Optional[str] = None):
     import openpyxl
     
     print(f"📂 读取: {file_path}")
-    wb = openpyxl.load_workbook(file_path)
+    wb = openpyxl.load_workbook(file_path, data_only=True)
     ws = wb.active
     print(f"   工作表: {ws.title}")
     print(f"   大小: {ws.max_row}行 x {ws.max_column}列")
@@ -414,7 +414,7 @@ def run_api_server(host: str = "0.0.0.0", port: int = 8800):
             raise HTTPException(400, "仅支持 .xlsx / .xls 文件")
         
         content = await file.read()
-        wb = openpyxl.load_workbook(io.BytesIO(content))
+        wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True)
         ws = wb.active
         
         rules = analyze_structure(ws, file.filename)
@@ -437,7 +437,7 @@ def run_api_server(host: str = "0.0.0.0", port: int = 8800):
     async def analyze_only(file: UploadFile = File(...)):
         """只分析结构，不解析全表"""
         content = await file.read()
-        wb = openpyxl.load_workbook(io.BytesIO(content))
+        wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True)
         ws = wb.active
         rules = analyze_structure(ws, file.filename)
         return {"文件名": file.filename, "规则": rules}

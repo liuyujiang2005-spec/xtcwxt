@@ -64,7 +64,7 @@ export function mapPythonResult(pyData: any): { items: any[]; summary: { totalIt
       const row = { ...order, ...detail };
       delete row.产品明细;
       const mark = row.唛头 || row.唛头号 || row.markNo || '';
-      const dimStr = row.尺寸 || row.规格 || '';
+      const dimStr = row.尺寸 || row.规格 || (row.长 && row.宽 && row.高 ? row.长 + ' × ' + row.宽 + ' × ' + row.高 : '');
       const size = parseSize(dimStr);
 
       allItems.push({

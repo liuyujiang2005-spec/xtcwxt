@@ -41,6 +41,8 @@ export default async function BillDetailPage({ params }: { params: Promise<{ bil
     : [];
   const allItems = [...allSC, ...allLD];
 
+  const cur = (bill as any).currency || 'CNY';
+  const isThb = cur === 'THB';
   const paid = (bill as any).paidAmount || 0;
   const totalAmount = bill.totalAmount || 0;
   const remaining = totalAmount - paid;
@@ -52,16 +54,16 @@ export default async function BillDetailPage({ params }: { params: Promise<{ bil
     <div className="space-y-6">
       <div className="flex items-center gap-3">
         <Link href="/bills"><Button variant="ghost" size="icon" className="h-8 w-8"><ArrowLeft className="h-5 w-5" /></Button></Link>
-        <div className="flex-1"><h1 className="text-2xl font-bold">{bill.billNo}</h1>
+        <div className="flex-1"><h1 className="text-2xl font-bold">{bill.billNo} <Badge className={isThb ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'}>{isThb ? 'THB' : 'CNY'}</Badge></h1>
           {customer && <p className="text-sm text-muted-foreground">客户：{customer.name} · 月份：{bill.monthTag}</p>}
         </div>
         <Badge className={bill.status === '已生成' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}>{bill.status}</Badge>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <Card><CardHeader className="py-2 px-3"><CardTitle className="text-xs">总金额</CardTitle></CardHeader><CardContent className="py-2 px-3"><span className="text-lg font-bold">{formatAmount(totalAmount)}</span></CardContent></Card>
-        <Card><CardHeader className="py-2 px-3"><CardTitle className="text-xs">已付</CardTitle></CardHeader><CardContent className="py-2 px-3"><span className="text-lg font-bold text-green-600">{formatAmount(paid)}</span></CardContent></Card>
-        <Card><CardHeader className="py-2 px-3"><CardTitle className="text-xs">剩余</CardTitle></CardHeader><CardContent className="py-2 px-3"><span className="text-lg font-bold text-orange-600">{formatAmount(remaining)}</span></CardContent></Card>
+        <Card><CardHeader className="py-2 px-3"><CardTitle className="text-xs">总金额</CardTitle></CardHeader><CardContent className="py-2 px-3"><span className="text-lg font-bold">{isThb ? formatAmount(totalAmount, 'THB') : formatAmount(totalAmount)}</span></CardContent></Card>
+        <Card><CardHeader className="py-2 px-3"><CardTitle className="text-xs">已付</CardTitle></CardHeader><CardContent className="py-2 px-3"><span className="text-lg font-bold text-green-600">{isThb ? formatAmount(paid, 'THB') : formatAmount(paid)}</span></CardContent></Card>
+        <Card><CardHeader className="py-2 px-3"><CardTitle className="text-xs">剩余</CardTitle></CardHeader><CardContent className="py-2 px-3"><span className="text-lg font-bold text-orange-600">{isThb ? formatAmount(remaining, 'THB') : formatAmount(remaining)}</span></CardContent></Card>
         <Card><CardHeader className="py-2 px-3"><CardTitle className="text-xs">导出时间</CardTitle></CardHeader><CardContent className="py-2 px-3"><span className="text-sm">{exportedAt ? new Date(exportedAt).toLocaleDateString('zh-CN') : '-'}</span></CardContent></Card>
         <Card><CardHeader className="py-2 px-3"><CardTitle className="text-xs">付款时间</CardTitle></CardHeader><CardContent className="py-2 px-3"><span className="text-sm">{paidAt ? new Date(paidAt).toLocaleDateString('zh-CN') : '-'}</span></CardContent></Card>
       </div>

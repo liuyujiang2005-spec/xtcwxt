@@ -50,6 +50,10 @@ export default async function DashboardPage() {
 
   const totalRevenue = allIncome.reduce((s, i) => s + i.amount, 0);
   const totalReceived = allReceived.reduce((s, p) => s + p.amount, 0);
+  const totalRevenueTHB = allIncome.filter(i => i.currency === 'THB').reduce((s, i) => s + i.amount, 0);
+  const totalReceivedTHB = allReceived.filter(p => p.currency === 'THB').reduce((s, p) => s + p.amount, 0);
+  const totalRevenueCNY = allIncome.filter(i => i.currency !== 'THB').reduce((s, i) => s + i.amount, 0);
+  const totalReceivedCNY = allReceived.filter(p => p.currency !== 'THB').reduce((s, p) => s + p.amount, 0);
 
   const topCustomers = await db.select().from(customerMetrics).orderBy(desc(customerMetrics.monthlyVolume)).limit(5).all();
   const allCustomers = await db.select().from(customers).all();
@@ -118,24 +122,43 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">待收总额</CardTitle>
+            <CardTitle className="text-sm font-medium">人民币待收</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{formatAmount(Math.max(0, totalRevenue - totalReceived))}</div>
+            <div className="text-2xl font-bold text-orange-600">{formatAmount(Math.max(0, totalRevenueCNY - totalReceivedCNY))}</div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">待付总额</CardTitle>
+            <CardTitle className="text-sm font-medium">人民币待付</CardTitle>
             <HandCoins className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">{formatAmount(pendingPayableCNY)}</div>
-            {pendingPayableTHB > 0 && <div className="text-xs text-orange-600 mt-1">THB {formatAmount(pendingPayableTHB, 'THB')}</div>}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-sm font-medium">泰铢待收</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-600">{formatAmount(Math.max(0, totalRevenueTHB - totalReceivedTHB), 'THB')}</div>
+          </CardContent>
+        </Card>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-sm font-medium">泰铢待付</CardTitle>
+            <HandCoins className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-600">{formatAmount(pendingPayableTHB, 'THB')}</div>
           </CardContent>
         </Card>
       </div>

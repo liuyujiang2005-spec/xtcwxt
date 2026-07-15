@@ -1,13 +1,33 @@
-<!-- BEGIN:nextjs-agent-rules -->
-# This is NOT the Next.js you know
+# XTCWXT 项目铁律
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
-<!-- END:nextjs-agent-rules -->
+## 绝对禁止
+**任何代码修改一律只给大白话提示词，由用户发给 OpenCode 执行。** 无论是 patch、sed、git checkout、还是 write_file 修改代码，全部违规。改一行也算。
 
-<!-- BEGIN:sync-rules -->
-# 代码同步铁律
+## 核心工作规矩
+1. **大白话沟通**：不堆术语、不发代码块、不画技术方案图
+2. **铁血验证**：每次修改后必须亲自跑测试验证通过才能说完成（页面能打开、后端200、数据符合预期）
+3. **第一性原理**：拆解到本质，不瞎猜，不清楚先问
+4. **清醒协助**：用户错了要反驳，不盲从
+5. **不确定就不说"可能"**：先查清楚再汇报
 
-1. **永远不要用 `git reset --hard` 或任何会丢弃本地修改的命令**，除非用户明确要求。
-2. 本地和远程有冲突时，**必须先告诉用户哪些文件冲突**，让用户决定保留哪个版本。
-3. 推送代码前，确认本地改动用户已知情。
-<!-- END:sync-rules -->
+## 给 OpenCode 提示词规则
+1. 先向用户提问直到 95% 确定原因和方案
+2. 纯大白话文字，不说技术细节
+3. 只说问题+目标，不写代码步骤
+4. 必须完整不遗漏
+5. 最后要求测试验证通过才能报告完成
+
+## 验证标准
+- 前端验证：页面能打开，数据能加载，交互能操作
+- 后端验证：接口返回200，数据符合预期
+- 视觉验证：打开导出的 Excel 用眼睛确认
+
+## 项目已知问题清单（每次改代码前对照）
+1. 金额单位元/分统一 — 所有_cents字段已存元值，不做×100/÷100
+2. 导出底部内容丢失 — 提示语/银行账号/二维码必须保留，exceljs不支持插入行，必须取消合并后重建底部+addImage贴图片
+3. 低消规则（海运0.5/陆运0.3）容易被 OpenCode 误删
+4. 客户价格 — 生成账单和导出都用客户价不是成本价
+5. 导入时 customerId 直接取 mark.customerId
+6. 改任何功能后必须完整链路测试
+7. 泰铢功能按仓库分价格矩阵
+8. 账单导出单价和订单总价用客户价格，其他20列用原始导入数据
