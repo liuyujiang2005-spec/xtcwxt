@@ -85,8 +85,13 @@ export async function POST(request: NextRequest) {
     const existing = await db.select().from(bills).where(eq(bills.billNo, billNo)).get();
     let billId: number;
     if (existing) {
-      // 同唛头同月份账单已存在，累加金额，不覆盖
-      totalReceivable += (existing.totalAmount || 0);
+      // 已付款账单跳过，不再追加
+      if (existing.paymentStatus === '已付款' || existing.paymentStatus === '付一部分') {
+        results.push({ markId, billId: existing.id, billNo, markNo, customerName: custMap.get(custId)?.name || markNo, itemCount: group.length, totalVolume: round6(totalVol), totalCost: round6(totalReceivable), skipped: true });
+        continue;
+      }
+      // 账单已存在，累加新明细
+      totalReceivable = existing.totalAmount || 0;
       billId = existing.id;
     } else {
       const r = await db.insert(bills).values({

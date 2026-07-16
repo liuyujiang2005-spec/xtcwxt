@@ -49,6 +49,7 @@ export async function PUT(request: NextRequest) {
     if (body.name !== undefined) up.name = body.name;
     if (body.contact !== undefined) up.contact = body.contact;
     if (body.priceMatrix !== undefined) up.priceMatrix = body.priceMatrix;
+    if (body.priceMatrixThb !== undefined) up.priceMatrixThb = body.priceMatrixThb;
     if (body.defaultCurrency !== undefined) up.defaultCurrency = body.defaultCurrency;
     up.enableMinVolume = body.enableMinVolume ?? 1;
     if (body.remark !== undefined) up.remark = body.remark;

@@ -149,7 +149,7 @@ export default async function BillDetailPage({ params }: { params: Promise<{ bil
                             <TableCell className="border text-xs">{item.国内单号 || '-'}</TableCell>
                             <TableCell className="border text-right">{item.总重量 || '-'}</TableCell>
                             <TableCell className="border text-right text-red-600">{formatAmount((item.需支付总价 || 0))}</TableCell>
-                            <TableCell className="border text-right text-green-600">{formatAmount(item.客户应收 || 0)}</TableCell>
+                            <TableCell className="border text-right text-green-600">{isThb ? formatAmount(item.客户应收 || 0, 'THB') : formatAmount(item.客户应收 || 0)}</TableCell>
                             <TableCell className="border">{item.cost_status || item.payment_status || '-'}</TableCell>
                             <TableCell className="border">
                               <Badge variant="outline" className="text-xs">{item._type}</Badge>

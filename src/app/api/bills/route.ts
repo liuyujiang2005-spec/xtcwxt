@@ -125,8 +125,8 @@ export async function PATCH(request: NextRequest) {
 
     const customer = await db.select().from(customers).where(eq(customers.id, bill.customerId)).get();
     let pm: any = {};
-    if (customer?.defaultCurrency === 'THB' && customer?.priceMatrixThb) {
-      try { pm = JSON.parse(customer.priceMatrixThb); } catch {}
+    if (customer?.defaultCurrency === 'THB') {
+      if (customer?.priceMatrixThb) try { pm = JSON.parse(customer.priceMatrixThb); } catch {}
     } else if (customer?.priceMatrix) {
       try { pm = JSON.parse(customer.priceMatrix); } catch {} }
     const em = customer?.enableMinVolume !== 0;

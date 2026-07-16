@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
 
         let mark = tx.select().from(marks).where(eq(marks.markNo, cleanMarkNo)).get();
         if (!mark) {
-          const monthTag = new Date().toISOString().substring(0, 7);
+          const monthTag = item.monthTag || new Date().toISOString().substring(0, 7);
           const result = tx.insert(marks).values({
             markNo: cleanMarkNo,
             customerId: custId,

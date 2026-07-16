@@ -4,7 +4,8 @@ import { redirect } from 'next/navigation';
 import { db } from '@/db/index';
 import { bills, customers, billItems } from '@/db/schema';
 import { eq, desc, like, and, inArray } from 'drizzle-orm';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ReceiptUploader } from './ReceiptUploader';
@@ -12,13 +13,15 @@ import { RefreshBillButton } from './RefreshBillButton';
 import { Download } from 'lucide-react';
 import Link from 'next/link';
 
-export default async function BillsPage({ searchParams }: { searchParams: Promise<{ q?: string; month?: string }> }) {
+export default async function BillsPage({ searchParams }: { searchParams: Promise<{ q?: string; month?: string; tab?: string }> }) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
   const sp = await searchParams;
   const q = sp.q || '';
   const month = sp.month || '';
+  const tab = sp.tab || 'cny';
+  const isThb = tab === 'thb';
 
   let allBills;
   if (q && month) {
@@ -49,10 +52,20 @@ export default async function BillsPage({ searchParams }: { searchParams: Promis
     }
   }
 
-
-  const cnyBills = allBills.filter(b => (b as any).currency !== 'THB');
-  const thbBills = allBills.filter(b => (b as any).currency === 'THB');
+  const filteredBills = allBills.filter(b => isThb ? (b as any).currency === 'THB' : (b as any).currency !== 'THB');
   const availableMonths = [...new Set(allBills.map(b => b.monthTag))].sort().reverse();
+
+  const cnyCount = allBills.filter(b => (b as any).currency !== 'THB').length;
+  const thbCount = allBills.filter(b => (b as any).currency === 'THB').length;
+
+  // Group by month
+  const byMonth = new Map<string, typeof filteredBills>();
+  for (const b of filteredBills) {
+    const m = b.monthTag || '';
+    if (!byMonth.has(m)) byMonth.set(m, []);
+    byMonth.get(m)!.push(b);
+  }
+  const sortedMonths = [...byMonth.keys()].sort().reverse();
 
   return (
     <div className="space-y-6">
@@ -67,98 +80,86 @@ export default async function BillsPage({ searchParams }: { searchParams: Promis
           <label className="text-xs text-muted-foreground">月份</label>
           <select name="month" defaultValue={month} className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm w-36">
             <option value="">全部月份</option>
-            {availableMonths.map(m => (
-              <option key={m} value={m}>{m}</option>
-            ))}
+            {availableMonths.map(m => (<option key={m} value={m}>{m}</option>))}
           </select>
         </div>
         <Button type="submit" variant="outline" size="sm">搜索</Button>
-        {(q || month) && <a href="/bills"><Button variant="ghost" size="sm">清除</Button></a>}
+        {(q || month) && <Link href="/bills"><Button variant="ghost" size="sm">清除</Button></Link>}
+        <div className="h-8 w-px bg-border mx-1" />
+        <Link href={`/bills?q=${q}&month=${month}&tab=cny`}><Button variant={!isThb ? 'default' : 'outline'} size="sm">人民币{cnyCount > 0 ? ` (${cnyCount})` : ''}</Button></Link>
+        <Link href={`/bills?q=${q}&month=${month}&tab=thb`}><Button variant={isThb ? 'default' : 'outline'} size="sm">泰铢{thbCount > 0 ? ` (${thbCount})` : ''}</Button></Link>
       </form>
 
-      <h2 className="text-lg font-bold">人民币账单 ({cnyBills.length})</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {cnyBills.map((b) => {
-          const paid = (b as any).paidAmount || 0;
-          const total = b.totalAmount || 0;
-          const remaining = total - paid;
-          const pStatus = (b as any).paymentStatus || '待付款';
-          const exportedAt = (b as any).exportedAt;
-          const paidAt = (b as any).paidAt;
-          const custName = customerMap.get(b.customerId) || '-';
-          return (
-            <Card key={b.id} className="hover:shadow-md transition-shadow">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center justify-between">
-                  <span>{b.billNo}</span>
-                  <Badge className={b.status === '已生成' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}>{b.status}</Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-1 text-sm">
-                <div className="flex justify-between"><span className="text-muted-foreground">客户</span><span>{custName}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">月份</span><span>{b.monthTag}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">创建</span><span className="text-xs">{b.createdAt?.substring(0, 10) || '-'}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">条数</span><span>{billItemCounts.get(b.id) || 0}</span></div>
-                <div className="flex justify-between font-bold"><span className="text-muted-foreground">金额</span><span>¥{total.toFixed(6)}</span></div>
-                {paid > 0 && <div className="flex justify-between"><span className="text-muted-foreground">已付</span><span className="text-green-600">¥{paid.toFixed(6)}</span></div>}
-                {paid > 0 && remaining > 0 && <div className="flex justify-between"><span className="text-muted-foreground">剩余</span><span className="text-orange-600">¥{remaining.toFixed(6)}</span></div>}
-                <div className="flex justify-between"><span className="text-muted-foreground">付款</span>
-                  <Badge className={pStatus === '已付款' ? 'bg-green-100 text-green-700' : pStatus === '付一部分' ? 'bg-orange-100 text-orange-700' : 'bg-red-100 text-red-700'}>{pStatus}</Badge>
-                </div>
-                {exportedAt && <div className="flex justify-between"><span className="text-muted-foreground">导出</span><span className="text-xs">{new Date(exportedAt).toLocaleDateString('zh-CN')}</span></div>}
-                {paidAt && <div className="flex justify-between"><span className="text-muted-foreground">付款日</span><span className="text-xs">{new Date(paidAt).toLocaleDateString('zh-CN')}</span></div>}
-                <div className="flex gap-2 mt-3">
-                  <a href={`/api/bills/export?billId=${b.id}`} className="flex-1"><Button variant="outline" size="sm" className="w-full"><Download className="h-3.5 w-3.5 mr-1" />导出</Button></a>
-                  <ReceiptUploader apiPath="/api/bills" entityId={b.id} currentUrl={(b as any).receiptUrl} updateField="receiptUrl" />
-                  <RefreshBillButton billId={b.id} />
-                  <Link href={`/bills/${b.billNo}`} className="flex-1"><Button variant="ghost" size="sm" className="w-full">详情</Button></Link>
-                </div>
+      {sortedMonths.map(m => {
+        const monthBills = byMonth.get(m)!;
+        return (
+          <div key={m}>
+            <h2 className="text-lg font-bold mb-2">{m} ({monthBills.length} 张)</h2>
+            <Card>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>单号</TableHead>
+                      <TableHead>客户</TableHead>
+                      <TableHead>币种</TableHead>
+                      <TableHead className="text-right">金额</TableHead>
+                      <TableHead className="text-right">已付</TableHead>
+                      <TableHead className="text-right">剩余</TableHead>
+                      <TableHead className="text-right">明细</TableHead>
+                      <TableHead>状态</TableHead>
+                      <TableHead className="text-right">操作</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {monthBills.map(b => {
+                      const paid = (b as any).paidAmount || 0;
+                      const total = b.totalAmount || 0;
+                      const remaining = total - paid;
+                      const pStatus = (b as any).paymentStatus || '待付款';
+                      const custName = customerMap.get(b.customerId) || '-';
+                      const cur = (b as any).currency || 'CNY';
+                      const isThbCur = cur === 'THB';
+                      return (
+                        <TableRow key={b.id}>
+                          <TableCell className="font-mono text-xs">{b.billNo}</TableCell>
+                          <TableCell className="text-sm">{custName}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className={isThbCur ? 'text-orange-600 text-xs' : 'text-xs'}>{cur}</Badge>
+                          </TableCell>
+                          <TableCell className="text-right text-sm font-bold">
+                            {isThbCur ? formatAmount(total, 'THB') : formatAmount(total)}
+                          </TableCell>
+                          <TableCell className="text-right text-sm text-green-600">
+                            {paid > 0 ? (isThbCur ? formatAmount(paid, 'THB') : formatAmount(paid)) : '-'}
+                          </TableCell>
+                          <TableCell className="text-right text-sm text-orange-600">
+                            {remaining > 0 ? (isThbCur ? formatAmount(remaining, 'THB') : formatAmount(remaining)) : '-'}
+                          </TableCell>
+                          <TableCell className="text-right text-sm">{billItemCounts.get(b.id) || 0}</TableCell>
+                          <TableCell>
+                            <Badge className={pStatus === '已付款' ? 'bg-green-100 text-green-700 text-xs' : pStatus === '付一部分' ? 'bg-orange-100 text-orange-700 text-xs' : 'bg-red-100 text-red-700 text-xs'}>{pStatus}</Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex gap-1 justify-end">
+                              <a href={`/api/bills/export?billId=${b.id}`}><Button variant="ghost" size="sm"><Download className="h-3.5 w-3.5" /></Button></a>
+                              <ReceiptUploader apiPath="/api/bills" entityId={b.id} currentUrl={(b as any).receiptUrl} updateField="receiptUrl" />
+                              <RefreshBillButton billId={b.id} />
+                              <Link href={`/bills/${b.billNo}`}><Button variant="ghost" size="sm">详情</Button></Link>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
               </CardContent>
             </Card>
-          );
-        })}
-      </div>
-            {thbBills.length > 0 && (
-        <>
-          <h2 className="text-lg font-bold mt-4 text-orange-600">泰铢账单 ({thbBills.length})</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {thbBills.map((b) => {
-              const paid = (b as any).paidAmount || 0;
-              const total = b.totalAmount || 0;
-              const remaining = total - paid;
-              const pStatus = (b as any).paymentStatus || '待付款';
-              const custName = customerMap.get(b.customerId) || '-';
-              return (
-                <Card key={b.id} className="hover:shadow-md transition-shadow">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm flex items-center justify-between">
-                      <span>{b.billNo}</span>
-                      <Badge className={b.status === '已生成' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}>{b.status}</Badge>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-1 text-sm">
-                    <div className="flex justify-between"><span className="text-muted-foreground">客户</span><span>{custName}</span></div>
-                    <div className="flex justify-between"><span className="text-muted-foreground">月份</span><span>{b.monthTag}</span></div>
-                    <div className="flex justify-between font-bold"><span className="text-muted-foreground">金额</span><span>THB {formatAmount(total, 'THB')}</span></div>
-                    {paid > 0 && <div className="flex justify-between"><span className="text-muted-foreground">已付</span><span className="text-green-600">THB {formatAmount(paid, 'THB')}</span></div>}
-                    {paid > 0 && remaining > 0 && <div className="flex justify-between"><span className="text-muted-foreground">剩余</span><span className="text-orange-600">THB {formatAmount(remaining, 'THB')}</span></div>}
-                    <div className="flex justify-between"><span className="text-muted-foreground">付款</span>
-                      <Badge className={pStatus === '已付款' ? 'bg-green-100 text-green-700' : pStatus === '付一部分' ? 'bg-orange-100 text-orange-700' : 'bg-red-100 text-red-700'}>{pStatus}</Badge>
-                    </div>
-                    <div className="flex gap-2 mt-3">
-                      <a href={`/api/bills/export?billId=${b.id}`} className="flex-1"><Button variant="outline" size="sm" className="w-full"><Download className="h-3.5 w-3.5 mr-1" />导出</Button></a>
-                      <RefreshBillButton billId={b.id} />
-                      <Link href={`/bills/${b.billNo}`} className="flex-1"><Button variant="ghost" size="sm" className="w-full">详情</Button></Link>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
           </div>
-        </>
-      )}
+        );
+      })}
 
-      {allBills.length === 0 && <Card><CardContent className="py-8 text-center text-muted-foreground">暂无账单{q || month ? '，无匹配结果' : ''}</CardContent></Card>}
+      {filteredBills.length === 0 && <Card><CardContent className="py-8 text-center text-muted-foreground">暂无账单{q || month ? '，无匹配结果' : ''}</CardContent></Card>}
     </div>
   );
 }

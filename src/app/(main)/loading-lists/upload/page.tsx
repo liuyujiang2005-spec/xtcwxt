@@ -26,6 +26,7 @@ interface ScSummary { totalItems: number; abnormalCount: number; }
 export default function UploadLoadingListPage() {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
+  const [uploadMonth, setUploadMonth] = useState(new Date().toISOString().substring(0, 7));
   const [phase, setPhase] = useState<'idle' | 'parsing' | 'preview' | 'importing'>('idle');
   const [preview, setPreview] = useState<ScItem[]>([]);
   const [summary, setSummary] = useState<ScSummary>({ totalItems: 0, abnormalCount: 0 });
@@ -101,6 +102,7 @@ export default function UploadLoadingListPage() {
     try {
       const batchNo = `LD-${new Date().toISOString().substring(0, 10).replace(/-/g, '')}-${Date.now().toString().slice(-4)}`;
       const items = preview.map(item => ({
+        monthTag: uploadMonth,
         markNo: item.唛头 || item.运单号,
         customerId,
         品名: item.品名,
@@ -193,6 +195,10 @@ export default function UploadLoadingListPage() {
           </CardContent></Card>
       ) : (
         <Card><CardHeader><CardTitle>上传文件</CardTitle></CardHeader><CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>上传月份</Label>
+            <Input type="month" value={uploadMonth} onChange={e => setUploadMonth(e.target.value)} className="h-8 w-36" />
+          </div>
           <div className="space-y-2"><Label>选择 Excel 文件（.xlsx）</Label><Input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={e => setFile(e.target.files?.[0] || null)} /></div>
           {result && <div className={`p-3 rounded-lg flex items-center gap-2 ${result.passed ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>{result.passed ? <CheckCircle className="h-5 w-5" /> : <AlertTriangle className="h-5 w-5" />}<span>{result.msg}</span></div>}
           <Button onClick={handleExtract} disabled={phase === 'parsing' || !file} className="w-full">{phase === 'parsing' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Brain className="h-4 w-4 mr-2" />}{phase === 'parsing' ? 'AI 解析中...' : 'AI 识别并提取数据'}</Button>

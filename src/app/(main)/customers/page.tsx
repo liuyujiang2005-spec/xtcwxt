@@ -30,12 +30,14 @@ function getPrice(pm: any, warehouse: string, key: string): string {
   return v != null ? String(v) : '-';
 }
 
-export default async function CustomersPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+export default async function CustomersPage({ searchParams }: { searchParams: Promise<{ q?: string; tab?: string }> }) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
   const sp = await searchParams;
   const q = sp.q || '';
+  const tab = sp.tab || 'cny';
+  const isThb = tab === 'thb';
 
   const allCustomers = await db.select().from(customers).orderBy(customers.name).all();
   const canEdit = user.role === 'admin' || user.role === 'finance';
@@ -45,13 +47,18 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
     ? allCustomers.filter(c => c.name?.includes(q) || c.contact?.includes(q))
     : allCustomers;
 
+  const renderPrice = (v: string) => {
+    if (v === '-') return '-';
+    return isThb ? `THB ${v}` : `¥${v}`;
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">客户管理</h1>
         <div className="flex gap-2">
           {canEdit && <RefreshMetricsButton />}
-          {canEdit && <CustomerDialog mode="create" />}
+          {canEdit && <CustomerDialog mode="create" tab={tab} />}
         </div>
       </div>
 
@@ -62,14 +69,19 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
         </div>
         <Button type="submit" variant="outline" size="sm">筛选</Button>
         {q && <Link href="/customers"><Button variant="ghost" size="sm">清除</Button></Link>}
+        <div className="h-8 w-px bg-border mx-1" />
+        <Link href={`/customers?q=${q}&tab=cny`}><Button variant={!isThb ? 'default' : 'outline'} size="sm">人民币</Button></Link>
+        <Link href={`/customers?q=${q}&tab=thb`}><Button variant={isThb ? 'default' : 'outline'} size="sm">泰铢</Button></Link>
       </form>
 
       <div className="space-y-4">
         {filtered.map((c) => {
           let pm: any = {};
-          let pmThb: any = {};
-          if (c.priceMatrix) { try { pm = JSON.parse(c.priceMatrix); } catch {} }
-          if ((c as any).priceMatrixThb) { try { pmThb = JSON.parse((c as any).priceMatrixThb); } catch {} }
+          if (isThb) {
+            if ((c as any).priceMatrixThb) try { pm = JSON.parse((c as any).priceMatrixThb); } catch {}
+          } else {
+            if (c.priceMatrix) try { pm = JSON.parse(c.priceMatrix); } catch {}
+          }
 
           return (
             <Card key={c.id}>
@@ -85,10 +97,10 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
                     ) : (
                       <Badge variant="outline" className="text-xs">无低消</Badge>
                     )}
-                    <Badge variant="outline">{c.defaultCurrency}</Badge>
+                    <Badge variant="outline" className={isThb ? 'text-orange-600' : ''}>{isThb ? 'THB' : 'CNY'}</Badge>
                     {canEdit && (
                       <div className="flex gap-1">
-                        <CustomerDialog mode="edit" customer={c} />
+                        <CustomerDialog mode="edit" customer={c} tab={tab} />
                         {canDelete && <CustomerDialog mode="delete" customer={c} />}
                       </div>
                     )}
@@ -99,7 +111,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
                     <TableRow>
                       <TableHead className="border">仓库</TableHead>
                       {PRICE_KEYS.map((pk) => (
-                        <TableHead key={pk.key} className="border text-right">{pk.label}</TableHead>
+                        <TableHead key={pk.key} className="border text-right">{pk.label}{isThb ? '(THB)' : '(元)'}</TableHead>
                       ))}
                     </TableRow>
                   </TableHeader>
@@ -109,7 +121,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
                         <TableCell className="border font-medium">{wh}</TableCell>
                         {PRICE_KEYS.map((pk) => (
                           <TableCell key={pk.key} className="border text-right text-sm">
-                            {getPrice(pm, wh, pk.key)}
+                            {renderPrice(getPrice(pm, wh, pk.key))}
                           </TableCell>
                         ))}
                       </TableRow>
@@ -117,35 +129,6 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
                   </TableBody>
                 </Table>
               </CardContent>
-            <Card key={`${c.id}-thb`}>
-              <CardContent className="py-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-lg font-bold">{c.name} <span className="text-sm text-orange-500">(THB)</span></h3>
-                </div>
-                <Table className="border">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="border">仓库</TableHead>
-                      {PRICE_KEYS.map((pk) => (
-                        <TableHead key={pk.key} className="border text-right">{pk.label}</TableHead>
-                      ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {WAREHOUSES.map((wh) => (
-                      <TableRow key={wh}>
-                        <TableCell className="border font-medium">{wh}</TableCell>
-                        {PRICE_KEYS.map((pk) => (
-                          <TableCell key={pk.key} className="border text-right text-sm">
-                            {getPrice(pmThb, wh, pk.key)}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
             </Card>
           );
         })}

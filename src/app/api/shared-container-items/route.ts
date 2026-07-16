@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          const monthTag = new Date().toISOString().substring(0, 7);
+          const monthTag = item.monthTag || new Date().toISOString().substring(0, 7);
           const result = tx.insert(marks).values({
             markNo: cleanMarkNo, customerId: newCustId, mode: '拼柜', monthTag,
           }).run();
