@@ -7,7 +7,7 @@ export async function fetchWithRetry(
     try {
       const res = await fetch(url, options);
 
-      if (res.ok || res.status < 500) return res;
+      if (res.ok) return res;
 
       if (res.status === 429 && i < retries) {
         await new Promise((r) => setTimeout(r, 2000));
