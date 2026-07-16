@@ -59,108 +59,115 @@ export default async function DashboardPage() {
   const allCustomers = await db.select().from(customers).all();
   const customerMap = new Map(allCustomers.map((c) => [c.id, c.name]));
 
+  const pendingReceivableCNY = Math.max(0, totalRevenueCNY - totalReceivedCNY);
+  const pendingReceivableTHB = Math.max(0, totalRevenueTHB - totalReceivedTHB);
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">仪表盘</h1>
-<p className="text-sm text-muted-foreground font-bold">人民币</p>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">本月营收</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatAmount(monthRevenueCNY)}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">本月支出</CardTitle>
-            <TrendingDown className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatAmount(monthCostCNY)}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">本月利润</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${profitCNY >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatAmount(profitCNY)}</div>
-          </CardContent>
-        </Card>
+
+      {/* 人民币区块 */}
+      <div className="border rounded-lg p-4 space-y-4">
+        <p className="text-sm font-bold">人民币</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium">本月营收</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{formatAmount(monthRevenueCNY)}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium">本月支出</CardTitle>
+              <TrendingDown className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{formatAmount(monthCostCNY)}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium">本月利润</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className={`text-2xl font-bold ${profitCNY >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatAmount(profitCNY)}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium">待收</CardTitle>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{formatAmount(pendingReceivableCNY)}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium">待付</CardTitle>
+              <HandCoins className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{formatAmount(pendingPayableCNY)}</div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
-      <p className="text-sm text-orange-600 font-bold">泰铢</p>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium text-orange-600">本月营收</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{formatAmount(monthRevenueTHB, 'THB')}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium text-orange-600">本月支出</CardTitle>
-            <TrendingDown className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{formatAmount(monthCostTHB, 'THB')}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium text-orange-600">本月利润</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${profitTHB >= 0 ? 'text-orange-600' : 'text-red-600'}`}>{formatAmount(profitTHB, 'THB')}</div>
-          </CardContent>
-        </Card>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">人民币待收</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{formatAmount(Math.max(0, totalRevenueCNY - totalReceivedCNY))}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">人民币待付</CardTitle>
-            <HandCoins className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{formatAmount(pendingPayableCNY)}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">泰铢待收</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{formatAmount(Math.max(0, totalRevenueTHB - totalReceivedTHB), 'THB')}</div>
-          </CardContent>
-        </Card>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">泰铢待付</CardTitle>
-            <HandCoins className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{formatAmount(pendingPayableTHB, 'THB')}</div>
-          </CardContent>
-        </Card>
+
+      {/* 泰铢区块 */}
+      <div className="border rounded-lg p-4 space-y-4">
+        <p className="text-sm font-bold text-orange-600">泰铢</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium text-orange-600">本月营收</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-orange-600">{formatAmount(monthRevenueTHB, 'THB')}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium text-orange-600">本月支出</CardTitle>
+              <TrendingDown className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-orange-600">{formatAmount(monthCostTHB, 'THB')}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium text-orange-600">本月利润</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className={`text-2xl font-bold ${profitTHB >= 0 ? 'text-orange-600' : 'text-red-600'}`}>{formatAmount(profitTHB, 'THB')}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium text-orange-600">待收</CardTitle>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-orange-600">{formatAmount(pendingReceivableTHB, 'THB')}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium text-orange-600">待付</CardTitle>
+              <HandCoins className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-orange-600">{formatAmount(pendingPayableTHB, 'THB')}</div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       <Card>
