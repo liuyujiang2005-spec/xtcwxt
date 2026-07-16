@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
     let totalReceivable = 0;
 
     const monthTag = month || mark?.monthTag || new Date().toISOString().substring(0, 7);
-    const billNo = `${markNo}-${monthTag}`;
+    const billNo = `${markNo}-${monthTag}${customer?.defaultCurrency === 'THB' ? '-THB' : ''}`;
 
     if (!custId || custId <= 0) {
       results.push({ markId, billId: 0, billNo, markNo, customerName: '未知客户', itemCount: group.length, totalVolume: round6(totalVol), totalCost: 0, error: '无有效客户' });
