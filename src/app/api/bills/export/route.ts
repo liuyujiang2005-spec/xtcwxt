@@ -7,7 +7,7 @@ import { generateBillXlsx, type BillRow } from '@/lib/generate-bill-xlsx';
 
 function getMatrixPrice(pm: any, warehouse: string | null, transport: string, cargo: string): number {
   const m = transport === '海运' ? 'sea' : 'land';
-  const t = cargo === '普货' ? 'regular' : cargo === '商检货' ? 'inspection' : 'sensitive';
+  const t = (cargo || '普货') === '普货' ? 'regular' : cargo === '商检货' ? 'inspection' : 'sensitive';
   const key = m + '_' + t;
   if (warehouse && pm[warehouse] && typeof pm[warehouse][key] === 'number') return pm[warehouse][key];
   return typeof pm[key] === 'number' ? pm[key] : 0;
@@ -87,22 +87,21 @@ export async function GET(request: NextRequest) {
       orderGroups.get(ok)!.push(item);
     }
 
-    // 每个运单的应收（只算一次）和总体积
+    // 从已存客户应收取每个运单的应收（取最大值，第一条非0、其余为0）
     const orderReceivableMap = new Map<string, number>();
-    const orderVolMap = new Map<string, number>();
+    const orderChargeVolMap = new Map<string, number>();
 
     for (const [ok, items] of orderGroups) {
+      let maxRec = 0;
       let orderVol = 0;
-      for (const item of items) orderVol = Math.max(orderVol, (item as any).总体积 || 0);
-
+      for (const item of items) {
+        maxRec = Math.max(maxRec, (item as any).客户应收 || 0);
+        orderVol = Math.max(orderVol, (item as any).总体积 || 0);
+      }
       const first = items[0];
       const transport = (first as any).运输方式 || '海运';
-      const warehouse = (first as any).仓库 || null;
-      const unitPrice = getMatrixPrice(pm, warehouse, transport, (first as any).货型 || '');
-      const chargeVol = Math.max(orderVol, minVol(transport));
-      const orderRec = unitPrice * chargeVol;
-      orderReceivableMap.set(ok, orderRec);
-      orderVolMap.set(ok, chargeVol);
+      orderReceivableMap.set(ok, maxRec);
+      orderChargeVolMap.set(ok, Math.max(orderVol, minVol(transport)));
     }
 
     // ── 生成行 ──
@@ -112,7 +111,7 @@ export async function GET(request: NextRequest) {
       const warehouse = (item as any).仓库 || null;
       const okey = (item as any).运单号 || '_' + (item as any).id;
       const up = getMatrixPrice(pm, warehouse, transport, (item as any).货型 || '');
-      const cv = orderVolMap.get(okey) || Math.max((item as any).单箱体积 || 0, minVol(transport));
+      const cv = orderChargeVolMap.get(okey) || Math.max((item as any).单箱体积 || 0, minVol(transport));
       const ct = (item as any).箱数 ?? 0;
       const oRec = orderReceivableMap.get(okey) || 0;
 
