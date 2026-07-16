@@ -36,3 +36,35 @@
 6. 改任何功能后必须完整链路测试
 7. 泰铢功能按仓库分价格矩阵
 8. 账单导出单价和订单总价用客户价格，其他20列用原始导入数据
+
+## 生产部署规范
+
+### 运行模式（铁律）
+线上服务器只能用**生产模式**运行：
+```bash
+npm run build
+pm2 start npm --name finance-system -- start
+```
+**严禁**用 `npm run dev` / `next dev` 上线。
+
+**为什么：** Next.js 开发模式只信任 `localhost`，会把公网域名（`xtcwxt.site`）的访问当成跨域请求拦截，导致：
+- 登录接口返回成功，但会话 cookie 不生效
+- 登录后被弹回登录页（无限循环）
+- 进程不稳定、反复重启
+
+> 2026年7月线上误用了 `npm run dev`，登录一直进不去，排查半天才发现是模式问题。
+
+### 上线标准流程
+```bash
+git pull
+npm install          # 有新依赖时才需要
+npm run build
+pm2 restart finance-system
+```
+服务器上已放置一键脚本：`bash /opt/caiwuxitong/deploy.sh`
+
+### 运行环境
+- 进程名：`finance-system`
+- 端口：`3000`
+- 反代：nginx → `xtcwxt.site`（SSL 由 Certbot 管理）
+- 开机自启：`pm2 startup` + `pm2 save` 已配好，服务器重启会自动恢复
