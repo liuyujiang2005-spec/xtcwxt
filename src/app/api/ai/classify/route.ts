@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
     }
 
     let totalReceivable = 0;
-    const totalVol = calcItems.reduce((s, i) => s + (i.总体积 || 0), 0);
+    let totalVol = 0;
     const missingPriceOrders: string[] = [];
     const keepPaid = (existing as any)?.paidAmount || 0;
 
@@ -127,6 +127,8 @@ export async function POST(request: NextRequest) {
       const unitPrice = getPrice(warehouse, transport, cargo);
       const chargeVol = Math.max(orderVol, minVol(transport));
       const orderReceivable = unitPrice * chargeVol;
+
+      totalVol += first.总体积 || 0;
 
       if (unitPrice === 0 && orderVol > 0) {
         missingPriceOrders.push(`运单${ok}（仓库:${warehouse || '未知'}, ${transport}/${cargo}）未配置价格，应收为0`);
