@@ -152,7 +152,7 @@ export function ClassifyButton({ batchId, type = 'shared-container', items = [],
                               <TableCell className="text-xs">{item.货型 || '-'}</TableCell>
                               <TableCell className="text-xs text-right">{item.箱数 || '-'}</TableCell>
                               {ri === 0 ? <TableCell className="text-xs text-right" rowSpan={g.rows.length}>{(item.总体积 ?? 0).toFixed(6)}</TableCell> : null}
-                              <TableCell className="text-xs text-right">¥{(item.需支付总价_cents || 0).toFixed(6)}</TableCell>
+                              <TableCell className="text-xs text-right">¥{(item.需支付总价 || 0).toFixed(6)}</TableCell>
                               {ri === 0 ? <TableCell className="text-xs" rowSpan={g.rows.length}>
                                 <Badge className="text-[10px]">{item.cost_status || item.payment_status || '-'}</Badge>
                               </TableCell> : null}
