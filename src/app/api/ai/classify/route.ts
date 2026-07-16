@@ -130,15 +130,16 @@ export async function POST(request: NextRequest) {
         const item = items[i];
         const cost = item.需支付总价 || 0;
         const rec = i === 0 ? orderReceivable : 0;
+        const itemIsSc = (item as any).cost_status !== undefined;
 
-        if (isSc) {
+        if (itemIsSc) {
           await db.update(sharedContainerItems).set({ 客户应收: rec }).where(eq(sharedContainerItems.id, item.id));
         } else {
           await db.update(loadingItems).set({ 客户应收: rec }).where(eq(loadingItems.id, item.id));
         }
 
         await db.insert(billItems).values({
-          billId, markId, mode: isSc ? '拼柜' : '装柜',
+          billId, markId, mode: itemIsSc ? '拼柜' : '装柜',
           amount: rec,
           costAmount: cost,
         });
