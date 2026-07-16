@@ -120,12 +120,13 @@ export default function UploadLoadingListPage() {
         pcs数量: 0,
         单价: item.单价 || 0,
         需支付总价: item.单项价格 || 0,
-        运单号: item.运单号 || '',
-        ai_verified: item.verdict === '通过' ? 1 : 0,
+         运单号: item.运单号 || '',
+         仓库: item.仓库 || '',
+         ai_verified: item.verdict === '通过' ? 1 : 0,
         ai_verify_msg: item.reason || '',
       }));
       const totalVol = items.reduce((s: number, i: any) => s + (i.总体积 || i.单项体积 || 0), 0);
-      const batchRes = await fetch('/api/loading-lists', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ batchNo, totalVolumeUploaded: totalVol, originalFilename: file.name }), signal: controller.signal });
+      const batchRes = await fetch('/api/loading-batches', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ batchNo, totalVolumeUploaded: totalVol, originalFilename: file.name }), signal: controller.signal });
       const batchData = await batchRes.json().catch(() => ({}));
       if (!batchData.id) throw new Error('批次创建失败');
       const importRes = await fetch('/api/loading-items', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ batchId: batchData.id, items }), signal: controller.signal });

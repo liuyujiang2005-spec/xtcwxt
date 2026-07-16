@@ -119,8 +119,11 @@ sqlite.exec(`
     总重量 REAL,
     箱数 INTEGER,
     pcs数量 INTEGER,
+    仓库 TEXT,
+    运单号 TEXT,
     单价 REAL,
     需支付总价 REAL,
+    客户应收 REAL,
     货型 TEXT,
     运输方式 TEXT,
     payment_status TEXT DEFAULT '待支付',
@@ -135,6 +138,7 @@ sqlite.exec(`
     currency TEXT DEFAULT 'CNY',
     volume REAL,
     income_date TEXT NOT NULL,
+    仓库 TEXT,
     remark TEXT,
     receipt_url TEXT,
     created_at TEXT DEFAULT (datetime('now'))
@@ -149,6 +153,7 @@ sqlite.exec(`
     supplier_id INTEGER REFERENCES suppliers(id),
     status TEXT DEFAULT '待支付',
     paid_date TEXT,
+    仓库 TEXT,
     remark TEXT,
     receipt_url TEXT,
     created_at TEXT DEFAULT (datetime('now'))

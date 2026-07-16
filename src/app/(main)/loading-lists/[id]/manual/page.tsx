@@ -24,11 +24,12 @@ interface RowData {
   单价: string;
   运单号: string;
   国内单号: string;
+  仓库: string;
   备注: string;
 }
 
 function emptyRow(): RowData {
-  return { markNo: '', 品名: '', 运输方式: '海运', 货型: '普货', 件数: '', 总体积: '', 总重量: '', 单价: '', 运单号: '', 国内单号: '', 备注: '' };
+  return { markNo: '', 品名: '', 运输方式: '海运', 货型: '普货', 件数: '', 总体积: '', 总重量: '', 单价: '', 运单号: '', 国内单号: '', 仓库: '', 备注: '' };
 }
 
 export default function LoadingManualPage({ params }: { params: Promise<{ id: string }> }) {
@@ -68,6 +69,7 @@ export default function LoadingManualPage({ params }: { params: Promise<{ id: st
         单价: parseFloat(r.单价) || 0,
         运单号: r.运单号.trim(),
         国内单号: r.国内单号.trim(),
+        仓库: r.仓库.trim(),
         备注: r.备注.trim(),
         箱数: parseInt(r.件数) || 0,
         customerId: 0, // Will be resolved by backend from markNo
@@ -126,6 +128,7 @@ export default function LoadingManualPage({ params }: { params: Promise<{ id: st
                   <TableHead className="text-right">单价</TableHead>
                   <TableHead>运单号</TableHead>
                   <TableHead>国内单号</TableHead>
+                  <TableHead>仓库</TableHead>
                   <TableHead>备注</TableHead>
                 </TableRow>
               </TableHeader>
@@ -164,6 +167,7 @@ export default function LoadingManualPage({ params }: { params: Promise<{ id: st
                     <TableCell><Input type="number" step="0.01" className="h-7 w-16 text-xs text-right" value={r.单价} onChange={e => updateRow(i, '单价', e.target.value)} /></TableCell>
                     <TableCell><Input className="h-7 w-28 text-xs" value={r.运单号} onChange={e => updateRow(i, '运单号', e.target.value)} placeholder="运单号" /></TableCell>
                     <TableCell><Input className="h-7 w-28 text-xs" value={r.国内单号} onChange={e => updateRow(i, '国内单号', e.target.value)} placeholder="国内单号" /></TableCell>
+                    <TableCell><Input className="h-7 w-20 text-xs" value={r.仓库} onChange={e => updateRow(i, '仓库', e.target.value)} placeholder="仓库" /></TableCell>
                     <TableCell><Input className="h-7 w-20 text-xs" value={r.备注} onChange={e => updateRow(i, '备注', e.target.value)} placeholder="备注" /></TableCell>
                   </TableRow>
                 ))}

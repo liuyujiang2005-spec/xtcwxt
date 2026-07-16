@@ -21,6 +21,7 @@
 
 import json, os, sys, io, argparse, base64
 from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
 load_dotenv('/root/xtcwxt/.env')
 from pathlib import Path
 from typing import Optional
