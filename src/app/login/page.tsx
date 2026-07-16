@@ -31,8 +31,9 @@ function LoginForm() {
 
       if (res.ok) {
         const redirect = searchParams.get('redirect') || '/';
-        const safe = redirect.startsWith('/') ? redirect : '/'; router.push(safe);
+        const safe = redirect.startsWith('/') ? redirect : '/';
         router.refresh();
+        setTimeout(() => router.push(safe), 100);
       } else {
         const data = await res.json();
         setError(data.error || '登录失败');
