@@ -41,30 +41,50 @@ async function loadPriceMatrix(
   customerId: number,
   customerName: string,
   items: any[],
-): Promise<Record<string, number>> {
-  if (customerId) {
-    const cust = await db.select().from(customers).where(eq(customers.id, customerId)).get();
-    if (cust?.priceMatrix) {
-      try { return JSON.parse(cust.priceMatrix); } catch {}
-    }
+): Promise<{ matrix: any; isThb: boolean }> {
+  const getCust = async (id: number) => {
+    return await db.select().from(customers).where(eq(customers.id, id)).get();
+  };
+  const getCustByName = async (name: string) => {
+    return await db.select().from(customers).where(eq(customers.name, name.trim())).get();
+  };
+
+  let cust = null;
+  if (customerId) cust = await getCust(customerId);
+  if (!cust) {
+    const cName = customerName || (items || []).map((item: any) => item.客户).find((name: string) => name && name.trim());
+    if (cName) cust = await getCustByName(cName);
   }
-  const cName = customerName || (items || []).map((item: any) => item.客户).find((name: string) => name && name.trim());
-  if (cName) {
-    const cust = await db.select().from(customers).where(eq(customers.name, cName.trim())).get();
-    if (cust?.priceMatrix) {
-      try { return JSON.parse(cust.priceMatrix); } catch {}
-    }
+
+  if (!cust) return { matrix: {}, isThb: false };
+
+  const isThb = cust.defaultCurrency === 'THB';
+  if (isThb && cust.priceMatrixThb) {
+    try { return { matrix: JSON.parse(cust.priceMatrixThb), isThb: true }; } catch {}
   }
-  return {};
+  if (cust.priceMatrix) {
+    try { return { matrix: JSON.parse(cust.priceMatrix), isThb: false }; } catch {}
+  }
+  return { matrix: {}, isThb: false };
 }
 
-function applyPriceMatrix(items: any[], priceMatrix: Record<string, number>) {
+function applyPriceMatrix(items: any[], pm: { matrix: any; isThb: boolean }) {
+  const matrix = pm.matrix;
   return (items || []).map((item: any) => {
-    const mode = item.运输方式 === '海运' ? 'sea' : item.运输方式 === '陆运' ? 'land' : 'sea';
-    const type = item.货型 === '普货' ? 'regular' : item.货型 === '商检货' ? 'inspection' : item.货型 === '敏货' ? 'sensitive' : 'regular';
+    const transport = item.运输方式 === '海运' ? 'sea' : item.运输方式 === '陆运' ? 'land' : 'sea';
+    const cargo = item.货型 || '';
+    const type = cargo === '普货' ? 'regular' : cargo === '商检货' ? 'inspection' : 'sensitive';
+    const key = `${transport}_${type}`;
+    const warehouse = item.仓库 || null;
+
+    let unitPrice = 0;
+    if (warehouse && matrix[warehouse] && typeof matrix[warehouse] === 'object' && typeof matrix[warehouse][key] === 'number') {
+      unitPrice = matrix[warehouse][key];
+    } else if (typeof matrix[key] === 'number') {
+      unitPrice = matrix[key];
+    }
+
     const totalVol = Number(item.总体积) || 0;
-    const key = `${mode}_${type}`;
-    const unitPrice = priceMatrix[key] || 0;
     const receivable = unitPrice * totalVol;
     return { ...item, 单价: unitPrice, 应收: receivable };
   });
