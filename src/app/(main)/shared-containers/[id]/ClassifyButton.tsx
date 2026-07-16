@@ -24,7 +24,7 @@ export function ClassifyButton({ batchId, type = 'shared-container', items = [],
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
 
   // Load all batches for multi-select
-  useEffect(() => { fetch('/api/shared-containers').then(r => r.json()).then(setBatches).catch(() => {}); }, []);
+  useEffect(() => { fetch('/api/shared-containers').then(r => r.json()).then(d => setBatches(Array.isArray(d) ? d : [])).catch(() => {}); }, []);
 
   const toggleBatch = (bid: number) => {
     setSelectedBatches(prev => prev.includes(bid) ? prev.filter(b => b !== bid) : [...prev, bid]);
