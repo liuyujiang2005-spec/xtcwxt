@@ -30,10 +30,9 @@ function LoginForm() {
       });
 
       if (res.ok) {
-        const redirect = searchParams.get('redirect') || '/';
-        const safe = redirect.startsWith('/') ? redirect : '/';
-        router.refresh();
-        setTimeout(() => router.push(safe), 100);
+        const redirectTo = searchParams.get('redirect') || '/';
+        const safe = redirectTo.startsWith('/') ? redirectTo : '/';
+        window.location.href = safe;
       } else {
         const data = await res.json();
         setError(data.error || '登录失败');
