@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import CustomerDialog from './customer-dialog';
 import { RefreshMetricsButton } from './RefreshMetricsButton';
+import { BatchPriceEdit } from './BatchPriceEdit';
 
 const WAREHOUSES = ['义乌仓', '广州仓', '东莞仓', '深圳仓'];
 const PRICE_KEYS = [
@@ -58,7 +59,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
         <h1 className="text-2xl font-bold">客户管理</h1>
         <div className="flex gap-2">
           {canEdit && <RefreshMetricsButton />}
-          {canEdit && <CustomerDialog mode="create" tab={tab} />}
+          {canEdit && <><CustomerDialog mode="create" tab={tab} /><BatchPriceEdit customerIds={filtered.map(c => c.id)} /></>}
         </div>
       </div>
 

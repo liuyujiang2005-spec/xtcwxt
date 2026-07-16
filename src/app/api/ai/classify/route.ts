@@ -100,25 +100,50 @@ export async function POST(request: NextRequest) {
       billId = Number(r.lastInsertRowid);
     }
 
+    // ── 按运单号分组，每个运单只算一笔应收 ──
+    const orderGroups = new Map<string, any[]>();
     for (const item of group) {
-      const transport = (item as any).运输方式 || '海运';
-      const cargo = (item as any).货型 || '普货';
-      const warehouse = (item as any).仓库 || null;
+      const ok = (item as any).运单号 || '_' + item.id;
+      if (!orderGroups.has(ok)) orderGroups.set(ok, []);
+      orderGroups.get(ok)!.push(item);
+    }
+
+    for (const [ok, items] of orderGroups) {
+      // 整个运单的合计体积
+      let orderVol = 0;
+      for (const item of items) orderVol += ((item as any).单箱体积 || 0);
+      if (orderVol === 0) for (const item of items) orderVol += ((item as any).总体积 || 0);
+
+      // 取第一条明细的属性（运输方式、货型、仓库）
+      const first = items[0];
+      const transport = (first as any).运输方式 || '海运';
+      const cargo = (first as any).货型 || '普货';
+      const warehouse = (first as any).仓库 || null;
       const unitPrice = getPrice(warehouse, transport, cargo);
-      const vol = (item as any).单箱体积 || (item as any).总体积 || 0;
-      const chargeVol = Math.max(vol, minVol(transport));
-      const receivable = isSc
-        ? ((item as any).客户应收 || (unitPrice * chargeVol))
-        : ((item as any).需支付总价 || (unitPrice * chargeVol));
-      const cost = (item as any).需支付总价 || 0;
+      const chargeVol = Math.max(orderVol, minVol(transport));
+      const orderReceivable = unitPrice * chargeVol;
 
-      totalReceivable += receivable;
+      totalReceivable += orderReceivable;
 
-      await db.insert(billItems).values({
-        billId, markId, mode: isSc ? '拼柜' : '装柜',
-        amount: receivable,
-        costAmount: cost,
-      });
+      // 写入明细（应收只给第一条，其余为0）
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        const cost = (item as any).需支付总价 || 0;
+        const rec = i === 0 ? orderReceivable : 0;
+
+        // 回写客户应收
+        if (isSc) {
+          await db.update(sharedContainerItems).set({ 客户应收: rec }).where(eq(sharedContainerItems.id, item.id));
+        } else {
+          await db.update(loadingItems).set({ 客户应收: rec }).where(eq(loadingItems.id, item.id));
+        }
+
+        await db.insert(billItems).values({
+          billId, markId, mode: isSc ? '拼柜' : '装柜',
+          amount: rec,
+          costAmount: cost,
+        });
+      }
     }
 
     const keepPaid = (existing as any)?.paidAmount || 0;

@@ -19,37 +19,35 @@ export function BatchPriceEdit({ customerIds }: { customerIds: number[] }) {
   const [show, setShow] = useState(false);
   const [prices, setPrices] = useState<Record<string, string>>({});
   const [enableMin, setEnableMin] = useState(true);
+  const [enableMinTouched, setEnableMinTouched] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
     setSaving(true);
     const matrix: Record<string, number> = {};
-    for (const k of PRICE_KEYS) { if (prices[k]) matrix[k] = parseInt(prices[k]); }
-    if (Object.keys(matrix).length === 0 && enableMin === undefined) return;
-
-    const body: any = { ids: customerIds, prices: Object.keys(matrix).length > 0 ? matrix : undefined };
-    if (enableMin !== undefined) body.enableMinVolume = enableMin ? 1 : 0;
+    for (const k of PRICE_KEYS) { if (prices[k]) matrix[k] = parseFloat(prices[k]); }
 
     try {
       for (const id of customerIds) {
         const upd: any = {};
-        if (matrix) upd.priceMatrix = JSON.stringify({ ...matrix });
-        if (enableMin !== undefined) upd.enableMinVolume = enableMin ? 1 : 0;
+        if (Object.keys(matrix).length > 0) upd.priceMatrix = JSON.stringify({ ...matrix });
+        if (enableMinTouched) upd.enableMinVolume = enableMin ? 1 : 0;
+        if (Object.keys(upd).length === 0) continue;
         await fetch('/api/customers', {
           method: 'PUT', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id, ...upd }),
         });
       }
-      router.refresh();
       setShow(false);
+      router.refresh();
     } catch { alert('操作失败'); }
     setSaving(false);
   };
 
   return (
     <>
-      <Button variant="outline" size="sm" onClick={() => setShow(true)}>
-        <Edit3 className="h-3.5 w-3.5 mr-1" />批量修改价格
+      <Button variant="outline" size="sm" onClick={() => setShow(true)} disabled={customerIds.length === 0}>
+        <Edit3 className="h-3.5 w-3.5 mr-1" />批量修改 ({customerIds.length})
       </Button>
       {show && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={() => setShow(false)}>
@@ -67,9 +65,10 @@ export function BatchPriceEdit({ customerIds }: { customerIds: number[] }) {
               ))}
             </div>
             <div className="flex items-center gap-2">
-              <Checkbox id="bmin" checked={enableMin} onCheckedChange={v => setEnableMin(!!v)} />
+              <Checkbox id="bmin" checked={enableMin} onCheckedChange={v => { setEnableMin(!!v); setEnableMinTouched(true); }} />
               <Label htmlFor="bmin" className="text-sm">启用低消</Label>
             </div>
+            <p className="text-xs text-muted-foreground">留空的字段不会被修改。只填你要改的价格。</p>
             <Button onClick={handleSave} disabled={saving} className="w-full" size="sm">应用到 {customerIds.length} 个客户</Button>
           </div>
         </div>

@@ -121,6 +121,7 @@ export const loadingItems = sqliteTable('loading_items', {
   pcs数量: integer('pcs数量'),
   单价: real('单价'),
   需支付总价: real('需支付总价'),
+  客户应收: real('客户应收'),
   货型: text('货型'),
   运输方式: text('运输方式'),
   payment_status: text('payment_status').default('待支付'),

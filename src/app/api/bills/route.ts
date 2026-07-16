@@ -138,29 +138,40 @@ export async function PATCH(request: NextRequest) {
     for (const mid of markIds) {
       const scItems = await db.select().from(sharedContainerItems).where(eq(sharedContainerItems.markId, mid)).all();
       const ldItems = await db.select().from(loadingItems).where(eq(loadingItems.markId, mid)).all();
-      for (const item of scItems) {
-        const transport = (item as any).运输方式 || '海运';
-        const cargo = (item as any).货型 || '普货';
-        const warehouse = (item as any).仓库 || null;
-        const unitPrice = getMatrixPrice(pm, warehouse, transport, cargo);
-        const singleVol = (item as any).单箱体积 || 0;
-        const chargeVol = Math.max(singleVol, minVol(transport));
-        const receivable = unitPrice * chargeVol;
-        const cost = (item as any).需支付总价 || 0;
-        totalReceivable += receivable;
-        await db.insert(billItems).values({ billId: body.id, markId: mid, mode: '拼柜', amount: receivable, costAmount: cost });
+      const allItems = [...scItems, ...ldItems];
+      
+      // 按运单号分组
+      const orders = new Map<string, any[]>();
+      for (const item of allItems) {
+        const ok = (item as any).运单号 || '_' + item.id;
+        if (!orders.has(ok)) orders.set(ok, []);
+        orders.get(ok)!.push(item);
       }
-      for (const item of ldItems) {
-        const transport = (item as any).运输方式 || '海运';
-        const cargo = (item as any).货型 || '普货';
-        const warehouse = (item as any).仓库 || null;
+      for (const [ok, items] of orders) {
+        let orderVol = 0;
+        for (const item of items) orderVol += ((item as any).单箱体积 || 0);
+        if (orderVol === 0) for (const item of items) orderVol += ((item as any).总体积 || 0);
+        const first = items[0];
+        const transport = (first as any).运输方式 || '海运';
+        const cargo = (first as any).货型 || '普货';
+        const warehouse = (first as any).仓库 || null;
         const unitPrice = getMatrixPrice(pm, warehouse, transport, cargo);
-        const singleVol = (item as any).单箱体积 || 0;
-        const chargeVol = Math.max(singleVol, minVol(transport));
-        const receivable = unitPrice * chargeVol;
-        const cost = (item as any).需支付总价 || 0;
-        totalReceivable += receivable;
-        await db.insert(billItems).values({ billId: body.id, markId: mid, mode: '装柜', amount: receivable, costAmount: cost });
+        const chargeVol = Math.max(orderVol, minVol(transport));
+        const orderRecv = unitPrice * chargeVol;
+        totalReceivable += orderRecv;
+
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i];
+          const cost = (item as any).需支付总价 || 0;
+          const rec = i === 0 ? orderRecv : 0;
+          const isSc = (item as any).cost_status !== undefined;
+          if (isSc) {
+            await db.update(sharedContainerItems).set({ 客户应收: rec }).where(eq(sharedContainerItems.id, item.id));
+          } else {
+            await db.update(loadingItems).set({ 客户应收: rec }).where(eq(loadingItems.id, item.id));
+          }
+          await db.insert(billItems).values({ billId: body.id, markId: mid, mode: isSc ? '拼柜' : '装柜', amount: rec, costAmount: cost });
+        }
       }
     }
     await db.update(bills).set({ totalAmount: totalReceivable }).where(eq(bills.id, body.id));
