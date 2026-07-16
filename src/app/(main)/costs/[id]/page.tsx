@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, ArrowLeft } from 'lucide-react';
+import { Loader2, ArrowLeft, AlertTriangle, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 
 const EXPENSE_TYPES = ['人工卸货费', '义乌成本', '装柜费', '报关费', '运费', '清关费', '尾端派送费'];
@@ -22,6 +22,7 @@ export default function EditCostPage({ params }: { params: Promise<{ id: string 
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [fetchError, setFetchError] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const [id, setId] = useState('');
 
   useEffect(() => {
@@ -42,7 +43,7 @@ export default function EditCostPage({ params }: { params: Promise<{ id: string 
       .catch(() => setFetchError(true))
       .finally(() => setFetching(false));
     return () => controller.abort();
-  }, [id]);
+  }, [id, retryCount]);
 
   const handleSubmit = async () => {
     setLoading(true);
@@ -75,6 +76,19 @@ export default function EditCostPage({ params }: { params: Promise<{ id: string 
     return (
       <div className="flex items-center justify-center py-16">
         <Loader2 className="h-6 w-6 animate-spin" />
+      </div>
+    );
+  }
+
+  if (fetchError) {
+    const retry = () => { setFetchError(false); setFetching(true); setRetryCount(c => c + 1); };
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-4">
+        <AlertTriangle className="h-10 w-10 text-yellow-500" />
+        <p className="text-muted-foreground">加载失败，请重试</p>
+        <Button variant="outline" onClick={retry}>
+          <RefreshCw className="h-4 w-4 mr-2" />重试
+        </Button>
       </div>
     );
   }
