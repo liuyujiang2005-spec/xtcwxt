@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db/index';
-import { bills, billItems, marks, sharedContainerItems, loadingItems, customers } from '@/db/schema';
+import { bills, billItems, sharedContainerItems, loadingItems, customers } from '@/db/schema';
 import { validateSession } from '@/lib/auth';
-import { eq, and } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 
 export async function PATCH(request: NextRequest) {
   const st = request.cookies.get('session')?.value;
