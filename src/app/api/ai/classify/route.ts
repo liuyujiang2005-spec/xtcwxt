@@ -58,12 +58,10 @@ export async function POST(request: NextRequest) {
       const m = transport === '海运' ? 'sea' : 'land';
       const t = cargo === '普货' ? 'regular' : cargo === '商检货' ? 'inspection' : 'sensitive';
       const key = m + '_' + t;
-      // 按仓库取价
       if (wh && typeof pm[wh] === 'object' && pm[wh] !== null) {
         const whPrices = pm[wh] as any;
         if (typeof whPrices[key] === 'number') return whPrices[key];
       }
-      // 兼容旧格式
       return typeof pm[key] === 'number' ? pm[key] : 0;
     };
     const minVol = (transport: string): number => {
@@ -71,66 +69,68 @@ export async function POST(request: NextRequest) {
       return transport === '海运' ? 0.5 : 0.3;
     };
 
-    const totalVol = group.reduce((s, i) => s + (i.单箱体积 || i.总体积 || 0), 0);
-    let totalReceivable = 0;
-
     const monthTag = mark?.monthTag || new Date().toISOString().substring(0, 7);
     const billNo = `${markNo}-${monthTag}${customer?.defaultCurrency === 'THB' ? '-THB' : ''}`;
 
     if (!custId || custId <= 0) {
-      results.push({ markId, billId: 0, billNo, markNo, customerName: '未知客户', itemCount: group.length, totalVolume: round6(totalVol), totalCost: 0, error: '无有效客户' });
+      results.push({ markId, billId: 0, billNo, markNo, customerName: '未知客户', itemCount: group.length, totalVolume: round6(0), totalCost: 0, error: '无有效客户' });
       continue;
     }
 
     const existing = await db.select().from(bills).where(eq(bills.billNo, billNo)).get();
     let billId: number;
+
+    // 确定参与计算的明细范围：账单已存在时取该唛头全部明细，否则只取本次选中批次的
+    let calcItems: any[];
     if (existing) {
-      // 已付款账单跳过
       if (existing.paymentStatus === '已付款' || existing.paymentStatus === '付一部分') {
-        results.push({ markId, billId: existing.id, billNo, markNo, customerName: custMap.get(custId)?.name || markNo, itemCount: group.length, totalVolume: round6(totalVol), totalCost: round6(totalReceivable), skipped: true });
+        results.push({ markId, billId: existing.id, billNo, markNo, customerName: custMap.get(custId)?.name || markNo, itemCount: group.length, totalVolume: round6(0), totalCost: round6(0), skipped: true });
         continue;
       }
-      // 账单已存在，清掉旧明细重建
+      // 删旧明细，取该唛头全部明细重建
       await db.delete(billItems).where(eq(billItems.billId, existing.id));
+      const allSc = await db.select().from(sharedContainerItems).where(eq(sharedContainerItems.markId, markId)).all();
+      const allLd = await db.select().from(loadingItems).where(eq(loadingItems.markId, markId)).all();
+      calcItems = [...allSc, ...allLd];
       billId = existing.id;
     } else {
       const r = await db.insert(bills).values({
         billNo, customerId: custId, monthTag, totalAmount: 0, currency: customer?.defaultCurrency || 'CNY', status: '已生成',
       });
       billId = Number(r.lastInsertRowid);
+      calcItems = group;
     }
 
-    // ── 按运单号分组，每个运单只算一笔应收 ──
+    // 按运单号分组，每个运单只算一笔应收
     const orderGroups = new Map<string, any[]>();
-    for (const item of group) {
-      const ok = (item as any).运单号 || '_' + item.id;
+    for (const item of calcItems) {
+      const ok = item.运单号 || '_' + item.id;
       if (!orderGroups.has(ok)) orderGroups.set(ok, []);
       orderGroups.get(ok)!.push(item);
     }
 
-    for (const [ok, items] of orderGroups) {
-      // 运单总体积：取每条总体积的最大值（同一运单下每条总体积相同，取 max 防某条为 0）
-      let orderVol = 0;
-      for (const item of items) orderVol = Math.max(orderVol, (item as any).总体积 || 0);
+    let totalReceivable = 0;
+    const totalVol = calcItems.reduce((s, i) => s + (i.总体积 || 0), 0);
 
-      // 取第一条明细的属性（运输方式、货型、仓库）
+    for (const [ok, items] of orderGroups) {
+      let orderVol = 0;
+      for (const item of items) orderVol = Math.max(orderVol, item.总体积 || 0);
+
       const first = items[0];
-      const transport = (first as any).运输方式 || '海运';
-      const cargo = (first as any).货型 || '普货';
-      const warehouse = (first as any).仓库 || null;
+      const transport = first.运输方式 || '海运';
+      const cargo = first.货型 || '普货';
+      const warehouse = first.仓库 || null;
       const unitPrice = getPrice(warehouse, transport, cargo);
       const chargeVol = Math.max(orderVol, minVol(transport));
       const orderReceivable = unitPrice * chargeVol;
 
       totalReceivable += orderReceivable;
 
-      // 写入明细（应收只给第一条，其余为0）
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
-        const cost = (item as any).需支付总价 || 0;
+        const cost = item.需支付总价 || 0;
         const rec = i === 0 ? orderReceivable : 0;
 
-        // 回写客户应收
         if (isSc) {
           await db.update(sharedContainerItems).set({ 客户应收: rec }).where(eq(sharedContainerItems.id, item.id));
         } else {
@@ -151,7 +151,7 @@ export async function POST(request: NextRequest) {
 
     results.push({ markId,
       billId, billNo, markNo, customerName: custMap.get(custId)?.name || markNo,
-      itemCount: group.length, totalVolume: round6(totalVol), totalCost: round6(totalReceivable),
+      itemCount: calcItems.length, totalVolume: round6(totalVol), totalCost: round6(totalReceivable),
     });
   }
 
