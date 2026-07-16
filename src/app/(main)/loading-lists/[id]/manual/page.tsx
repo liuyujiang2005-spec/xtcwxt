@@ -41,7 +41,7 @@ export default function LoadingManualPage({ params }: { params: Promise<{ id: st
 
   useEffect(() => {
     params.then(p => setBatchId(parseInt(p.id)));
-    fetch('/api/customers').then(r => r.json()).then(setCustomers).catch(() => {});
+    fetch('/api/customers').then(r => r.json()).then(d => setCustomers(Array.isArray(d) ? d : [])).catch(() => {});
   }, []);
 
   const updateRow = (i: number, field: keyof RowData, value: string | null) => {
