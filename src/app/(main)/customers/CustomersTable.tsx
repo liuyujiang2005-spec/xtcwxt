@@ -4,14 +4,14 @@ import { useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { BatchPriceEdit } from './BatchPriceEdit';
 
-export function CustomersTable({ customers }: { customers: any[] }) {
+export function CustomersTable({ customers, tab }: { customers: any[]; tab?: string }) {
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const toggle = (id: number) => { const n = new Set(selected); n.has(id) ? n.delete(id) : n.add(id); setSelected(n); };
 
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        {selected.size > 0 && <BatchPriceEdit customerIds={Array.from(selected)} />}
+        {selected.size > 0 && <BatchPriceEdit customerIds={Array.from(selected)} tab={tab} />}
         <span className="text-sm text-muted-foreground">{selected.size > 0 ? `${selected.size} 个已选` : ''}</span>
       </div>
       <Table>

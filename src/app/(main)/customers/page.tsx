@@ -59,7 +59,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
         <h1 className="text-2xl font-bold">客户管理</h1>
         <div className="flex gap-2">
           {canEdit && <RefreshMetricsButton />}
-          {canEdit && <><CustomerDialog mode="create" tab={tab} /><BatchPriceEdit customerIds={filtered.map(c => c.id)} /></>}
+          {canEdit && <><CustomerDialog mode="create" tab={tab} /><BatchPriceEdit customerIds={filtered.map(c => c.id)} tab={tab} /></>}
         </div>
       </div>
 
