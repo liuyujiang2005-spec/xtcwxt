@@ -69,8 +69,6 @@ export async function GET(request: NextRequest) {
   });
 
   const rows: BillRow[] = [];
-  // 🟡修复：totalCny 正确累加，不再始终为 0
-  let totalCny = 0;
 
   for (const mId of markIds) {
     const mark = markMap.get(mId);

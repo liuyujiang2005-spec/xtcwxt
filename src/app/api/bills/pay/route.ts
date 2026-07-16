@@ -24,8 +24,9 @@ export async function POST(request: NextRequest) {
   if (paymentStatus) data.paymentStatus = paymentStatus;
 
   if (typeof paidAmount === 'number') {
+    if (paidAmount < 0) return NextResponse.json({ error: '付款金额不能为负数' }, { status: 400 });
     data.paidAmount = paidAmount;
-    data.remainingAmount = (bill.totalAmount || 0) - paidAmount;
+    data.remainingAmount = Math.max(0, (bill.totalAmount || 0) - paidAmount);
   }
 
   if (paymentStatus === '已付款') {

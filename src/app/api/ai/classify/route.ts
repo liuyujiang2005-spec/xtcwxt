@@ -111,6 +111,7 @@ export async function POST(request: NextRequest) {
 
     let totalReceivable = 0;
     const totalVol = calcItems.reduce((s, i) => s + (i.总体积 || 0), 0);
+    const missingPriceOrders: string[] = [];
 
     for (const [ok, items] of orderGroups) {
       let orderVol = 0;
@@ -123,6 +124,10 @@ export async function POST(request: NextRequest) {
       const unitPrice = getPrice(warehouse, transport, cargo);
       const chargeVol = Math.max(orderVol, minVol(transport));
       const orderReceivable = unitPrice * chargeVol;
+
+      if (unitPrice === 0 && orderVol > 0) {
+        missingPriceOrders.push(`运单${ok}（仓库:${warehouse || '未知'}, ${transport}/${cargo}）未配置价格，应收为0`);
+      }
 
       totalReceivable += orderReceivable;
 
@@ -153,6 +158,7 @@ export async function POST(request: NextRequest) {
     results.push({ markId,
       billId, billNo, markNo, customerName: custMap.get(custId)?.name || markNo,
       itemCount: calcItems.length, totalVolume: round6(totalVol), totalCost: round6(totalReceivable),
+      warnings: missingPriceOrders.length > 0 ? missingPriceOrders : undefined,
     });
   }
 
