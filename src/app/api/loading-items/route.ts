@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db/index';
 import { loadingItems, marks, customers, loadingBatches } from '@/db/schema';
 import { validateSession } from '@/lib/auth';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 
 export async function POST(request: NextRequest) {
   const sessionToken = request.cookies.get('session')?.value;
@@ -38,9 +38,10 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        let mark = tx.select().from(marks).where(eq(marks.markNo, cleanMarkNo)).get();
+        const monthTag = item.monthTag || new Date().toISOString().substring(0, 7);
+
+        let mark = tx.select().from(marks).where(and(eq(marks.markNo, cleanMarkNo), eq(marks.monthTag, monthTag))).get();
         if (!mark) {
-          const monthTag = item.monthTag || new Date().toISOString().substring(0, 7);
           const result = tx.insert(marks).values({
             markNo: cleanMarkNo,
             customerId: custId,

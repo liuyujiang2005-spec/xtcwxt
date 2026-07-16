@@ -19,7 +19,6 @@ export function ClassifyButton({ batchId, type = 'shared-container', items = [],
   const [loading, setLoading] = useState(false);
   const [bills, setBills] = useState<any[] | null>(null);
   const [error, setError] = useState('');
-  const [month, setMonth] = useState(new Date().toISOString().substring(0, 7));
   const [batches, setBatches] = useState<any[]>([]);
   const [selectedBatches, setSelectedBatches] = useState<number[]>([batchId]);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
@@ -44,7 +43,7 @@ export function ClassifyButton({ batchId, type = 'shared-container', items = [],
     try {
       const res = await fetch('/api/ai/classify', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ batchIds: selectedBatches, type, month }),
+        body: JSON.stringify({ batchIds: selectedBatches, type }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -89,7 +88,6 @@ export function ClassifyButton({ batchId, type = 'shared-container', items = [],
   return (
     <div>
       <div className="flex items-center gap-2">
-        <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm w-36" />
         <div className="flex items-center gap-1 flex-wrap">
           {batches.map((b: any) => (
             <label key={b.id} className="flex items-center gap-1 text-xs cursor-pointer">

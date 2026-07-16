@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
   const user = await validateSession(sessionToken);
   if (!user || user.role === 'viewer') return NextResponse.json({ error: '无权限' }, { status: 403 });
 
-  const { batchId, batchIds, type = 'shared-container', month } = await request.json();
+  const { batchId, batchIds, type = 'shared-container' } = await request.json();
   const allBatchIds: number[] = batchIds && batchIds.length > 0 ? batchIds : (batchId ? [batchId] : []);
   if (allBatchIds.length === 0) return NextResponse.json({ error: '缺少 batchId 或 batchIds' }, { status: 400 });
 
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     const totalVol = group.reduce((s, i) => s + (i.单箱体积 || i.总体积 || 0), 0);
     let totalReceivable = 0;
 
-    const monthTag = month || mark?.monthTag || new Date().toISOString().substring(0, 7);
+    const monthTag = mark?.monthTag || new Date().toISOString().substring(0, 7);
     const billNo = `${markNo}-${monthTag}${customer?.defaultCurrency === 'THB' ? '-THB' : ''}`;
 
     if (!custId || custId <= 0) {
@@ -85,13 +85,13 @@ export async function POST(request: NextRequest) {
     const existing = await db.select().from(bills).where(eq(bills.billNo, billNo)).get();
     let billId: number;
     if (existing) {
-      // 已付款账单跳过，不再追加
+      // 已付款账单跳过
       if (existing.paymentStatus === '已付款' || existing.paymentStatus === '付一部分') {
         results.push({ markId, billId: existing.id, billNo, markNo, customerName: custMap.get(custId)?.name || markNo, itemCount: group.length, totalVolume: round6(totalVol), totalCost: round6(totalReceivable), skipped: true });
         continue;
       }
-      // 账单已存在，累加新明细
-      totalReceivable = existing.totalAmount || 0;
+      // 账单已存在，清掉旧明细重建
+      await db.delete(billItems).where(eq(billItems.billId, existing.id));
       billId = existing.id;
     } else {
       const r = await db.insert(bills).values({
@@ -109,10 +109,9 @@ export async function POST(request: NextRequest) {
     }
 
     for (const [ok, items] of orderGroups) {
-      // 整个运单的合计体积
+      // 运单总体积：取每条总体积的最大值（同一运单下每条总体积相同，取 max 防某条为 0）
       let orderVol = 0;
-      for (const item of items) orderVol += ((item as any).单箱体积 || 0);
-      if (orderVol === 0) for (const item of items) orderVol += ((item as any).总体积 || 0);
+      for (const item of items) orderVol = Math.max(orderVol, (item as any).总体积 || 0);
 
       // 取第一条明细的属性（运输方式、货型、仓库）
       const first = items[0];

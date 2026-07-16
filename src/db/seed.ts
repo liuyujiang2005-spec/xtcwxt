@@ -45,13 +45,14 @@ sqlite.exec(`
 
   CREATE TABLE IF NOT EXISTS marks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    mark_no TEXT NOT NULL UNIQUE,
+    mark_no TEXT NOT NULL,
     customer_id INTEGER NOT NULL REFERENCES customers(id),
     mode TEXT NOT NULL,
     month_tag TEXT NOT NULL,
     remark TEXT,
     receipt_url TEXT,
-    created_at TEXT DEFAULT (datetime('now'))
+    created_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(mark_no, month_tag)
   );
 
   CREATE TABLE IF NOT EXISTS shared_container_batches (

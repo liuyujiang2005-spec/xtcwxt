@@ -76,35 +76,45 @@ export async function GET(request: NextRequest) {
     const mark = markMap.get(mId);
     const scItems = scByMark.get(mId) || [];
     const ldItems = ldByMark.get(mId) || [];
+    const allItems = [...scItems, ...ldItems];
+    if (allItems.length === 0) continue;
 
-    const orderTotalVol = new Map<string, number>();
-    const orderReceivable = new Map<string, number>();
-
-    for (const item of [...scItems, ...ldItems]) {
-      const key = (item as any).运单号 || '_' + (item as any).id;
-      const sv = (item as any).单箱体积 || 0;
-      const transport = (item as any).运输方式 || '海运';
-      const warehouse = (item as any).仓库 || null;
-      const cv = Math.max(sv, minVol(transport));
-      const up = getMatrixPrice(pm, warehouse, transport, (item as any).货型 || '');
-      orderTotalVol.set(key, (orderTotalVol.get(key) || 0) + sv);
-      orderReceivable.set(key, (orderReceivable.get(key) || 0) + up * cv);
+    // ── 按运单号分组，计算每个运单的应收 ──
+    const orderGroups = new Map<string, any[]>();
+    for (const item of allItems) {
+      const ok = (item as any).运单号 || '_' + (item as any).id;
+      if (!orderGroups.has(ok)) orderGroups.set(ok, []);
+      orderGroups.get(ok)!.push(item);
     }
 
-    for (const item of [...scItems, ...ldItems]) {
-      const vol = (item as any).总体积 ?? 0;
-      const sv = (item as any).单箱体积 ?? 0;
-      const transport = (item as any).运输方式 || '海运';
-      const cv = Math.max(sv, minVol(transport));
-      const warehouse = (item as any).仓库 || null;
-      const ct = (item as any).箱数 ?? 0;
-      const okey = (item as any).运单号 || '_' + (item as any).id;
-      const tv = orderTotalVol.get(okey) || sv;
-      const up = getMatrixPrice(pm, warehouse, transport, (item as any).货型 || '');
-      const amt = orderReceivable.get(okey) || 0;
+    // 每个运单的应收（只算一次）和总体积
+    const orderReceivableMap = new Map<string, number>();
+    const orderVolMap = new Map<string, number>();
 
-      // 累加到账单总额
-      totalCny += amt;
+    for (const [ok, items] of orderGroups) {
+      let orderVol = 0;
+      for (const item of items) orderVol = Math.max(orderVol, (item as any).总体积 || 0);
+
+      const first = items[0];
+      const transport = (first as any).运输方式 || '海运';
+      const warehouse = (first as any).仓库 || null;
+      const unitPrice = getMatrixPrice(pm, warehouse, transport, (first as any).货型 || '');
+      const chargeVol = Math.max(orderVol, minVol(transport));
+      const orderRec = unitPrice * chargeVol;
+      orderReceivableMap.set(ok, orderRec);
+      orderVolMap.set(ok, chargeVol);
+    }
+
+    // ── 生成行 ──
+    for (const item of allItems) {
+      const vol = (item as any).总体积 ?? 0;
+      const transport = (item as any).运输方式 || '海运';
+      const warehouse = (item as any).仓库 || null;
+      const okey = (item as any).运单号 || '_' + (item as any).id;
+      const up = getMatrixPrice(pm, warehouse, transport, (item as any).货型 || '');
+      const cv = orderVolMap.get(okey) || Math.max((item as any).单箱体积 || 0, minVol(transport));
+      const ct = (item as any).箱数 ?? 0;
+      const oRec = orderReceivableMap.get(okey) || 0;
 
       const dims = [(item as any).尺寸_长, (item as any).尺寸_宽, (item as any).尺寸_高]
         .filter((d: any) => d != null && d > 0)
@@ -121,14 +131,14 @@ export async function GET(request: NextRequest) {
         尺寸: dims,
         件数: ct,
         国内单号: (item as any).国内单号 ?? '',
-        单项体积: sv,
+        单项体积: (item as any).单箱体积 ?? 0,
         单项重量: (item as any).单项重量 ?? 0,
         总体积: vol,
         总重量: (item as any).总重量 ?? 0,
-        计费体积: cv,
-        总计费体积: tv,
+        计费体积: (item as any).单箱体积 ?? 0,
+        总计费体积: cv,
         单价: up,
-        订单总价: amt,
+        订单总价: oRec,
         备注: (item as any).备注 || '',
         结算状态: (item as any).cost_status ?? (item as any).payment_status ?? '',
       });

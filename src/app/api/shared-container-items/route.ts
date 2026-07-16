@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db/index';
 import { sharedContainerItems, marks, sharedContainerBatches, customers } from '@/db/schema';
 import { validateSession } from '@/lib/auth';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 
 // 从价格矩阵取单价（新格式按仓库匹配，兼容旧格式平铺 key）
 function getMatrixPrice(pm: any, warehouse: string | null, transport: string, cargo: string): number {
@@ -32,8 +32,9 @@ export async function POST(request: NextRequest) {
 
       for (const item of items) {
         const cleanMarkNo = (item.markNo || '').replace(/^BL-[\d]{6}-/, '');
+        const monthTag = item.monthTag || new Date().toISOString().substring(0, 7);
 
-        let mark = tx.select().from(marks).where(eq(marks.markNo, cleanMarkNo)).get();
+        let mark = tx.select().from(marks).where(and(eq(marks.markNo, cleanMarkNo), eq(marks.monthTag, monthTag))).get();
         if (!mark) {
           let newCustId = item.customerId;
           const custExists = newCustId > 0
@@ -49,7 +50,6 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          const monthTag = item.monthTag || new Date().toISOString().substring(0, 7);
           const result = tx.insert(marks).values({
             markNo: cleanMarkNo, customerId: newCustId, mode: '拼柜', monthTag,
           }).run();

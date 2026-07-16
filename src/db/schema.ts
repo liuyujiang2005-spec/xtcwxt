@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, real, index } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, real, index, unique } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 
 export const users = sqliteTable('users', {
@@ -38,7 +38,7 @@ export const suppliers = sqliteTable('suppliers', {
 
 export const marks = sqliteTable('marks', {
   id: integer('id').primaryKey(),
-  markNo: text('mark_no').notNull().unique(),
+  markNo: text('mark_no').notNull(),
   customerId: integer('customer_id').references(() => customers.id).notNull(),
   mode: text('mode').notNull(),
   monthTag: text('month_tag').notNull(),
@@ -48,6 +48,7 @@ export const marks = sqliteTable('marks', {
 }, (table) => ({
   monthTagIdx: index('marks_month_tag_idx').on(table.monthTag),
   customerIdIdx: index('marks_customer_id_idx').on(table.customerId),
+  markNoMonthUnique: unique('marks_mark_no_month_unique').on(table.markNo, table.monthTag),
 }));
 
 export const sharedContainerBatches = sqliteTable('shared_container_batches', {

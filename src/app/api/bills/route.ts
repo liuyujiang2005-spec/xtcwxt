@@ -148,9 +148,9 @@ export async function PATCH(request: NextRequest) {
         orders.get(ok)!.push(item);
       }
       for (const [ok, items] of orders) {
+        // 运单总体积：取每条总体积的最大值（同一运单下每条总体积相同，取 max 防某条为 0）
         let orderVol = 0;
-        for (const item of items) orderVol += ((item as any).单箱体积 || 0);
-        if (orderVol === 0) for (const item of items) orderVol += ((item as any).总体积 || 0);
+        for (const item of items) orderVol = Math.max(orderVol, (item as any).总体积 || 0);
         const first = items[0];
         const transport = (first as any).运输方式 || '海运';
         const cargo = (first as any).货型 || '普货';
