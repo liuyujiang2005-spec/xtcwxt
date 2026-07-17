@@ -24,19 +24,26 @@ export default async function DashboardPage() {
   const allPaid = await db.select().from(paymentsMade).all();
   const allScItems = await db.select().from(sharedContainerItems).all();
   const allLdItems = await db.select().from(loadingItems).all();
+  const allCustomers = await db.select().from(customers).all();
+  const custCurrencyMap = new Map(allCustomers.map(c => [c.id, c.defaultCurrency || 'CNY']));
 
   const monthRevenueCNY = allIncome
     .filter((i) => i.incomeDate?.startsWith(currentMonth) && i.currency !== 'THB')
     .reduce((s, i) => s + i.amount, 0)
-    + allScItems.filter((i) => i.createdAt?.startsWith(currentMonth)).reduce((s, i) => s + (i.客户应收 || 0), 0)
-    + allLdItems.filter((i) => i.createdAt?.startsWith(currentMonth)).reduce((s, i) => s + (i.需支付总价 || 0), 0);
+    + allScItems.filter((i) => i.createdAt?.startsWith(currentMonth) && custCurrencyMap.get(i.customerId) !== 'THB').reduce((s, i) => s + (i.客户应收 || 0), 0)
+    + allLdItems.filter((i) => i.createdAt?.startsWith(currentMonth) && custCurrencyMap.get(i.customerId) !== 'THB').reduce((s, i) => s + (i.客户应收 || 0), 0);
   const monthRevenueTHB = allIncome
     .filter((i) => i.incomeDate?.startsWith(currentMonth) && i.currency === 'THB')
-    .reduce((s, i) => s + i.amount, 0);
+    .reduce((s, i) => s + i.amount, 0)
+    + allScItems.filter((i) => i.createdAt?.startsWith(currentMonth) && custCurrencyMap.get(i.customerId) === 'THB').reduce((s, i) => s + (i.客户应收 || 0), 0)
+    + allLdItems.filter((i) => i.createdAt?.startsWith(currentMonth) && custCurrencyMap.get(i.customerId) === 'THB').reduce((s, i) => s + (i.客户应收 || 0), 0);
 
   const monthCostCNY = allExpenses.filter((e) => e.currency !== 'THB' && e.createdAt?.startsWith(currentMonth)).reduce((s, e) => s + e.amount, 0)
-    + allScItems.filter((i) => i.createdAt?.startsWith(currentMonth)).reduce((s, i) => s + (i.需支付总价 || 0), 0);
-  const monthCostTHB = allExpenses.filter((e) => e.currency === 'THB' && e.createdAt?.startsWith(currentMonth)).reduce((s, e) => s + e.amount, 0);
+    + allScItems.filter((i) => i.createdAt?.startsWith(currentMonth) && custCurrencyMap.get(i.customerId) !== 'THB').reduce((s, i) => s + (i.需支付总价 || 0), 0)
+    + allLdItems.filter((i) => i.createdAt?.startsWith(currentMonth) && custCurrencyMap.get(i.customerId) !== 'THB').reduce((s, i) => s + (i.需支付总价 || 0), 0);
+  const monthCostTHB = allExpenses.filter((e) => e.currency === 'THB' && e.createdAt?.startsWith(currentMonth)).reduce((s, e) => s + e.amount, 0)
+    + allScItems.filter((i) => i.createdAt?.startsWith(currentMonth) && custCurrencyMap.get(i.customerId) === 'THB').reduce((s, i) => s + (i.需支付总价 || 0), 0)
+    + allLdItems.filter((i) => i.createdAt?.startsWith(currentMonth) && custCurrencyMap.get(i.customerId) === 'THB').reduce((s, i) => s + (i.需支付总价 || 0), 0);
 
   const profitCNY = monthRevenueCNY - monthCostCNY;
   const profitTHB = monthRevenueTHB - monthCostTHB;
@@ -56,7 +63,6 @@ export default async function DashboardPage() {
   const totalReceivedCNY = allReceived.filter(p => p.currency !== 'THB').reduce((s, p) => s + p.amount, 0);
 
   const topCustomers = await db.select().from(customerMetrics).orderBy(desc(customerMetrics.monthlyVolume)).limit(5).all();
-  const allCustomers = await db.select().from(customers).all();
   const customerMap = new Map(allCustomers.map((c) => [c.id, c.name]));
 
   const pendingReceivableCNY = Math.max(0, totalRevenueCNY - totalReceivedCNY);
