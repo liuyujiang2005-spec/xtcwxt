@@ -163,8 +163,7 @@ export function mapPythonResult(pyData: any): { items: any[]; summary: { totalIt
     // 8. 缺单价，无法计算成本
     const hasVolume = (item.总体积 || 0) > 0;
     const noPrice = !item.单价 || item.单价 === 0;
-    const noCost = !item.单项价格 || item.单项价格 === 0;
-    if (hasVolume && noPrice && noCost) {
+    if (hasVolume && noPrice) {
       reasons.push('缺单价，无法计算成本');
     }
 
