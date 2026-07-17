@@ -52,7 +52,7 @@ const COL_WIDTHS: Record<number, number> = {
 const NUMBER_COLS = new Set([9, 11, 12, 13, 14, 15, 16, 17, 18, 19]);
 
 export async function generateBillXlsx(
-  _a: string, _b: string, _c: string, rows: BillRow[], _d: number, _e: number,
+  _a: string, _b: string, _c: string, rows: BillRow[], totalReceivable: number, _e: number,
 ) {
   const wb = new ExcelJS.Workbook();
   try {
@@ -125,7 +125,7 @@ export async function generateBillXlsx(
   let colorIdx = 0;
 
   // 合并列（跨品名行合并，品名和尺寸列不合并）
-  const MERGE_COLS = [1, 2, 3, 4, 5, 13, 14, 16, 19];
+  const MERGE_COLS = [1, 2, 3, 4, 5, 13, 14, 16];
 
   for (const group of groups) {
     const groupStartRow = cr + 1;
@@ -144,7 +144,7 @@ export async function generateBillXlsx(
         row.货型, row.品名, row.尺寸, row.件数, row.国内单号,
         row.单项体积, row.单项重量, row.总体积, row.总重量,
         row.计费体积, row.总计费体积, row.单价,
-        row.单价 * row.计费体积, row.订单总价,
+        row.单价 * row.计费体积, i === 0 ? row.订单总价 : null,
         row.备注, row.结算状态,
       ];
 
@@ -213,7 +213,7 @@ export async function generateBillXlsx(
   sRow.getCell(18).numFmt = '#,##0.00';
   sRow.getCell(18).alignment = { vertical: 'middle', horizontal: 'right' };
 
-  sRow.getCell(19).value = { formula: `SUM(S8:S${cr})` };
+  sRow.getCell(19).value = totalReceivable;
   sRow.getCell(19).font = { name: FONT_NAME, size: 11, bold: true };
   sRow.getCell(19).numFmt = '#,##0.00';
   sRow.getCell(19).alignment = { vertical: 'middle', horizontal: 'right' };
