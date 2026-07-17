@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Save, Loader2 } from 'lucide-react';
 
@@ -19,6 +18,7 @@ export function LoadingExpenseManager({
 }) {
   const router = useRouter();
   const expenseMap = new Map(initialExpenses.map((e) => [e.expenseType, e]));
+  const [saving, setSaving] = useState(false);
   const [entries, setEntries] = useState<Record<string, { amount: string; currency: string; status: string }>>(() => {
     const map: Record<string, any> = {};
     for (const type of EXPENSE_TYPES) {
@@ -31,33 +31,39 @@ export function LoadingExpenseManager({
     }
     return map;
   });
-  const [saving, setSaving] = useState(false);
 
-  const handleSave = async (expenseType: string) => {
-    const entry = entries[expenseType];
-    const amount = parseFloat(entry.amount || '0');
-    const existing = expenseMap.get(expenseType);
-
+  const handleSaveAll = async () => {
     setSaving(true);
+    const updatedMap = new Map(expenseMap);
     try {
-      if (existing) {
-        await fetch(`/api/expenses/${existing.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ amount, currency: entry.currency }),
-        });
-      } else if (amount > 0) {
-        await fetch('/api/expenses', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ loadingBatchId: batchId, expenseType, amount, currency: entry.currency }),
-        });
+      for (const type of EXPENSE_TYPES) {
+        const entry = entries[type];
+        const amount = parseFloat(entry.amount || '0');
+        const existing = updatedMap.get(type);
+
+        if (existing) {
+          const res = await fetch(`/api/expenses/${existing.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ amount, currency: entry.currency }),
+          });
+          if (!res.ok) throw new Error('保存失败');
+        } else if (amount > 0) {
+          const res = await fetch('/api/expenses', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ loadingBatchId: batchId, expenseType: type, amount, currency: entry.currency }),
+          });
+          if (!res.ok) throw new Error('保存失败');
+          const data = await res.json();
+          updatedMap.set(type, { id: data.id, expenseType: type, amount, currency: entry.currency, status: '待支付' });
+        }
       }
+      router.refresh();
     } catch {
       alert('保存失败，请重试');
     }
     setSaving(false);
-    router.refresh();
   };
 
   return (
@@ -89,13 +95,14 @@ export function LoadingExpenseManager({
                     {entry.status}
                   </span>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => handleSave(type)} disabled={saving}>
-                  {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-                </Button>
               </div>
             );
           })}
         </div>
+        <Button className="w-full mt-4" onClick={handleSaveAll} disabled={saving}>
+          {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+          保存全部费用
+        </Button>
       </CardContent>
     </Card>
   );
