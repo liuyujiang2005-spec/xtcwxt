@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Save, Loader2 } from 'lucide-react';
 
-const EXPENSE_TYPES = ['报关费', '拖车费', '文件费', '操作费', 'THC', '订舱费', '其他'];
+const EXPENSE_TYPES = ['报关费', '拖车费', '文件费', '操作费', 'THC', '订舱费', '装柜费', '其他'];
 
 export function LoadingExpenseManager({
   batchId,

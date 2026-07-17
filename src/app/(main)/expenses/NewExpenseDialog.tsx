@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Loader2, Plus } from 'lucide-react';
 
-const EXPENSE_TYPES = ['人工卸货费', '义乌成本', '装柜费', '运费', '清关费', '尾端派送费'];
+const EXPENSE_TYPES = ['人工卸货费', '义乌成本', '运费', '清关费', '尾端派送费'];
 
 export function NewExpenseDialog() {
   const router = useRouter();
