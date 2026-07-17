@@ -208,11 +208,6 @@ export async function generateBillXlsx(
   sRow.getCell(1).font = { name: FONT_NAME, size: 11, bold: true };
   sRow.getCell(1).alignment = { vertical: 'middle', horizontal: 'center' };
 
-  sRow.getCell(18).value = { formula: `SUM(R8:R${cr})` };
-  sRow.getCell(18).font = { name: FONT_NAME, size: 11, bold: true };
-  sRow.getCell(18).numFmt = '#,##0.00';
-  sRow.getCell(18).alignment = { vertical: 'middle', horizontal: 'right' };
-
   sRow.getCell(19).value = totalReceivable;
   sRow.getCell(19).font = { name: FONT_NAME, size: 11, bold: true };
   sRow.getCell(19).numFmt = '#,##0.00';
