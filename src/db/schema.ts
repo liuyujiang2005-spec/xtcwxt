@@ -167,6 +167,7 @@ export const expenses = sqliteTable('expenses', {
 }, (table) => ({
   expenseTypeIdx: index('exp_type_idx').on(table.expenseType),
   statusIdx: index('exp_status_idx').on(table.status),
+  batchTypeUnique: unique('expenses_batch_type_unique').on(table.loadingBatchId, table.expenseType),
 }));
 
 export const paymentsReceived = sqliteTable('payments_received', {

@@ -157,7 +157,8 @@ sqlite.exec(`
     仓库 TEXT,
     remark TEXT,
     receipt_url TEXT,
-    created_at TEXT DEFAULT (datetime('now'))
+    created_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(loading_batch_id, expense_type)
   );
 
   CREATE TABLE IF NOT EXISTS payments_received (
