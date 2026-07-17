@@ -3,7 +3,7 @@ import { db } from '@/db/index';
 import { bills, billItems, marks, sharedContainerItems, loadingItems, customers } from '@/db/schema';
 import { validateSession } from '@/lib/auth';
 import { generateBillXlsx, type BillRow } from '@/lib/generate-bill-xlsx';
-import { eq, inArray } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 
 export async function GET(request: NextRequest) {
   const sessionToken = request.cookies.get('session')?.value;
@@ -12,8 +12,22 @@ export async function GET(request: NextRequest) {
   if (!user) return NextResponse.json({ error: '登录已过期' }, { status: 401 });
 
   const { searchParams } = new URL(request.url);
-  const billId = Number(searchParams.get('billId'));
-  if (!billId || billId <= 0) return NextResponse.json({ error: '缺少 billId' }, { status: 400 });
+  let billId = Number(searchParams.get('billId'));
+  const customerId = Number(searchParams.get('customerId'));
+  const month = searchParams.get('month') || '';
+
+  if ((!billId || billId <= 0) && (!customerId || customerId <= 0 || !month)) {
+    return NextResponse.json({ error: '缺少 billId 或 customerId+month' }, { status: 400 });
+  }
+
+  // 兼容旧方式：按客户+月份反查账单
+  if (!billId || billId <= 0) {
+    const bill = await db.select().from(bills)
+      .where(and(eq(bills.customerId, customerId), eq(bills.monthTag, month)))
+      .get();
+    if (!bill) return NextResponse.json({ error: '该客户在所选月份没有账单' }, { status: 404 });
+    billId = bill.id;
+  }
 
   const bill = await db.select().from(bills).where(eq(bills.id, billId)).get();
   if (!bill) return NextResponse.json({ error: '账单不存在' }, { status: 404 });
