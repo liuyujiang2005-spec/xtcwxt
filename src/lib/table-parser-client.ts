@@ -149,6 +149,17 @@ export function mapPythonResult(pyData: any): { items: any[]; summary: { totalIt
       // 重量为 0 不一定异常，但若全为空则提示
     }
 
+    // 6. 唛头含换行（一个格子塞多个编号）
+    const rawMark = (item.唛头 || item.markNo || '').trim();
+    if (rawMark && /[\n\r]/.test(rawMark)) {
+      reasons.push('唛头含多个编号，请在源表拆开');
+    }
+
+    // 7. 缺仓库
+    if (!item.仓库 || String(item.仓库).trim() === '') {
+      reasons.push('缺仓库');
+    }
+
     if (reasons.length > 0) {
       item.verdict = '异常';
       item.reason = reasons.join('；');

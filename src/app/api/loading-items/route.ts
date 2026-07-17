@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     db.transaction((tx) => {
       for (const item of items) {
         let custId = item.customerId;
-        const cleanMarkNo = (item.markNo || '').replace(/^BL-[\d]{6}-/, '');
+        const cleanMarkNo = (item.markNo || '').replace(/^BL-[\d]{6}-/, '').trim();
 
         const custExists = custId > 0
           ? tx.select().from(customers).where(eq(customers.id, custId)).get()

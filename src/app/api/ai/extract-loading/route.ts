@@ -86,6 +86,10 @@ function applyPriceMatrix(items: any[], pm: { matrix: any; isThb: boolean }) {
 
     const totalVol = Number(item.总体积) || 0;
     const receivable = unitPrice * totalVol;
-    return { ...item, 单价: unitPrice, 应收: receivable };
+    const verdict = unitPrice === 0 && totalVol > 0 ? '异常' : item.verdict || '通过';
+    const reason = unitPrice === 0 && totalVol > 0
+      ? (item.reason ? item.reason + '；未配价格' : '未配价格')
+      : item.reason || '';
+    return { ...item, 单价: unitPrice, 应收: receivable, verdict, reason };
   });
 }

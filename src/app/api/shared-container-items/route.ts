@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
       const custCache = new Map<number, { priceMatrix: any; enableMinVol: boolean }>();
 
       for (const item of items) {
-        const cleanMarkNo = (item.markNo || '').replace(/^BL-[\d]{6}-/, '');
+        const cleanMarkNo = (item.markNo || '').replace(/^BL-[\d]{6}-/, '').trim();
         const monthTag = item.monthTag || new Date().toISOString().substring(0, 7);
 
         let mark = tx.select().from(marks).where(and(eq(marks.markNo, cleanMarkNo), eq(marks.monthTag, monthTag))).get();
