@@ -82,12 +82,12 @@ export async function POST(request: NextRequest) {
 
       try {
         const aiResult = await aiChat(systemPrompt, userPrompt);
-        const jsonStart = aiResult.indexOf('{');
-        const jsonEnd = aiResult.lastIndexOf('}');
-        const parsed = JSON.parse(aiResult.slice(jsonStart, jsonEnd + 1));
-        if (parsed.abnormal && Array.isArray(parsed.abnormal)) {
+        const parsed = safeParseJson(aiResult);
+        if (parsed?.abnormal && Array.isArray(parsed.abnormal)) {
           for (const a of parsed.abnormal) {
-            allAbnormal.push({ itemId: a.itemId, reason: a.reason || '异常' });
+            if (typeof a.itemId === 'number' && typeof a.reason === 'string') {
+              allAbnormal.push({ itemId: a.itemId, reason: a.reason });
+            }
           }
         }
       } catch (err) {
@@ -105,6 +105,39 @@ export async function POST(request: NextRequest) {
       details: allAbnormal,
     });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || '验价失败' }, { status: 500 });
+    console.error('验价失败:', error);
+    return NextResponse.json({ error: '验价失败' }, { status: 500 });
   }
+}
+
+function safeParseJson(raw: string): any | null {
+  // 去掉 markdown 代码块标记
+  let cleaned = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+
+  // 找到最外层 JSON 对象/数组
+  const objStart = cleaned.indexOf('{');
+  const arrStart = cleaned.indexOf('[');
+  let start = -1;
+  let isArray = false;
+  if (objStart === -1 && arrStart === -1) return null;
+  if (arrStart !== -1 && (arrStart < objStart || objStart === -1)) {
+    start = arrStart;
+    isArray = true;
+  } else {
+    start = objStart;
+  }
+  const endChar = isArray ? ']' : '}';
+  const end = cleaned.lastIndexOf(endChar);
+  if (start === -1 || end === -1 || end <= start) return null;
+
+  let jsonStr = cleaned.slice(start, end + 1);
+
+  // 尝试直接解析
+  try { return JSON.parse(jsonStr); } catch {}
+
+  // 去掉尾逗号后再试
+  jsonStr = jsonStr.replace(/,(\s*[}\]])/g, '$1');
+  try { return JSON.parse(jsonStr); } catch {}
+
+  return null;
 }
