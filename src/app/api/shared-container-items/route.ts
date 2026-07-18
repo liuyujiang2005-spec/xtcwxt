@@ -36,11 +36,8 @@ export async function POST(request: NextRequest) {
 
         let mark = tx.select().from(marks).where(and(eq(marks.markNo, cleanMarkNo), eq(marks.monthTag, monthTag))).get();
         if (!mark) {
-          let newCustId = item.customerId;
-          const custExists = newCustId > 0
-            ? tx.select().from(customers).where(eq(customers.id, newCustId)).get()
-            : null;
-          if (!custExists && cleanMarkNo) {
+          let newCustId = 0;
+          if (cleanMarkNo) {
             const existingCust = tx.select().from(customers).where(eq(customers.name, cleanMarkNo)).get();
             if (existingCust) {
               newCustId = existingCust.id;
