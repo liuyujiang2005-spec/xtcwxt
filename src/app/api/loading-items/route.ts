@@ -21,38 +21,35 @@ export async function POST(request: NextRequest) {
     // 🔴修复：用事务包裹整个循环，任何一条失败全部回滚
     db.transaction((tx) => {
       for (const item of items) {
-        let custId = item.customerId;
         const cleanMarkNo = (item.markNo || '').replace(/^BL-[\d]{6}-/, '').trim();
-
-        const custExists = custId > 0
-          ? tx.select().from(customers).where(eq(customers.id, custId)).get()
-          : null;
-
-        if (!custExists && cleanMarkNo) {
-          const existingCust = tx.select().from(customers).where(eq(customers.name, cleanMarkNo)).get();
-          if (existingCust) {
-            custId = existingCust.id;
-          } else {
-            const result = tx.insert(customers).values({ name: cleanMarkNo }).run();
-            custId = Number(result.lastInsertRowid);
-          }
-        }
-
         const monthTag = item.monthTag || new Date().toISOString().substring(0, 7);
 
         let mark = tx.select().from(marks).where(and(eq(marks.markNo, cleanMarkNo), eq(marks.monthTag, monthTag))).get();
         if (!mark) {
+          let newCustId = item.customerId;
+          const custExists = newCustId > 0
+            ? tx.select().from(customers).where(eq(customers.id, newCustId)).get()
+            : null;
+          if (!custExists && cleanMarkNo) {
+            const existingCust = tx.select().from(customers).where(eq(customers.name, cleanMarkNo)).get();
+            if (existingCust) {
+              newCustId = existingCust.id;
+            } else {
+              const result = tx.insert(customers).values({ name: cleanMarkNo }).run();
+              newCustId = Number(result.lastInsertRowid);
+            }
+          }
+
           const result = tx.insert(marks).values({
             markNo: cleanMarkNo,
-            customerId: custId,
+            customerId: newCustId,
             mode: '装柜',
             monthTag,
           }).run();
           mark = tx.select().from(marks).where(eq(marks.id, Number(result.lastInsertRowid))).get();
-          // 🔴修复：mark 为 null 时抛出明确错误，而非使用 mark! 非空断言
           if (!mark) throw new Error(`创建唛头失败: ${cleanMarkNo}`);
         }
-        custId = mark.customerId;
+        const custId = mark.customerId;
 
         const cust = tx.select().from(customers).where(eq(customers.id, custId)).get();
         const warehouse = item.仓库 || null;
