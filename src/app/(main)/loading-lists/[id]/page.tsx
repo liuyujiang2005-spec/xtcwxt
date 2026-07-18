@@ -34,7 +34,8 @@ export default async function LoadingListDetailPage({ params }: { params: Promis
   const totalVolume = items.reduce((s, i) => s + (i.总体积 ?? 0), 0);
   const totalReceivable = items.reduce((s, i) => s + (i.客户应收 || 0), 0);
   const totalCost = costList.reduce((s, c) => s + c.amount, 0);
-  const profit = totalReceivable - totalCost;
+  const custCurrencyMap = new Map(allCustomers.map(c => [c.id, c.defaultCurrency || 'CNY']));
+  const isThb = items.length > 0 && custCurrencyMap.get(items[0].customerId) === 'THB';
 
   return (
     <div className="space-y-6">
@@ -53,18 +54,14 @@ export default async function LoadingListDetailPage({ params }: { params: Promis
       <Card className="border-2">
         <CardHeader className="pb-2"><CardTitle className="text-sm">本柜成本小结</CardTitle></CardHeader>
         <CardContent>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-xs text-muted-foreground">总成本</p>
               <p className="text-xl font-bold text-red-600">{formatAmount(totalCost)}</p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">应收合计</p>
-              <p className="text-xl font-bold text-green-600">{formatAmount(totalReceivable)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">利润</p>
-              <p className={`text-xl font-bold ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatAmount(profit)}</p>
+              <p className="text-xl font-bold text-green-600">{formatAmount(totalReceivable, isThb ? 'THB' : 'CNY')}</p>
             </div>
           </div>
         </CardContent>
@@ -74,7 +71,7 @@ export default async function LoadingListDetailPage({ params }: { params: Promis
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm">总立方</CardTitle></CardHeader>
           <CardContent><span className="text-xl font-bold">{totalVolume.toFixed(6)} m³</span></CardContent></Card>
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm">明细应收</CardTitle></CardHeader>
-          <CardContent><span className="text-xl font-bold text-green-600">{formatAmount(totalReceivable)}</span></CardContent></Card>
+          <CardContent><span className="text-xl font-bold text-green-600">{formatAmount(totalReceivable, isThb ? 'THB' : 'CNY')}</span></CardContent></Card>
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm">总费用</CardTitle></CardHeader>
           <CardContent><span className="text-xl font-bold text-red-600">{formatAmount(totalCost)}</span></CardContent></Card>
       </div>

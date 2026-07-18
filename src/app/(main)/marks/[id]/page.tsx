@@ -25,7 +25,7 @@ export default async function MarkDetailPage({ params }: { params: Promise<{ id:
 
   const costTotal = [...scItems, ...ldItems].reduce((s: number, i: any) => s + (i.需支付总价 || i.成本单价 || i.单价 || 0), 0);
   const receivableTotal = [...scItems, ...ldItems].reduce((s: number, i: any) => s + (i.客户应收 || 0), 0);
-  const directTotal = diItems.reduce((s, i) => s + i.amount, 0);
+  const isThb = customer?.defaultCurrency === 'THB';
 
   return (
     <div className="space-y-6">
@@ -39,17 +39,11 @@ export default async function MarkDetailPage({ params }: { params: Promise<{ id:
         </Badge>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm">总成本</CardTitle></CardHeader>
           <CardContent><span className="text-xl font-bold text-red-600">{formatAmount(costTotal)}</span></CardContent></Card>
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm">总应收</CardTitle></CardHeader>
-          <CardContent><span className="text-xl font-bold text-green-600">{formatAmount(receivableTotal)}</span></CardContent></Card>
-        <Card><CardHeader className="pb-2"><CardTitle className="text-sm">利润</CardTitle></CardHeader>
-          <CardContent>
-            <span className={`text-xl font-bold ${receivableTotal + directTotal - costTotal >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {formatAmount((receivableTotal + directTotal - costTotal))}
-            </span>
-          </CardContent></Card>
+          <CardContent><span className="text-xl font-bold text-green-600">{formatAmount(receivableTotal, isThb ? 'THB' : 'CNY')}</span></CardContent></Card>
       </div>
 
       {scItems.length > 0 && (

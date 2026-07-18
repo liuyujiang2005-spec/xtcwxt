@@ -5,7 +5,7 @@ import { directIncome, expenses, paymentsReceived, paymentsMade, customerMetrics
 import { desc } from 'drizzle-orm';
 import { formatAmount } from '@/lib/format';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { TrendingUp, TrendingDown, DollarSign, Clock, HandCoins } from 'lucide-react';
+import { TrendingUp, TrendingDown, Clock, HandCoins } from 'lucide-react';
 
 function getCurrentMonth() {
   const now = new Date();
@@ -39,14 +39,9 @@ export default async function DashboardPage() {
     + allLdItems.filter((i) => i.createdAt?.startsWith(currentMonth) && custCurrencyMap.get(i.customerId) === 'THB').reduce((s, i) => s + (i.客户应收 || 0), 0);
 
   const monthCostCNY = allExpenses.filter((e) => e.currency !== 'THB' && e.createdAt?.startsWith(currentMonth)).reduce((s, e) => s + e.amount, 0)
-    + allScItems.filter((i) => i.createdAt?.startsWith(currentMonth) && custCurrencyMap.get(i.customerId) !== 'THB').reduce((s, i) => s + (i.需支付总价 || 0), 0)
-    + allLdItems.filter((i) => i.createdAt?.startsWith(currentMonth) && custCurrencyMap.get(i.customerId) !== 'THB').reduce((s, i) => s + (i.需支付总价 || 0), 0);
-  const monthCostTHB = allExpenses.filter((e) => e.currency === 'THB' && e.createdAt?.startsWith(currentMonth)).reduce((s, e) => s + e.amount, 0)
-    + allScItems.filter((i) => i.createdAt?.startsWith(currentMonth) && custCurrencyMap.get(i.customerId) === 'THB').reduce((s, i) => s + (i.需支付总价 || 0), 0)
-    + allLdItems.filter((i) => i.createdAt?.startsWith(currentMonth) && custCurrencyMap.get(i.customerId) === 'THB').reduce((s, i) => s + (i.需支付总价 || 0), 0);
-
-  const profitCNY = monthRevenueCNY - monthCostCNY;
-  const profitTHB = monthRevenueTHB - monthCostTHB;
+    + allScItems.filter((i) => i.createdAt?.startsWith(currentMonth)).reduce((s, i) => s + (i.需支付总价 || 0), 0)
+    + allLdItems.filter((i) => i.createdAt?.startsWith(currentMonth)).reduce((s, i) => s + (i.需支付总价 || 0), 0);
+  const monthCostTHB = allExpenses.filter((e) => e.currency === 'THB' && e.createdAt?.startsWith(currentMonth)).reduce((s, e) => s + e.amount, 0);
 
   const pendingExpenses = allExpenses.filter((e) => e.status === '待支付');
   const pendingPayableCNY = pendingExpenses.filter((e) => e.currency !== 'THB').reduce((s, e) => s + e.amount, 0);
@@ -75,7 +70,7 @@ export default async function DashboardPage() {
       {/* 人民币区块 */}
       <div className="border rounded-lg p-4 space-y-4">
         <p className="text-sm font-bold">人民币</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
               <CardTitle className="text-sm font-medium">本月营收</CardTitle>
@@ -92,15 +87,6 @@ export default async function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{formatAmount(monthCostCNY)}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium">本月利润</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className={`text-2xl font-bold ${profitCNY >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatAmount(profitCNY)}</div>
             </CardContent>
           </Card>
           <Card>
@@ -127,7 +113,7 @@ export default async function DashboardPage() {
       {/* 泰铢区块 */}
       <div className="border rounded-lg p-4 space-y-4">
         <p className="text-sm font-bold text-orange-600">泰铢</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
               <CardTitle className="text-sm font-medium text-orange-600">本月营收</CardTitle>
@@ -144,15 +130,6 @@ export default async function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-orange-600">{formatAmount(monthCostTHB, 'THB')}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium text-orange-600">本月利润</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className={`text-2xl font-bold ${profitTHB >= 0 ? 'text-orange-600' : 'text-red-600'}`}>{formatAmount(profitTHB, 'THB')}</div>
             </CardContent>
           </Card>
           <Card>

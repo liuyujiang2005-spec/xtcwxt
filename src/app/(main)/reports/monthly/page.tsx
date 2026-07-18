@@ -51,16 +51,18 @@ export default async function MonthlyReportPage() {
     if (!month) continue;
     const isThb = custCurrencyMap.get(item.customerId) === 'THB';
     const e = ensure(month);
-    if (isThb) { e.recTHB += (item.客户应收 || 0); e.costTHB += (item.需支付总价 || 0); }
-    else { e.recCNY += (item.客户应收 || 0); e.costCNY += (item.需支付总价 || 0); }
+    if (isThb) { e.recTHB += (item.客户应收 || 0); }
+    else { e.recCNY += (item.客户应收 || 0); }
+    e.costCNY += (item.需支付总价 || 0);
   }
   for (const item of allLdItems) {
     const month = item.createdAt?.substring(0, 7);
     if (!month) continue;
     const isThb = custCurrencyMap.get(item.customerId) === 'THB';
     const e = ensure(month);
-    if (isThb) { e.recTHB += (item.客户应收 || 0); e.costTHB += (item.需支付总价 || 0); }
-    else { e.recCNY += (item.客户应收 || 0); e.costCNY += (item.需支付总价 || 0); }
+    if (isThb) { e.recTHB += (item.客户应收 || 0); }
+    else { e.recCNY += (item.客户应收 || 0); }
+    e.costCNY += (item.需支付总价 || 0);
   }
 
   // 按客户汇总直接收入
@@ -95,9 +97,7 @@ export default async function MonthlyReportPage() {
         const expCNY = expenseByMonth.filter(r => r.month === month && r.currency !== 'THB').reduce((s, r) => s + (r.total || 0), 0);
         const expTHB = expenseByMonth.filter(r => r.month === month && r.currency === 'THB').reduce((s, r) => s + (r.total || 0), 0);
         const costCNY = expCNY + am.costCNY;
-        const costTHB = expTHB + am.costTHB;
-
-        const profitCNY = revenueCNY - costCNY;
+        const costTHB = expTHB;
 
         // 按客户汇总（只含直接收入部分）
         const byCustomer = new Map<number, { CNY: number; THB: number }>();
@@ -112,7 +112,7 @@ export default async function MonthlyReportPage() {
             <CardHeader><CardTitle>{month}</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm font-bold text-muted-foreground">人民币</p>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="text-center p-3 bg-muted rounded-lg">
                   <p className="text-sm text-muted-foreground">营收</p>
                   <p className="text-lg font-bold">{formatAmount(revenueCNY)}</p>
@@ -120,10 +120,6 @@ export default async function MonthlyReportPage() {
                 <div className="text-center p-3 bg-muted rounded-lg">
                   <p className="text-sm text-muted-foreground">支出</p>
                   <p className="text-lg font-bold text-red-600">{formatAmount(costCNY)}</p>
-                </div>
-                <div className="text-center p-3 bg-muted rounded-lg">
-                  <p className="text-sm text-muted-foreground">利润</p>
-                  <p className={`text-lg font-bold ${profitCNY >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatAmount(profitCNY)}</p>
                 </div>
               </div>
               {byCustomer.size > 0 && (
@@ -145,7 +141,7 @@ export default async function MonthlyReportPage() {
                 </Table>
               )}
               <p className="text-sm font-bold text-orange-600">泰铢</p>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="text-center p-3 bg-muted rounded-lg">
                   <p className="text-sm text-muted-foreground text-orange-600">营收</p>
                   <p className="text-lg font-bold text-orange-600">{formatAmount(revenueTHB, 'THB')}</p>
@@ -153,10 +149,6 @@ export default async function MonthlyReportPage() {
                 <div className="text-center p-3 bg-muted rounded-lg">
                   <p className="text-sm text-muted-foreground text-orange-600">支出</p>
                   <p className="text-lg font-bold text-orange-600">{formatAmount(costTHB, 'THB')}</p>
-                </div>
-                <div className="text-center p-3 bg-muted rounded-lg">
-                  <p className="text-sm text-muted-foreground text-orange-600">利润</p>
-                  <p className={`text-lg font-bold ${(revenueTHB - costTHB) >= 0 ? 'text-orange-600' : 'text-red-600'}`}>{formatAmount(revenueTHB - costTHB, 'THB')}</p>
                 </div>
               </div>
               {byCustomer.size > 0 && (
