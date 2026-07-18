@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { PenSquare, X } from 'lucide-react';
 import { ScItemEditDialog } from './ScItemEditDialog';
 
-export function ScItemsTable({ items }: { items: any[] }) {
+export function ScItemsTable({ items, isThb }: { items: any[]; isThb?: boolean }) {
   const router = useRouter();
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [showModal, setShowModal] = useState(false);
@@ -117,7 +117,7 @@ export function ScItemsTable({ items }: { items: any[] }) {
               {ri === 0 ? <TableCell className="text-right" rowSpan={g.rows.length}>{(item.总体积 ?? 0).toFixed(6)}</TableCell> : null}
               {ri === 0 ? <TableCell className="text-right" rowSpan={g.rows.length}>{item.总重量 || '-'}</TableCell> : null}
               <TableCell className="text-right text-red-600">{formatAmount((item.需支付总价 || 0))}</TableCell>
-              <TableCell className="text-right text-green-600">{formatAmount((item.客户应收 ?? 0))}</TableCell>
+              <TableCell className="text-right text-green-600">{formatAmount((item.客户应收 ?? 0), isThb ? 'THB' : 'CNY')}</TableCell>
               {ri === 0 ? <TableCell rowSpan={g.rows.length}>{item.cost_status || item.payment_status || '-'}</TableCell> : null}
               <TableCell className="text-center">
                 <ScItemEditDialog
@@ -125,6 +125,7 @@ export function ScItemsTable({ items }: { items: any[] }) {
                   volume={item.总体积}
                   成本单价={item.成本单价 || 0}
                   客户应收={item.客户应收 || 0}
+                  isThb={isThb}
                 />
               </TableCell>
             </TableRow>

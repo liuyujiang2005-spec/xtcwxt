@@ -9,12 +9,13 @@ import { Label } from '@/components/ui/label';
 import { Pencil } from 'lucide-react';
 
 export function ScItemEditDialog({
-  itemId, volume, 成本单价, 客户应收,
+  itemId, volume, 成本单价, 客户应收, isThb,
 }: {
   itemId: number;
   volume: number;
   成本单价: number;
   客户应收: number;
+  isThb?: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -59,12 +60,12 @@ export function ScItemEditDialog({
           <Input type="number" step="0.01" value={cost} onChange={(e) => setCost(e.target.value)} />
         </div>
         <div className="space-y-2">
-          <Label>应收单价 (元/m³)</Label>
+          <Label>应收单价 ({isThb ? '泰铢' : '元'}/m³)</Label>
           <Input type="number" step="0.01" value={receivable} onChange={(e) => setReceivable(e.target.value)} />
         </div>
         <div className="space-y-1 text-xs text-muted-foreground">
           <p>成本合计: {formatAmount((parseFloat(cost || '0') * volume))}</p>
-          <p>应收合计: {formatAmount((parseFloat(receivable || '0') * volume))}</p>
+          <p>应收合计: {formatAmount((parseFloat(receivable || '0') * volume), isThb ? 'THB' : 'CNY')}</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" className="flex-1" onClick={() => setOpen(false)}>取消</Button>

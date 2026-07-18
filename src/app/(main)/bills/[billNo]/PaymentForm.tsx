@@ -9,11 +9,12 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 
-export function PaymentForm({ billId, totalAmount, currentPaid, currentStatus }: {
+export function PaymentForm({ billId, totalAmount, currentPaid, currentStatus, currency }: {
   billId: number;
   totalAmount: number;
   currentPaid: number;
   currentStatus: string;
+  currency?: string;
 }) {
   const router = useRouter();
   const [status, setStatus] = useState(currentStatus);
@@ -75,7 +76,7 @@ export function PaymentForm({ billId, totalAmount, currentPaid, currentStatus }:
           </div>
           <div className="space-y-1">
             <Label className="text-xs">剩余金额</Label>
-            <div className="h-8 flex items-center text-sm font-bold text-orange-600">{formatAmount(remaining)}</div>
+            <div className="h-8 flex items-center text-sm font-bold text-orange-600">{formatAmount(remaining, currency === 'THB' ? 'THB' : 'CNY')}</div>
           </div>
           <Button onClick={save} disabled={saving} size="sm">
             {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}保存

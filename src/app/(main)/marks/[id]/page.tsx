@@ -50,7 +50,7 @@ export default async function MarkDetailPage({ params }: { params: Promise<{ id:
         <Card>
           <CardHeader><CardTitle>拼柜明细</CardTitle></CardHeader>
           <CardContent className="p-0">
-            <ScItemsTable items={scItems} />
+            <ScItemsTable items={scItems} isThb={isThb} />
           </CardContent>
         </Card>
       )}
@@ -75,7 +75,7 @@ export default async function MarkDetailPage({ params }: { params: Promise<{ id:
                     <TableCell className="text-right">{(item.总体积 ?? 0).toFixed(6)}</TableCell>
                     <TableCell>{item.货型 || '-'}</TableCell>
                     <TableCell>{item.运输方式 || '-'}</TableCell>
-                    <TableCell className="text-right text-green-600">{formatAmount((item.需支付总价 || 0))}</TableCell>
+                    <TableCell className="text-right text-green-600">{formatAmount((item.客户应收 || 0), isThb ? 'THB' : 'CNY')}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -98,7 +98,7 @@ export default async function MarkDetailPage({ params }: { params: Promise<{ id:
               <TableBody>
                 {diItems.map((item) => (
                   <TableRow key={item.id}>
-                    <TableCell className="text-right text-green-600">{formatAmount(item.amount)}</TableCell>
+                    <TableCell className="text-right text-green-600">{formatAmount(item.amount, item.currency === 'THB' ? 'THB' : 'CNY')}</TableCell>
                     <TableCell>{item.currency}</TableCell>
                     <TableCell className="text-right">{item.volume ? `${item.volume.toFixed(6)}m³` : '-'}</TableCell>
                     <TableCell className="text-sm">{item.incomeDate}</TableCell>

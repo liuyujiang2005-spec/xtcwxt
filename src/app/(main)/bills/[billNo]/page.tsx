@@ -73,6 +73,7 @@ export default async function BillDetailPage({ params }: { params: Promise<{ bil
         totalAmount={totalAmount}
         currentPaid={paid}
         currentStatus={pStatus}
+        currency={bill.currency || 'CNY'}
       />
 
       <div className="flex gap-2">
