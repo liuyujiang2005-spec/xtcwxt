@@ -108,7 +108,7 @@ export default async function LoadingListDetailPage({ params }: { params: Promis
                   <TableCell className="text-right">{item.总重量 || '-'}</TableCell>
                   <TableCell>{item.货型 || '-'}</TableCell><TableCell>{item.运输方式 || '-'}</TableCell>
                   <TableCell className="text-right">{(item.单价 || 0).toFixed(6)}</TableCell>
-                  <TableCell className="text-right text-green-600">{formatAmount((item.需支付总价 || 0))}</TableCell>
+                  <TableCell className="text-right text-green-600">{formatAmount((item.客户应收 || 0), custCurrencyMap.get(item.customerId) === 'THB' ? 'THB' : 'CNY')}</TableCell>
                   <TableCell><span className={`text-xs px-2 py-1 rounded ${item.payment_status === '已支付' ? 'bg-gray-100 text-gray-700' : 'bg-yellow-100 text-yellow-700'}`}>{item.payment_status}</span></TableCell>
                   <TableCell><DeleteItemButton itemId={item.id} apiPath="/api/loading-items" /></TableCell>
                 </TableRow>))); })()}

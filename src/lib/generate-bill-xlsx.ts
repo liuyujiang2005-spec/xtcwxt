@@ -125,7 +125,7 @@ export async function generateBillXlsx(
   let colorIdx = 0;
 
   // 合并列（跨品名行合并，品名和尺寸列不合并）
-  const MERGE_COLS = [1, 2, 3, 4, 5, 13, 14, 16];
+  const MERGE_COLS = [1, 2, 3, 4, 5, 13, 14, 16, 19];
 
   for (const group of groups) {
     const groupStartRow = cr + 1;
