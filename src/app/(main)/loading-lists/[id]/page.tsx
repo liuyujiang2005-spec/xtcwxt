@@ -99,6 +99,7 @@ export default async function LoadingListDetailPage({ params }: { params: Promis
                 {(() => { const groups: { custId: number; rows: typeof items }[] = []; let last = -1; for (const i of items) { if (i.customerId !== last) { groups.push({ custId: i.customerId, rows: [] }); last = i.customerId; } groups[groups.length - 1].rows.push(i); } return groups.map(g => g.rows.map((item, ri) => (<TableRow key={item.id}>
                   {ri === 0 ? <TableCell className="font-medium" rowSpan={g.rows.length}>{customerMap.get(item.customerId) || '-'}</TableCell> : null}
                   <TableCell className="max-w-[120px] truncate" title={item.品名 || ''}>{item.品名 || '-'}</TableCell>
+                  <TableCell className="text-xs font-mono">{item.运单号 || '-'}</TableCell>
                   <TableCell>{(item as any).仓库 || '-'}</TableCell>
                   <TableCell className="text-right">{(item.总体积 ?? 0).toFixed(6)}</TableCell>
                   <TableCell className="text-right">{item.单箱体积 || '-'}</TableCell>
