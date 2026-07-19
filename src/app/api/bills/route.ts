@@ -3,6 +3,7 @@ import { db } from '@/db/index';
 import { bills, billItems, sharedContainerItems, loadingItems, customers } from '@/db/schema';
 import { validateSession } from '@/lib/auth';
 import { eq } from 'drizzle-orm';
+import { cargoKey } from '@/lib/pricing';
 
 export async function PATCH(request: NextRequest) {
   const st = request.cookies.get('session')?.value;
@@ -30,7 +31,7 @@ export async function PATCH(request: NextRequest) {
 
     const getPrice = (wh: string | null, transport: string, cargo: string): number => {
       const m = transport === '海运' ? 'sea' : 'land';
-      const t = (cargo || '普货') === '普货' ? 'regular' : cargo === '商检货' ? 'inspection' : 'sensitive';
+      const t = cargoKey(cargo);
       const key = m + '_' + t;
       if (wh && typeof pm[wh] === 'object' && pm[wh] !== null) {
         if (typeof (pm[wh] as any)[key] === 'number') return (pm[wh] as any)[key];

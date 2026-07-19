@@ -3,10 +3,11 @@ import { db } from '@/db/index';
 import { sharedContainerItems, customers, sharedContainerBatches } from '@/db/schema';
 import { validateSession } from '@/lib/auth';
 import { eq } from 'drizzle-orm';
+import { cargoKey } from '@/lib/pricing';
 
 function getMatrixPrice(pm: any, warehouse: string | null, transport: string, cargo: string): number {
   const m = transport === '海运' ? 'sea' : 'land';
-  const t = cargo === '普货' ? 'regular' : cargo === '商检货' ? 'inspection' : 'sensitive';
+  const t = cargoKey(cargo);
   const key = m + '_' + t;
   if (warehouse && typeof pm[warehouse] === 'object' && pm[warehouse] !== null && typeof pm[warehouse][key] === 'number') return (pm[warehouse] as any)[key];
   return typeof pm[key] === 'number' ? pm[key] : 0;

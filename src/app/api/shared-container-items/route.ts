@@ -3,11 +3,12 @@ import { db } from '@/db/index';
 import { sharedContainerItems, marks, sharedContainerBatches, customers } from '@/db/schema';
 import { validateSession } from '@/lib/auth';
 import { eq, and } from 'drizzle-orm';
+import { cargoKey } from '@/lib/pricing';
 
 // 从价格矩阵取单价（新格式按仓库匹配，兼容旧格式平铺 key）
 function getMatrixPrice(pm: any, warehouse: string | null, transport: string, cargo: string): number {
   const m = transport === '海运' ? 'sea' : 'land';
-  const t = cargo === '普货' ? 'regular' : cargo === '商检货' ? 'inspection' : 'sensitive';
+  const t = cargoKey(cargo);
   const key = m + '_' + t;
   if (warehouse && pm[warehouse] && typeof pm[warehouse][key] === 'number') return pm[warehouse][key];
   return typeof pm[key] === 'number' ? pm[key] : 0;

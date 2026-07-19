@@ -7,6 +7,7 @@ import { writeFile, unlink } from 'fs/promises';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
 import { parseViaPythonService, mapPythonResult } from '@/lib/table-parser-client';
+import { cargoKey } from '@/lib/pricing';
 
 export async function POST(request: NextRequest) {
   const sessionToken = request.cookies.get('session')?.value;
@@ -89,7 +90,7 @@ function applyPriceMatrix(items: any[], pm: { matrix: any; isThb: boolean; enabl
     const first = group[0];
     const transport = first.运输方式 === '海运' ? 'sea' : first.运输方式 === '陆运' ? 'land' : 'sea';
     const cargo = first.货型 || '';
-    const type = cargo === '普货' ? 'regular' : cargo === '商检货' ? 'inspection' : 'sensitive';
+    const type = cargoKey(cargo);
     const key = `${transport}_${type}`;
     const warehouse = first.仓库 || null;
 
