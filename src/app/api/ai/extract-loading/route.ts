@@ -7,7 +7,7 @@ import { writeFile, unlink } from 'fs/promises';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
 import { parseViaPythonService, mapPythonResult } from '@/lib/table-parser-client';
-import { cargoKey } from '@/lib/pricing';
+import { cargoKey, isKnownCargo, isKnownTransport } from '@/lib/pricing';
 
 export async function POST(request: NextRequest) {
   const sessionToken = request.cookies.get('session')?.value;
@@ -84,7 +84,7 @@ function applyPriceMatrix(items: any[], pm: { matrix: any; isThb: boolean; enabl
   });
 
   const recvMap = new Map<any, number>();
-  const missingPrice = new Map<any, boolean>();
+  const warnMap = new Map<any, string>(); // 明细 → 报警原因
 
   for (const [, group] of orderGroups) {
     const first = group[0];
@@ -112,17 +112,20 @@ function applyPriceMatrix(items: any[], pm: { matrix: any; isThb: boolean; enabl
     recvMap.set(first, orderReceivable);
     for (let i = 1; i < group.length; i++) recvMap.set(group[i], 0);
 
-    if (matrixPrice === 0 && orderVol > 0) {
-      for (const it of group) missingPrice.set(it, true);
-    }
+    // 取价不确定就报警，别闷头兜底乱套价
+    const reasons: string[] = [];
+    if (!isKnownCargo(first.货型)) reasons.push(`货型『${first.货型}』无法识别，价格档位可能取错`);
+    if (first.运输方式 && !isKnownTransport(first.运输方式)) reasons.push(`运输方式『${first.运输方式}』无法识别`);
+    if (matrixPrice === 0 && orderVol > 0) reasons.push('未配价格');
+    if (reasons.length) { for (const it of group) warnMap.set(it, reasons.join('；')); }
   }
 
   return list.map((item: any) => {
     const receivable = recvMap.get(item) ?? 0;
-    const warn = missingPrice.get(item);
+    const warn = warnMap.get(item);
     const verdict = warn ? '异常' : item.verdict || '通过';
     const reason = warn
-      ? (item.reason ? item.reason + '；未配价格' : '未配价格')
+      ? (item.reason ? item.reason + '；' + warn : warn)
       : item.reason || '';
     return { ...item, 应收: receivable, verdict, reason };
   });

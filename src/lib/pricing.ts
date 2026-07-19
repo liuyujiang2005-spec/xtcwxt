@@ -21,3 +21,14 @@ export function transportKey(transport: string | null | undefined): 'sea' | 'lan
 export function priceMatrixKey(transport: string | null | undefined, cargo: string | null | undefined): string {
   return transportKey(transport) + '_' + cargoKey(cargo);
 }
+
+/** 货型是否能被识别成某个档位。空值当普货(默认)，非空但不含普/商检/敏则无法识别，应报警而非兜底乱套价 */
+export function isKnownCargo(cargo: string | null | undefined): boolean {
+  const c = (cargo || '').trim();
+  return c === '' || c.includes('普') || c.includes('商检') || c.includes('敏');
+}
+
+/** 运输方式是否能被识别。只认 海运/陆运，其余无法识别 */
+export function isKnownTransport(transport: string | null | undefined): boolean {
+  return transport === '海运' || transport === '陆运';
+}
