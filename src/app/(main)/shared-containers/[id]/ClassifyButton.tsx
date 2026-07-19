@@ -118,7 +118,7 @@ export function ClassifyButton({ batchId, type = 'shared-container', items = [],
                       <CardTitle className="text-sm">{b.markNo} ({b.customerName})</CardTitle>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">{b.itemCount}条 | {b.totalVolume?.toFixed(6)}m³ | ¥{b.totalCost?.toFixed(6)}</span>
+                      <span className="text-xs text-muted-foreground">{b.itemCount}条 | {b.totalVolume?.toFixed(6)}m³ | ¥{(Number(b.totalCost) || 0).toFixed(2)}</span>
                       <Button size="sm" variant="ghost" className="h-6 w-6" onClick={() => exportBill(b.billId, b.markNo)}>
                         <Download className="h-3.5 w-3.5" />
                       </Button>
@@ -152,7 +152,7 @@ export function ClassifyButton({ batchId, type = 'shared-container', items = [],
                               <TableCell className="text-xs">{item.货型 || '-'}</TableCell>
                               <TableCell className="text-xs text-right">{item.箱数 || '-'}</TableCell>
                               {ri === 0 ? <TableCell className="text-xs text-right" rowSpan={g.rows.length}>{(item.总体积 ?? 0).toFixed(6)}</TableCell> : null}
-                              <TableCell className="text-xs text-right">¥{(item.需支付总价 || 0).toFixed(6)}</TableCell>
+                              <TableCell className="text-xs text-right">¥{(Number(item.需支付总价) || 0).toFixed(2)}</TableCell>
                               {ri === 0 ? <TableCell className="text-xs" rowSpan={g.rows.length}>
                                 <Badge className="text-[10px]">{item.cost_status || item.payment_status || '-'}</Badge>
                               </TableCell> : null}

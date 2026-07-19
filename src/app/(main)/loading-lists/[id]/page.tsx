@@ -40,7 +40,9 @@ export default async function LoadingListDetailPage({ params }: { params: Promis
   });
   const totalVolume = [...volGroups.values()].reduce((s, v) => s + v, 0);
   const totalReceivable = items.reduce((s, i) => s + (Number(i.客户应收) || 0), 0);
-  const totalCost = costList.reduce((s, c) => s + c.amount, 0);
+  const goodsCost = items.reduce((s, i) => s + (Number(i.需支付总价) || 0), 0); // 货物成本=各明细需支付总价之和(付供应商的货款)
+  const feeCost = costList.reduce((s, c) => s + c.amount, 0); // 各项费用=费用管理里手录的报关/拖车等
+  const totalCost = goodsCost + feeCost; // 总成本=货款+费用
   const custCurrencyMap = new Map(allCustomers.map(c => [c.id, c.defaultCurrency || 'CNY']));
   const isThb = items.length > 0 && custCurrencyMap.get(items[0].customerId) === 'THB';
 
@@ -61,9 +63,17 @@ export default async function LoadingListDetailPage({ params }: { params: Promis
       <Card className="border-2">
         <CardHeader className="pb-2"><CardTitle className="text-sm">本柜成本小结</CardTitle></CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-              <p className="text-xs text-muted-foreground">总成本</p>
+              <p className="text-xs text-muted-foreground">货物成本（货款）</p>
+              <p className="text-xl font-bold text-red-600">{formatAmount(goodsCost)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">各项费用</p>
+              <p className="text-xl font-bold text-red-600">{formatAmount(feeCost)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">总成本（货款+费用）</p>
               <p className="text-xl font-bold text-red-600">{formatAmount(totalCost)}</p>
             </div>
             <div>
@@ -77,10 +87,6 @@ export default async function LoadingListDetailPage({ params }: { params: Promis
       <div className="grid grid-cols-3 gap-4">
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm">总立方</CardTitle></CardHeader>
           <CardContent><span className="text-xl font-bold">{totalVolume.toFixed(6)} m³</span></CardContent></Card>
-        <Card><CardHeader className="pb-2"><CardTitle className="text-sm">明细应收</CardTitle></CardHeader>
-          <CardContent><span className="text-xl font-bold text-green-600">{formatAmount(totalReceivable, isThb ? 'THB' : 'CNY')}</span></CardContent></Card>
-        <Card><CardHeader className="pb-2"><CardTitle className="text-sm">总费用</CardTitle></CardHeader>
-          <CardContent><span className="text-xl font-bold text-red-600">{formatAmount(totalCost)}</span></CardContent></Card>
       </div>
 
       <LoadingExpenseManager batchId={batch.id} initialExpenses={costList as any} />
@@ -142,7 +148,7 @@ export default async function LoadingListDetailPage({ params }: { params: Promis
                       <TableCell className="text-right">{item.总重量 || '-'}</TableCell>
                       {isOrderFirst ? <TableCell className="align-top" rowSpan={orderRowSpan}>{item.货型 || '-'}</TableCell> : null}
                       {isOrderFirst ? <TableCell className="align-top" rowSpan={orderRowSpan}>{item.运输方式 || '-'}</TableCell> : null}
-                      {isOrderFirst ? <TableCell className="text-right align-top" rowSpan={orderRowSpan}>{(item.单价 || 0).toFixed(6)}</TableCell> : null}
+                      {isOrderFirst ? <TableCell className="text-right align-top" rowSpan={orderRowSpan}>{(Number(item.单价) || 0).toFixed(2)}</TableCell> : null}
                       {isOrderFirst ? <TableCell className="text-right text-green-600 align-top" rowSpan={orderRowSpan}>{formatAmount((item.客户应收 || 0), custCurrencyMap.get(item.customerId) === 'THB' ? 'THB' : 'CNY')}</TableCell> : null}
                       <TableCell><span className={`text-xs px-2 py-1 rounded ${item.payment_status === '已支付' ? 'bg-gray-100 text-gray-700' : 'bg-yellow-100 text-yellow-700'}`}>{item.payment_status}</span></TableCell>
                       <TableCell><DeleteItemButton itemId={item.id} apiPath="/api/loading-items" /></TableCell>
