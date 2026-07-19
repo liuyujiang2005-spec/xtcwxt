@@ -19,7 +19,7 @@
   DEEPSEEK_API_KEY=***  # DeepSeek API Key（可选，用于分类）
 """
 
-import json, os, sys, io, argparse, base64
+import json, os, sys, io, argparse, base64, gc
 from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
 load_dotenv('/root/xtcwxt/.env')
@@ -33,6 +33,84 @@ OPENAI_KEY = os.environ.get("OPENAI_API_KEY", "")
 DEEPSEEK_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
 DEEPSEEK_MODEL = "deepseek-v4-flash"
 # ==========================
+
+# ──────────────────────────────────────────
+# 内存优化：流式读取 + 网格包装器
+# ──────────────────────────────────────────
+
+def read_sheet_to_grid(ws, max_consecutive_empty=50):
+    """流式读取整个工作表到纯 Python 二维列表，读完后关闭 workbook 释放 openpyxl 内存。
+    保持原始行号对应（空行用全 None 补齐），列的宽度统一为最大列数。
+    遇到连续 max_consecutive_empty 行全空时提前终止，避免因表格框线撑大的使用范围浪费内存。"""
+    grid = []
+    next_row = 1
+    consecutive_empty = 0
+    for row in ws.iter_rows():
+        row_data = [cell.value for cell in row]
+        # 从行中找第一个有 row 属性的 cell 获取原始行号
+        row_num = next_row
+        for cell in row:
+            if hasattr(cell, 'row'):
+                row_num = cell.row
+                break
+        # 补齐中间可能被跳过的空行，并计入连续空行计数
+        gap_count = row_num - 1 - len(grid)
+        if gap_count > 0:
+            consecutive_empty += gap_count
+            if consecutive_empty >= max_consecutive_empty:
+                break
+            for _ in range(gap_count):
+                grid.append([])
+        grid.append(row_data)
+        next_row = row_num + 1
+        # 检测全空行
+        if not row_data or all(v is None for v in row_data):
+            consecutive_empty += 1
+            if consecutive_empty >= max_consecutive_empty:
+                break
+        else:
+            consecutive_empty = 0
+    if not grid:
+        return []
+    max_cols = max(len(r) for r in grid)
+    for r in grid:
+        r.extend([None] * (max_cols - len(r)))
+    return grid
+
+
+class GridSheet:
+    """模拟 openpyxl worksheet 接口，基于纯 Python 二维列表，不再依赖 openpyxl 工作簿"""
+    __slots__ = ('_grid', 'title', 'max_row', 'max_column', 'merged_cells')
+
+    class _Cell:
+        __slots__ = ('value',)
+        def __init__(self, value):
+            self.value = value
+
+    class _MergedCells:
+        __slots__ = ('_ranges',)
+        def __init__(self):
+            self._ranges = []
+        @property
+        def ranges(self):
+            return self._ranges
+
+    def __init__(self, grid, title=""):
+        self._grid = grid
+        self.title = title
+        if not grid:
+            self.max_row = 0
+            self.max_column = 0
+        else:
+            self.max_row = len(grid)
+            self.max_column = len(grid[0]) if grid[0] else 0
+        self.merged_cells = self._MergedCells()
+
+    def cell(self, row, column):
+        if row < 1 or column < 1 or row > self.max_row or column > self.max_column:
+            return self._Cell(None)
+        return self._Cell(self._grid[row - 1][column - 1])
+
 
 # ──────────────────────────────────────────
 # 核心：GPT-4o 分析表格结构
@@ -332,20 +410,28 @@ def run_cli(file_path: str, output_path: Optional[str] = None):
     import openpyxl
     
     print(f"📂 读取: {file_path}")
-    wb = openpyxl.load_workbook(file_path, data_only=True)
+    wb = openpyxl.load_workbook(file_path, read_only=True, data_only=True)
     ws = wb.active
-    print(f"   工作表: {ws.title}")
-    print(f"   大小: {ws.max_row}行 x {ws.max_column}列")
-    print(f"   合并单元格: {len(list(ws.merged_cells.ranges))}个")
+    sheet_title = ws.title
+    print(f"   工作表: {sheet_title}")
+    grid = read_sheet_to_grid(ws)
+    wb.close()
+    del wb, ws
+    gc.collect()
+    
+    gs = GridSheet(grid, sheet_title)
+    print(f"   大小: {gs.max_row}行 x {gs.max_column}列")
     
     print("\n🔍 Step 1: GPT-4o分析结构...")
-    rules = analyze_structure(ws, file_path)
+    rules = analyze_structure(gs, file_path)
     print(f"   数据起始行: {rules.get('data_start_row')}")
     print(f"   订单标识列: {rules.get('order_id_column')}")
     print(f"   解析规则: {rules.get('parse_logic', '')[:80]}...")
     
     print("\n📊 Step 2: 解析数据...")
-    orders = parse_data(ws, rules)
+    orders = parse_data(gs, rules)
+    del grid
+    gc.collect()
     print(f"   共 {len(orders)} 笔订单")
     
     print("\n📋 前3笔:")
@@ -415,11 +501,18 @@ def run_api_server(host: str = "0.0.0.0", port: int = 8800):
             raise HTTPException(400, "仅支持 .xlsx / .xls 文件")
         
         content = await file.read()
-        wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True)
+        wb = openpyxl.load_workbook(io.BytesIO(content), read_only=True, data_only=True)
         ws = wb.active
+        grid = read_sheet_to_grid(ws)
+        wb.close()
+        del wb, ws, content
+        gc.collect()
         
-        rules = analyze_structure(ws, file.filename)
-        orders = parse_data(ws, rules)
+        gs = GridSheet(grid, file.filename)
+        rules = analyze_structure(gs, file.filename)
+        orders = parse_data(gs, rules)
+        del grid
+        gc.collect()
         
         result = {
             "文件名": file.filename,
@@ -438,9 +531,17 @@ def run_api_server(host: str = "0.0.0.0", port: int = 8800):
     async def analyze_only(file: UploadFile = File(...)):
         """只分析结构，不解析全表"""
         content = await file.read()
-        wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True)
+        wb = openpyxl.load_workbook(io.BytesIO(content), read_only=True, data_only=True)
         ws = wb.active
-        rules = analyze_structure(ws, file.filename)
+        grid = read_sheet_to_grid(ws)
+        wb.close()
+        del wb, ws, content
+        gc.collect()
+        
+        gs = GridSheet(grid, file.filename)
+        rules = analyze_structure(gs, file.filename)
+        del grid
+        gc.collect()
         return {"文件名": file.filename, "规则": rules}
     
     @app.get("/api/health")
