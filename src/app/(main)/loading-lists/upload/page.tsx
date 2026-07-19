@@ -70,7 +70,7 @@ export default function UploadLoadingListPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          items: items.map(i => ({ 品名: i.品名, 总体积: i.总体积, 货型: i.货型, 运输方式: i.运输方式, 运单号: i.运单号, 成本单价: i.单价, 需支付总价: i.单项价格 })),
+          items: items.map(i => ({ 品名: i.品名, 总体积: i.总体积, 货型: i.货型, 运输方式: i.运输方式, 运单号: i.运单号, 单价: i.单价, 需支付总价: i.单项价格 })),
           type: 'loading',
         }),
         signal: controller.signal,
