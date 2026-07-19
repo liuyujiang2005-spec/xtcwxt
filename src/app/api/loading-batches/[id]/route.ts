@@ -19,7 +19,20 @@ export async function GET(
 
   const items = await db.select().from(loadingItems).where(eq(loadingItems.batchId, batch.id)).all();
   const costList = await db.select().from(expenses).where(eq(expenses.loadingBatchId, batch.id)).all();
-  return NextResponse.json({ batch, items, expenses: costList });
+
+  // 查已付款账单数
+  const markIds = [...new Set(items.map(i => i.markId))];
+  let paidBillCount = 0;
+  if (markIds.length > 0) {
+    const allBills = await db.select({ id: bills.id, paymentStatus: bills.paymentStatus })
+      .from(bills)
+      .innerJoin(billItems, eq(bills.id, billItems.billId))
+      .where(inArray(billItems.markId, markIds))
+      .all();
+    paidBillCount = new Set(allBills.filter(b => b.paymentStatus && b.paymentStatus !== '待付款').map(b => b.id)).size;
+  }
+
+  return NextResponse.json({ batch, items, expenses: costList, paidBillCount });
 }
 
 export async function PUT(
@@ -60,18 +73,21 @@ export async function DELETE(
 
       const markIds = [...new Set(items.map(i => i.markId))];
 
-      // 2. 查出这些 markId 关联的 billItems 和 bills，一并删除
+      // 2. 查出这些 markId 关联的账单，区分已付款和未付款
       if (markIds.length > 0) {
-        const biRows = tx.select({ billId: billItems.billId })
-          .from(billItems)
+        const allBills = tx.select({ id: bills.id, paymentStatus: bills.paymentStatus })
+          .from(bills)
+          .innerJoin(billItems, eq(bills.id, billItems.billId))
           .where(inArray(billItems.markId, markIds))
           .all();
 
-        const billIds = [...new Set(biRows.map(bi => bi.billId))];
+        const paidIds = [...new Set(allBills.filter(b => b.paymentStatus && b.paymentStatus !== '待付款').map(b => b.id))];
+        const unpaidIds = [...new Set(allBills.filter(b => !b.paymentStatus || b.paymentStatus === '待付款').map(b => b.id))];
 
-        if (billIds.length > 0) {
-          tx.delete(billItems).where(inArray(billItems.billId, billIds)).run();
-          tx.delete(bills).where(inArray(bills.id, billIds)).run();
+        // 只删未付款的账单和账单明细
+        if (unpaidIds.length > 0) {
+          tx.delete(billItems).where(inArray(billItems.billId, unpaidIds)).run();
+          tx.delete(bills).where(inArray(bills.id, unpaidIds)).run();
         }
       }
 

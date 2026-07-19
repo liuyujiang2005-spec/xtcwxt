@@ -24,9 +24,16 @@ export function ReviewActions({ batchId, apiPath, listPath }: { batchId: number;
   };
 
   const reject = async () => {
-    if (!confirm('确认退回？将删除该批次及所有关联明细，不可恢复。')) return;
     setLoading('reject');
     try {
+      // 先查是否有已付款账单
+      const checkRes = await fetch(`${apiPath}/${batchId}`);
+      const checkData = await checkRes.json().catch(() => ({}));
+      let confirmMsg = '确认退回？将删除该批次及所有关联明细，不可恢复。';
+      if (checkData.paidBillCount > 0) {
+        confirmMsg = `该批次关联了 ${checkData.paidBillCount} 笔已付款账单，不会被删除。确认退回？`;
+      }
+      if (!confirm(confirmMsg)) { setLoading(null); return; }
       const r2 = await fetch(`${apiPath}/${batchId}`, { method: 'DELETE' });
       if (r2.ok) { router.push(listPath); } else { const e = await r2.json().catch(()=>({error:'操作失败'})); alert(e.error); }
     } catch { alert('操作失败'); }
