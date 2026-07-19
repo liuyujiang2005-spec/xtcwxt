@@ -94,7 +94,8 @@ export default async function LoadingListDetailPage({ params }: { params: Promis
               <p className="text-xs mt-2">批次: {batch.batchNo} | 文件: {batch.originalFilename || '-'}</p>
             </div>
           ) : (
-            <Table>
+            <div className="border rounded-lg overflow-auto max-h-80">
+            <Table className="[&_td]:border [&_th]:border [&_td]:border-gray-300 [&_th]:border-gray-300">
               <TableHeader><TableRow>
                 <TableHead>客户</TableHead><TableHead>品名</TableHead><TableHead>运单号</TableHead><TableHead>仓库</TableHead><TableHead className="text-right">总体积</TableHead>
                 <TableHead className="text-right">单箱体积</TableHead><TableHead className="text-right">箱数</TableHead><TableHead className="text-right">单箱数量</TableHead>
@@ -150,6 +151,7 @@ export default async function LoadingListDetailPage({ params }: { params: Promis
                 })()}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardContent>
       </Card>
