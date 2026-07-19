@@ -50,12 +50,14 @@ export default async function DashboardPage() {
   const paidCNY = allPaid.filter((p) => p.currency !== 'THB').reduce((s, p) => s + p.amount, 0);
   const paidTHB = allPaid.filter((p) => p.currency === 'THB').reduce((s, p) => s + p.amount, 0);
 
-  const totalRevenue = allIncome.reduce((s, i) => s + i.amount, 0);
-  const totalReceived = allReceived.reduce((s, p) => s + p.amount, 0);
-  const totalRevenueTHB = allIncome.filter(i => i.currency === 'THB').reduce((s, i) => s + i.amount, 0);
-  const totalReceivedTHB = allReceived.filter(p => p.currency === 'THB').reduce((s, p) => s + p.amount, 0);
-  const totalRevenueCNY = allIncome.filter(i => i.currency !== 'THB').reduce((s, i) => s + i.amount, 0);
+  const totalRevenueCNY = allIncome.filter(i => i.currency !== 'THB').reduce((s, i) => s + i.amount, 0)
+    + allScItems.filter(i => custCurrencyMap.get(i.customerId) !== 'THB').reduce((s, i) => s + (Number(i.客户应收) || 0), 0)
+    + allLdItems.filter(i => custCurrencyMap.get(i.customerId) !== 'THB').reduce((s, i) => s + (Number(i.客户应收) || 0), 0);
   const totalReceivedCNY = allReceived.filter(p => p.currency !== 'THB').reduce((s, p) => s + p.amount, 0);
+  const totalRevenueTHB = allIncome.filter(i => i.currency === 'THB').reduce((s, i) => s + i.amount, 0)
+    + allScItems.filter(i => custCurrencyMap.get(i.customerId) === 'THB').reduce((s, i) => s + (Number(i.客户应收) || 0), 0)
+    + allLdItems.filter(i => custCurrencyMap.get(i.customerId) === 'THB').reduce((s, i) => s + (Number(i.客户应收) || 0), 0);
+  const totalReceivedTHB = allReceived.filter(p => p.currency === 'THB').reduce((s, p) => s + p.amount, 0);
 
   const topCustomers = await db.select().from(customerMetrics).orderBy(desc(customerMetrics.monthlyVolume)).limit(5).all();
   const customerMap = new Map(allCustomers.map((c) => [c.id, c.name]));
