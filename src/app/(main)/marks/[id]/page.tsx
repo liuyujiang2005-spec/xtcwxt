@@ -24,7 +24,7 @@ export default async function MarkDetailPage({ params }: { params: Promise<{ id:
   const diItems = await db.select().from(directIncome).where(eq(directIncome.markId, mark.id)).all();
 
   const costTotal = [...scItems, ...ldItems].reduce((s: number, i: any) => s + (i.需支付总价 || i.成本单价 || i.单价 || 0), 0);
-  const receivableTotal = [...scItems, ...ldItems].reduce((s: number, i: any) => s + (i.客户应收 || 0), 0);
+  const receivableTotal = [...scItems, ...ldItems].reduce((s: number, i: any) => s + (Number(i.客户应收) || 0), 0);
   const isThb = customer?.defaultCurrency === 'THB';
 
   return (

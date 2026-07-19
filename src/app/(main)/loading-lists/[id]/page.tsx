@@ -39,7 +39,7 @@ export default async function LoadingListDetailPage({ params }: { params: Promis
     volGroups.set(gk, Math.max(volGroups.get(gk) ?? 0, i.总体积 ?? 0));
   });
   const totalVolume = [...volGroups.values()].reduce((s, v) => s + v, 0);
-  const totalReceivable = items.reduce((s, i) => s + (i.客户应收 || 0), 0);
+  const totalReceivable = items.reduce((s, i) => s + (Number(i.客户应收) || 0), 0);
   const totalCost = costList.reduce((s, c) => s + c.amount, 0);
   const custCurrencyMap = new Map(allCustomers.map(c => [c.id, c.defaultCurrency || 'CNY']));
   const isThb = items.length > 0 && custCurrencyMap.get(items[0].customerId) === 'THB';
