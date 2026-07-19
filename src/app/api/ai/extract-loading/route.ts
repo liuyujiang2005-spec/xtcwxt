@@ -77,19 +77,19 @@ function applyPriceMatrix(items: any[], pm: { matrix: any; isThb: boolean }) {
     const key = `${transport}_${type}`;
     const warehouse = item.仓库 || null;
 
-    let unitPrice = 0;
+    let matrixPrice = 0;
     if (warehouse && matrix[warehouse] && typeof matrix[warehouse] === 'object' && typeof matrix[warehouse][key] === 'number') {
-      unitPrice = matrix[warehouse][key];
+      matrixPrice = matrix[warehouse][key];
     } else if (typeof matrix[key] === 'number') {
-      unitPrice = matrix[key];
+      matrixPrice = matrix[key];
     }
 
     const totalVol = Number(item.总体积) || 0;
-    const receivable = unitPrice * totalVol;
-    const verdict = unitPrice === 0 && totalVol > 0 ? '异常' : item.verdict || '通过';
-    const reason = unitPrice === 0 && totalVol > 0
+    const receivable = matrixPrice * totalVol;
+    const verdict = matrixPrice === 0 && totalVol > 0 ? '异常' : item.verdict || '通过';
+    const reason = matrixPrice === 0 && totalVol > 0
       ? (item.reason ? item.reason + '；未配价格' : '未配价格')
       : item.reason || '';
-    return { ...item, 单价: unitPrice, 应收: receivable, verdict, reason };
+    return { ...item, 应收: receivable, verdict, reason };
   });
 }
