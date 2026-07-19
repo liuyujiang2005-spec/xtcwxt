@@ -31,7 +31,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
   let scItems = allScItems;
   let ldItems = allLdItems;
   if (q) {
-    const matchingMarks = allMarks.filter(m => m.markNo.includes(q)).map(m => m.id);
+    const matchingMarks = allMarks.filter(m => (m.markNo || '').includes(q)).map(m => m.id);
     scItems = allScItems.filter(i => matchingMarks.includes(i.markId));
     ldItems = allLdItems.filter(i => matchingMarks.includes(i.markId));
   }

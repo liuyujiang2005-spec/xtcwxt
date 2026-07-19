@@ -66,7 +66,7 @@ export async function DELETE(
   const batchId = parseInt(id);
 
   try {
-    db.transaction((tx) => {
+    await db.transaction((tx) => {
       // 1. 查出本批次所有明细的 markId
       const items = tx.select({ markId: sharedContainerItems.markId })
         .from(sharedContainerItems)

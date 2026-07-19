@@ -8,11 +8,13 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
 export function MarkCollapsibleCard({
   header,
   children,
+  defaultExpanded = false,
 }: {
   header: React.ReactNode;
   children: React.ReactNode;
+  defaultExpanded?: boolean;
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(defaultExpanded);
 
   return (
     <Card>

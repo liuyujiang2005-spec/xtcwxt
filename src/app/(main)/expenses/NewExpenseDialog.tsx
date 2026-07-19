@@ -22,6 +22,8 @@ export function NewExpenseDialog() {
 
   const handleSubmit = async () => {
     if (!expenseType || !amount) return;
+    const amountNum = parseFloat(amount);
+    if (isNaN(amountNum) || amountNum <= 0) { alert('请填写有效金额'); return; }
     setLoading(true);
     try {
       const r = await fetch('/api/expenses', {

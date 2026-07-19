@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '参数无效' }, { status: 400 });
     }
 
-    db.transaction((tx) => {
+    await db.transaction((tx) => {
       const custCache = new Map<number, { priceMatrix: any; enableMinVol: boolean }>();
 
       for (const item of items) {
@@ -60,7 +60,8 @@ export async function POST(request: NextRequest) {
         if (!custInfo) {
           const cust = tx.select().from(customers).where(eq(customers.id, custId)).get();
           let pm: any = {};
-          if (cust?.priceMatrix) { try { pm = JSON.parse(cust.priceMatrix); } catch {} }
+          if (cust?.defaultCurrency === 'THB') { if (cust?.priceMatrixThb) try { pm = JSON.parse(cust.priceMatrixThb); } catch {} }
+          else if (cust?.priceMatrix) { try { pm = JSON.parse(cust.priceMatrix); } catch {} }
           custInfo = { priceMatrix: pm, enableMinVol: cust?.enableMinVolume !== 0 };
           custCache.set(custId, custInfo);
         }

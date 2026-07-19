@@ -37,8 +37,9 @@ export default function UploadLoadingListPage() {
   const abortRef = useRef<AbortController | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const processingRef = useRef(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => { return () => { abortRef.current?.abort(); }; }, []);
+  useEffect(() => { return () => { abortRef.current?.abort(); if (timerRef.current) clearTimeout(timerRef.current); }; }, []);
 
   const toBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -85,7 +86,9 @@ export default function UploadLoadingListPage() {
             const reason = abnormalMap.get(idx);
             return reason ? { ...item, verdict: '异常', reason } : { ...item, verdict: '通过', reason: '' };
           });
-          setSummary({ totalItems: updated.length, abnormalCount: vData.abnormalCount || 0 });
+          // 延迟到下一帧更新 summary，避免在 setState 回调里调 setState
+          setTimeout(() => setSummary({ totalItems: updated.length, abnormalCount: vData.abnormalCount || 0 }), 0);
+          return updated;
           return updated;
         });
       }).catch(err => { if (err?.name !== 'AbortError') { console.error('AI 验价失败:', err); setResult({ passed: false, msg: 'AI验价请求失败，请重试' }); } })
@@ -131,7 +134,7 @@ export default function UploadLoadingListPage() {
       const batchData = await batchRes.json().catch(() => ({}));
       if (!batchData.id) throw new Error('批次创建失败');
       const importRes = await fetch('/api/loading-items', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ batchId: batchData.id, items }), signal: controller.signal });
-      if (importRes.ok) { setResult({ passed: true, msg: `导入成功！共 ${items.length} 条记录` }); setPhase('idle'); setTimeout(() => router.push('/loading-lists'), 2000); }
+      if (importRes.ok) { setResult({ passed: true, msg: `导入成功！共 ${items.length} 条记录` }); setPhase('idle'); timerRef.current = setTimeout(() => router.push('/loading-lists'), 2000); }
       else { const err = await importRes.json(); setResult({ passed: false, msg: err.error || '导入失败' }); setPhase('preview'); }
     } catch (err: any) { if (err?.name !== 'AbortError') { setResult({ passed: false, msg: '导入失败' }); setPhase('preview'); } }
     processingRef.current = false;

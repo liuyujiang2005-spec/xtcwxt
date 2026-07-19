@@ -14,7 +14,7 @@ export function DeleteBatchButton({ batchId, apiPath }: { batchId: number; apiPa
     setDeleting(true);
     try {
       const r = await fetch(`${apiPath}/${batchId}`, { method: 'DELETE' });
-      if (r.ok) { router.refresh(); } else { const e = await r.json().catch(()=>({error:'删除失败'})); alert(e.error); }
+      if (r.ok) { router.refresh(); setDeleting(false); } else { const e = await r.json().catch(()=>({error:'删除失败'})); alert(e.error); setDeleting(false); }
     } catch { alert('删除失败'); setDeleting(false); }
   };
 

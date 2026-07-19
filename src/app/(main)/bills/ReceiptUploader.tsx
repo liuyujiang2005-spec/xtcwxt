@@ -31,6 +31,7 @@ export function ReceiptUploader({ apiPath, entityId, currentUrl, updateField = '
       if (!r.ok) { alert('上传失败'); setUploading(false); return; }
 
       const { url } = await r.json();
+      if (!url) { alert('上传成功但获取文件地址失败'); setUploading(false); return; }
 
       // Update entity with receipt URL
       const ur = await fetch(apiPath, {

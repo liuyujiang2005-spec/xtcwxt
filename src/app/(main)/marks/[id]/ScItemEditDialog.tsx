@@ -40,7 +40,6 @@ export function ScItemEditDialog({
     }
 
     setSaving(false);
-    router.refresh();
   };
 
   if (!open) {

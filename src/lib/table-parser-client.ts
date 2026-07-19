@@ -79,7 +79,7 @@ export function mapPythonResult(pyData: any): { items: any[]; summary: { totalIt
         运单号: row.运单号 || row.国内单号 || row.单号 || '',
         货型: row.货型 || row.货物类型 || '',
         尺寸: dimStr,
-        件数: parseInt(row.件数 || '0', 10) || row.箱数 || 0,
+        件数: (row.件数 != null ? parseInt(String(row.件数), 10) : 0) || row.箱数 || 0,
         国内单号: row.国内单号 || row.单号 || '',
         单项体积: round6(parseFloat(row.单项体积 || row.单箱体积 || 0)),
         单项重量: round6(parseFloat(row.单项重量 || row.单箱重量 || 0)),
@@ -96,8 +96,8 @@ export function mapPythonResult(pyData: any): { items: any[]; summary: { totalIt
         尺寸_长: size?.l || 0, 尺寸_宽: size?.w || 0, 尺寸_高: size?.h || 0,
         成本单价: round6(parseFloat(row.单价 || row.成本单价 || 0)),
         单箱体积: round6(parseFloat(row.单项体积 || row.单箱体积 || 0)),
-        单箱数量: parseInt(row.件数 || row.单箱数量 || 0),
-        箱数: parseInt(row.件数 || row.箱数 || 0),
+        单箱数量: (row.件数 != null ? parseInt(String(row.件数), 10) : row.单箱数量) || 0,
+        箱数: (row.件数 != null ? parseInt(String(row.件数), 10) : row.箱数) || 0,
         pcs数量: 0,
         需支付总价: round6(parseFloat(row.单项价格 || row.订单总价 || row.总价 || row.需支付总价 || 0)),
         cost_status: '待支出',
@@ -191,7 +191,7 @@ export function mapPythonResult(pyData: any): { items: any[]; summary: { totalIt
       const sumVol = round6(group.reduce((s: number, i: any) => s + i.单项体积, 0));
       if (Math.abs(sumVol - first.总体积) > 0.001) {
         for (const item of group) {
-          if (item.verdict === '通过') { item.verdict = '异常'; item.reason = ''; }
+          if (item.verdict === '通过') item.verdict = '异常';
           item.reason = item.reason ? item.reason + '；汇总总体积不符(' + sumVol + '≠' + first.总体积 + ')' : '汇总总体积不符(' + sumVol + '≠' + first.总体积 + ')';
         }
       }
@@ -202,7 +202,7 @@ export function mapPythonResult(pyData: any): { items: any[]; summary: { totalIt
       const sumW = round6(group.reduce((s: number, i: any) => s + i.单项重量, 0));
       if (Math.abs(sumW - first.总重量) > 0.001) {
         for (const item of group) {
-          if (item.verdict === '通过') { item.verdict = '异常'; item.reason = ''; }
+          if (item.verdict === '通过') item.verdict = '异常';
           item.reason = item.reason ? item.reason + '；汇总总重量不符' : '汇总总重量不符';
         }
       }
@@ -213,7 +213,7 @@ export function mapPythonResult(pyData: any): { items: any[]; summary: { totalIt
       const sumP = round6(group.reduce((s: number, i: any) => s + i.单项价格, 0));
       if (Math.abs(sumP - first.订单总价) > Math.max(0.01, Math.abs(first.订单总价) * 0.001)) {
         for (const item of group) {
-          if (item.verdict === '通过') { item.verdict = '异常'; item.reason = ''; }
+          if (item.verdict === '通过') item.verdict = '异常';
           item.reason = item.reason ? item.reason + '；汇总总价不符(' + sumP.toFixed(2) + '≠' + first.订单总价.toFixed(2) + ')' : '汇总总价不符(' + sumP.toFixed(2) + '≠' + first.订单总价.toFixed(2) + ')';
         }
       }

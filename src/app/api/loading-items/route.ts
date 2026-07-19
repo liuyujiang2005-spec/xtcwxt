@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 🔴修复：用事务包裹整个循环，任何一条失败全部回滚
-    db.transaction((tx) => {
+    await db.transaction((tx) => {
       // ── 第一步：解析每条明细的唛头→客户（含建唛/建客户），保持原顺序 ──
       const resolved: { raw: any; custId: number; markId: number }[] = [];
       for (const item of items) {

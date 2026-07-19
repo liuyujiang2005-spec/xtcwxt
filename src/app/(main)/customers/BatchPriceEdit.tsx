@@ -42,30 +42,27 @@ export function BatchPriceEdit({ customerIds, tab }: { customerIds: number[]; ta
     }
 
     try {
-      for (const id of customerIds) {
-        // 先拉取当前客户数据
-        const res = await fetch('/api/customers');
-        const list = await res.json();
-        const cust = Array.isArray(list) ? list.find((c: any) => c.id === id) : null;
-        if (!cust) continue;
+      // 一次性拉取全量客户列表
+      const res = await fetch('/api/customers');
+      const list = await res.json();
+      const custs = Array.isArray(list) ? list : [];
 
-        // 解析已有价格矩阵
+      const updates = customerIds.map(id => {
+        const cust = custs.find((c: any) => c.id === id);
+        if (!cust) return null;
+
         let existing: any = {};
         const raw = cust[matrixField];
-        if (raw) {
-          try { existing = JSON.parse(raw); } catch {}
-        }
-        // 判断是否仓库格式：任意仓库键存在且为对象
+        if (raw) { try { existing = JSON.parse(raw); } catch {} }
+
         const hasWarehouse = WAREHOUSES.some((wh: string) => existing[wh] && typeof existing[wh] === 'object');
         if (!hasWarehouse) {
-          // 旧平铺格式 → 转为仓库格式
           const flat: Record<string, number> = {};
           for (const k of PRICE_KEYS) if (typeof existing[k] === 'number') flat[k] = existing[k];
           existing = {};
           for (const wh of WAREHOUSES) existing[wh] = { ...flat };
         }
 
-        // 精准合并：只更新选中仓库下填了值的字段
         if (!existing[warehouse]) existing[warehouse] = {};
         for (const k of Object.keys(filledFields)) {
           existing[warehouse][k] = filledFields[k];
@@ -75,11 +72,13 @@ export function BatchPriceEdit({ customerIds, tab }: { customerIds: number[]; ta
         upd[matrixField] = JSON.stringify(existing);
         if (enableMinTouched) upd.enableMinVolume = enableMin ? 1 : 0;
 
-        await fetch('/api/customers', {
+        return fetch('/api/customers', {
           method: 'PUT', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id, ...upd }),
         });
-      }
+      }).filter(Boolean);
+
+      await Promise.all(updates);
       setShow(false);
       router.refresh();
     } catch { alert('操作失败'); }

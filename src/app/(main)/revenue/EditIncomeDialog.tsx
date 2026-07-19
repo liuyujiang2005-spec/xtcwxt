@@ -11,7 +11,7 @@ import { Loader2, Pencil } from 'lucide-react';
 export function EditIncomeDialog({ income }: { income: any }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [amount, setAmount] = useState(String(income.amount));
+  const [amount, setAmount] = useState(String(income.amount ?? ''));
   const [currency, setCurrency] = useState(income.currency || 'CNY');
   const [volume, setVolume] = useState(String(income.volume || ''));
   const [incomeDate, setIncomeDate] = useState(income.incomeDate);
@@ -19,6 +19,8 @@ export function EditIncomeDialog({ income }: { income: any }) {
   const [loading, setLoading] = useState(false);
 
   const handleSave = async () => {
+    const amountNum = parseFloat(amount);
+    if (isNaN(amountNum) || amountNum <= 0) { alert('请填写有效金额'); return; }
     setLoading(true);
     try {
       const r = await fetch('/api/direct-income/' + income.id, {

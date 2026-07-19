@@ -92,7 +92,7 @@ export async function PATCH(request: NextRequest) {
 
     // ── 写入阶段（事务内） ──
     try {
-      db.transaction((tx) => {
+      await db.transaction((tx) => {
         tx.delete(billItems).where(eq(billItems.billId, recalcId)).run();
 
         for (const u of updates) {

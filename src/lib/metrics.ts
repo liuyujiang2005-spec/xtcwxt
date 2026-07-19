@@ -4,7 +4,11 @@ import { eq, and, gte } from 'drizzle-orm';
 
 export async function refreshCustomerMetrics(customerId: number) {
   const allMarks = await db.select().from(marks).where(eq(marks.customerId, customerId)).all();
-  if (allMarks.length === 0) return;
+  if (allMarks.length === 0) {
+    // 客户唛头全部删除，清理陈旧指标
+    await db.delete(customerMetrics).where(eq(customerMetrics.customerId, customerId));
+    return;
+  }
 
   const allPayments = await db.select().from(paymentsReceived).where(eq(paymentsReceived.customerId, customerId)).all();
 

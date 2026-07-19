@@ -144,7 +144,7 @@ export async function generateBillXlsx(
         row.货型, row.品名, row.尺寸, row.件数, row.国内单号,
         row.单项体积, row.单项重量, row.总体积, row.总重量,
         row.计费体积, row.总计费体积, row.单价,
-        row.单价 * row.计费体积, i === 0 ? row.订单总价 : null,
+        (isFinite(row.单价) && isFinite(row.计费体积) ? row.单价 * row.计费体积 : null), i === 0 ? row.订单总价 : null,
         row.备注, row.结算状态,
       ];
 

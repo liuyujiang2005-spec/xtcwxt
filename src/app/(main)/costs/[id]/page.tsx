@@ -59,7 +59,7 @@ export default function EditCostPage({ params }: { params: Promise<{ id: string 
         }),
       });
       if (res.ok) {
-        router.push('/costs');
+        router.push('/expenses');
         router.refresh();
       } else {
         const err = await res.json().catch(() => ({ error: '保存失败' }));

@@ -40,8 +40,10 @@ export default function LoadingManualPage({ params }: { params: Promise<{ id: st
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    params.then(p => setBatchId(parseInt(p.id)));
-    fetch('/api/customers').then(r => r.json()).then(d => setCustomers(Array.isArray(d) ? d : [])).catch(() => {});
+    let cancelled = false;
+    params.then(p => { if (!cancelled) setBatchId(parseInt(p.id)); });
+    fetch('/api/customers').then(r => r.json()).then(d => { if (!cancelled) setCustomers(Array.isArray(d) ? d : []); }).catch(() => {});
+    return () => { cancelled = true; };
   }, []);
 
   const updateRow = (i: number, field: keyof RowData, value: string | null) => {

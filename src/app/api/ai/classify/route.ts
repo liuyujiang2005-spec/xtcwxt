@@ -151,7 +151,7 @@ export async function POST(request: NextRequest) {
     // ── 写入阶段（事务内，同步） ──
     let finalBillId = 0;
     try {
-      db.transaction((tx) => {
+      await db.transaction((tx) => {
         let bid: number;
         if (isExisting) {
           tx.delete(billItems).where(eq(billItems.billId, existing!.id)).run();

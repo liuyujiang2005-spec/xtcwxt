@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
         (item as any).需支付总价 ?? '',
         (item as any).订单总价 ?? '',
         item.payment_status || '',
-        (item as any).应收 ?? '',
+        (item as any).客户应收 ?? 0,
       ]);
     }
 
@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
     return new NextResponse(buf, {
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'Content-Disposition': `attachment; filename="sc-items_${new Date().toISOString().slice(0, 10)}.xlsx"`,
+        'Content-Disposition': `attachment; filename="ld-items_${new Date().toISOString().slice(0, 10)}.xlsx"`,
       },
     });
   } catch (error) {

@@ -30,14 +30,15 @@ export async function POST(
     const items = await db.select().from(sharedContainerItems).where(eq(sharedContainerItems.batchId, batchId)).all();
     if (items.length === 0) return NextResponse.json({ success: true, message: '无明细，无需重算' });
 
-    db.transaction((tx) => {
+    await db.transaction((tx) => {
       const custCache = new Map<number, { pm: any; em: boolean }>();
       for (const item of items) {
         let ci = custCache.get(item.customerId);
         if (!ci) {
           const c = tx.select().from(customers).where(eq(customers.id, item.customerId)).get();
           let pm: any = {};
-          if (c?.priceMatrix) { try { pm = JSON.parse(c.priceMatrix); } catch {} }
+          if (c?.defaultCurrency === 'THB') { if (c?.priceMatrixThb) try { pm = JSON.parse(c.priceMatrixThb); } catch {} }
+          else if (c?.priceMatrix) { try { pm = JSON.parse(c.priceMatrix); } catch {} }
           ci = { pm, em: c?.enableMinVolume !== 0 };
           custCache.set(item.customerId, ci);
         }

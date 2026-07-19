@@ -241,7 +241,7 @@ if (!existingAdmin) {
   sqlite.prepare(
     'INSERT INTO users (username, password_hash, display_name, role) VALUES (?, ?, ?, ?)'
   ).run('admin', passwordHash, '系统管理员', 'admin');
-  console.log('Admin user created: admin / admin123');
+  console.log('Admin user created: admin / Aa112233');
 } else {
   console.log('Admin user already exists');
 }

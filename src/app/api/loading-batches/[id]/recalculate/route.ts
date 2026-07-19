@@ -22,7 +22,7 @@ export async function POST(
     const items = await db.select().from(loadingItems).where(eq(loadingItems.batchId, batchId)).all();
     if (items.length === 0) return NextResponse.json({ success: true, message: '无明细，无需重算' });
 
-    db.transaction((tx) => {
+    await db.transaction((tx) => {
       const custMap = new Map<number, { pm: any; em: boolean }>();
 
       const getCust = (cid: number) => {

@@ -56,7 +56,7 @@ export default function CustomerDialog({ mode, customer, tab }: Props) {
       if (raw) {
         const parsed = JSON.parse(raw);
         // 检查是否按仓库格式存储：存在任意一个仓库键且值为对象
-        const hasWarehouse = WAREHOUSES.some(wh => parsed[wh] && typeof parsed[wh] === 'object');
+        const hasWarehouse = WAREHOUSES.some(wh => parsed[wh] !== undefined && typeof parsed[wh] === 'object');
         if (hasWarehouse) {
           const result: Record<string, Record<string, number>> = {};
           for (const wh of WAREHOUSES) {

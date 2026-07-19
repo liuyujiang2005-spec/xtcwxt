@@ -169,7 +169,7 @@ export function Sidebar({ user }: SidebarProps) {
             </div>
           )}
         </div>
-        <form action="/api/auth/logout" method="POST">
+        <form onSubmit={async (e) => { e.preventDefault(); await fetch('/api/auth/logout', { method: 'POST', headers: { 'x-csrf-protection': '1' } }); window.location.href = '/login'; }}>
           <Button
             variant="ghost"
             className={cn('w-full justify-start text-muted-foreground', collapsed && 'justify-center px-0')}

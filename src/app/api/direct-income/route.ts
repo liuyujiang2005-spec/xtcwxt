@@ -20,6 +20,8 @@ export async function POST(request: NextRequest) {
   if (!user || user.role === 'viewer') return NextResponse.json({ error: '无权限' }, { status: 403 });
 
   const body = await request.json();
+  if (!body.customerId || !Number.isFinite(body.customerId) || body.customerId <= 0) return NextResponse.json({ error: '缺少客户' }, { status: 400 });
+  if (!body.amount || !Number.isFinite(body.amount) || body.amount <= 0) return NextResponse.json({ error: '金额必须为正数' }, { status: 400 });
   const result = await db.insert(directIncome).values({
     markId: body.markId || null,
     customerId: body.customerId,

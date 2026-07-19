@@ -51,7 +51,8 @@ export async function validateSession(sessionId: string): Promise<User | null> {
     .get();
 
   if (!result) return null;
-  return result.user as User;
+  const u = result.user;
+  return { id: u.id, username: u.username, displayName: u.displayName, role: u.role as User['role'] };
 }
 
 export async function deleteSession(sessionId: string): Promise<void> {

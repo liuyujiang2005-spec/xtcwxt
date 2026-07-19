@@ -123,11 +123,17 @@ export default async function BillDetailPage({ params }: { params: Promise<{ bil
                   </TableHeader>
                   <TableBody>
                     {(() => {
+                      // 预计算每个运单号的条数，避免 O(n²)
+                      const orderCounts = new Map<string, number>();
+                      group.forEach((it: any) => {
+                        const k = it.运单号 || `#${it.id}`;
+                        orderCounts.set(k, (orderCounts.get(k) || 0) + 1);
+                      });
                       let lastOrder = '';
                       return group.map((item: any, ri: number) => {
                         const orderKey = item.运单号 || `#${item.id}`;
                         const isFirstInOrder = orderKey !== lastOrder;
-                        const orderRowSpan = group.filter((it: any) => (it.运单号 || `#${it.id}`) === orderKey).length;
+                        const orderRowSpan = orderCounts.get(orderKey) || 1;
                         lastOrder = orderKey;
                         return (
                           <TableRow key={item.id || ri}>

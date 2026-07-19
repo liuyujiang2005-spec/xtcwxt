@@ -40,6 +40,8 @@ export function NewIncomeDialog() {
 
   const handleSubmit = async () => {
     if (!customerId || !amount) return;
+    const amountNum = parseFloat(amount);
+    if (isNaN(amountNum) || amountNum <= 0) { alert('请填写有效金额'); return; }
     setLoading(true);
     try {
       const r = await fetch('/api/direct-income', {

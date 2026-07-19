@@ -22,6 +22,7 @@ export function formatAmount(amount: number, currency: string = 'CNY'): string {
 }
 
 export function formatNumber(n: number, decimals: number = 2): string {
+  if (!isFinite(n)) return '—';
   return n.toFixed(decimals);
 }
 
