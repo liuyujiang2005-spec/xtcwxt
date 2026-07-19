@@ -18,6 +18,7 @@ interface ScItem {
   总重量: number; 计费体积: number; 总计费体积: number; 单价: number;
   单项价格: number; 订单总价: number; 备注: string; 结算状态: string; 柜号: string;
   尺寸_长: number; 尺寸_宽: number; 尺寸_高: number;
+  应收: number;
   verdict: string; reason: string;
 }
 
