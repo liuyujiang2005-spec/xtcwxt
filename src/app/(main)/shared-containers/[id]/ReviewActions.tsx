@@ -47,8 +47,8 @@ export function ReviewActions({ batchId, apiPath, listPath }: { batchId: number;
         发布
       </Button>
       <Button size="sm" onClick={reject} disabled={!!loading} variant="destructive">
-        {loading === 'reject' ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <XCircle className="h-3.5 w-3.5 mr-1" />}
-        退回
+         {loading === 'reject' ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <XCircle className="h-3.5 w-3.5 mr-1" />}
+        删除
       </Button>
     </div>
   );
