@@ -31,7 +31,14 @@ export default async function LoadingListDetailPage({ params }: { params: Promis
   const markList = markIds.length > 0 ? await db.select().from(marks).where(inArray(marks.id, markIds)).all() : [];
   const markMap = new Map(markList.map(m => [m.id, m.markNo]));
 
-  const totalVolume = items.reduce((s, i) => s + (i.总体积 ?? 0), 0);
+  // 总体积是"按运单合计、每条明细重复"的值，全加会重复累加虚高；按运单号去重、每个运单只算一次
+  const volGroups = new Map<string, number>();
+  items.forEach((i, idx) => {
+    const ok = ((i as any).运单号 || '').trim() || `_${i.id ?? idx}`;
+    const gk = `${i.customerId}__${ok}`;
+    volGroups.set(gk, Math.max(volGroups.get(gk) ?? 0, i.总体积 ?? 0));
+  });
+  const totalVolume = [...volGroups.values()].reduce((s, v) => s + v, 0);
   const totalReceivable = items.reduce((s, i) => s + (i.客户应收 || 0), 0);
   const totalCost = costList.reduce((s, c) => s + c.amount, 0);
   const custCurrencyMap = new Map(allCustomers.map(c => [c.id, c.defaultCurrency || 'CNY']));
@@ -96,23 +103,51 @@ export default async function LoadingListDetailPage({ params }: { params: Promis
                 <TableHead className="text-right">应收</TableHead><TableHead>状态</TableHead><TableHead className="w-10"></TableHead>
               </TableRow></TableHeader>
               <TableBody>
-                {(() => { const groups: { custId: number; rows: typeof items }[] = []; let last = -1; for (const i of items) { if (i.customerId !== last) { groups.push({ custId: i.customerId, rows: [] }); last = i.customerId; } groups[groups.length - 1].rows.push(i); } return groups.map(g => g.rows.map((item, ri) => (<TableRow key={item.id}>
-                  {ri === 0 ? <TableCell className="font-medium" rowSpan={g.rows.length}>{customerMap.get(item.customerId) || '-'}</TableCell> : null}
-                  <TableCell className="max-w-[120px] truncate" title={item.品名 || ''}>{item.品名 || '-'}</TableCell>
-                  <TableCell className="text-xs font-mono">{item.运单号 || '-'}</TableCell>
-                  <TableCell>{(item as any).仓库 || '-'}</TableCell>
-                  <TableCell className="text-right">{(item.总体积 ?? 0).toFixed(6)}</TableCell>
-                  <TableCell className="text-right">{item.单箱体积 || '-'}</TableCell>
-                  <TableCell className="text-right">{item.箱数 || '-'}</TableCell>
-                  <TableCell className="text-right">{item.单箱数量 || '-'}</TableCell>
-                  <TableCell className="text-xs">{item.国内单号 || '-'}</TableCell>
-                  <TableCell className="text-right">{item.总重量 || '-'}</TableCell>
-                  <TableCell>{item.货型 || '-'}</TableCell><TableCell>{item.运输方式 || '-'}</TableCell>
-                  <TableCell className="text-right">{(item.单价 || 0).toFixed(6)}</TableCell>
-                  <TableCell className="text-right text-green-600">{formatAmount((item.客户应收 || 0), custCurrencyMap.get(item.customerId) === 'THB' ? 'THB' : 'CNY')}</TableCell>
-                  <TableCell><span className={`text-xs px-2 py-1 rounded ${item.payment_status === '已支付' ? 'bg-gray-100 text-gray-700' : 'bg-yellow-100 text-yellow-700'}`}>{item.payment_status}</span></TableCell>
-                  <TableCell><DeleteItemButton itemId={item.id} apiPath="/api/loading-items" /></TableCell>
-                </TableRow>))); })()}
+                {(() => {
+                  // 两级合并：先按客户，客户内再按连续运单号；运单级合并 运单号/仓库/总体积/货型/运输/单价/应收
+                  type Row = { item: (typeof items)[number]; isCustFirst: boolean; custRowSpan: number; isOrderFirst: boolean; orderRowSpan: number };
+                  const flat: Row[] = [];
+                  let ci = 0;
+                  while (ci < items.length) {
+                    const custId = items[ci].customerId;
+                    let cj = ci; while (cj < items.length && items[cj].customerId === custId) cj++;
+                    const custRows = items.slice(ci, cj);
+                    let custFirst = true;
+                    let oi = 0;
+                    while (oi < custRows.length) {
+                      const ok = ((custRows[oi] as any).运单号 || '').trim();
+                      let oj = oi + 1;
+                      if (ok) { while (oj < custRows.length && ((custRows[oj] as any).运单号 || '').trim() === ok) oj++; }
+                      const orderRows = custRows.slice(oi, oj);
+                      orderRows.forEach((item, ri) => {
+                        flat.push({ item, isCustFirst: custFirst, custRowSpan: custRows.length, isOrderFirst: ri === 0, orderRowSpan: orderRows.length });
+                        custFirst = false;
+                      });
+                      oi = oj;
+                    }
+                    ci = cj;
+                  }
+                  return flat.map(({ item, isCustFirst, custRowSpan, isOrderFirst, orderRowSpan }) => (
+                    <TableRow key={item.id}>
+                      {isCustFirst ? <TableCell className="font-medium align-top" rowSpan={custRowSpan}>{customerMap.get(item.customerId) || '-'}</TableCell> : null}
+                      <TableCell className="max-w-[120px] truncate" title={item.品名 || ''}>{item.品名 || '-'}</TableCell>
+                      {isOrderFirst ? <TableCell className="text-xs font-mono align-top" rowSpan={orderRowSpan}>{item.运单号 || '-'}</TableCell> : null}
+                      {isOrderFirst ? <TableCell className="align-top" rowSpan={orderRowSpan}>{(item as any).仓库 || '-'}</TableCell> : null}
+                      {isOrderFirst ? <TableCell className="text-right align-top" rowSpan={orderRowSpan}>{(item.总体积 ?? 0).toFixed(6)}</TableCell> : null}
+                      <TableCell className="text-right">{item.单箱体积 || '-'}</TableCell>
+                      <TableCell className="text-right">{item.箱数 || '-'}</TableCell>
+                      <TableCell className="text-right">{item.单箱数量 || '-'}</TableCell>
+                      <TableCell className="text-xs">{item.国内单号 || '-'}</TableCell>
+                      <TableCell className="text-right">{item.总重量 || '-'}</TableCell>
+                      {isOrderFirst ? <TableCell className="align-top" rowSpan={orderRowSpan}>{item.货型 || '-'}</TableCell> : null}
+                      {isOrderFirst ? <TableCell className="align-top" rowSpan={orderRowSpan}>{item.运输方式 || '-'}</TableCell> : null}
+                      {isOrderFirst ? <TableCell className="text-right align-top" rowSpan={orderRowSpan}>{(item.单价 || 0).toFixed(6)}</TableCell> : null}
+                      {isOrderFirst ? <TableCell className="text-right text-green-600 align-top" rowSpan={orderRowSpan}>{formatAmount((item.客户应收 || 0), custCurrencyMap.get(item.customerId) === 'THB' ? 'THB' : 'CNY')}</TableCell> : null}
+                      <TableCell><span className={`text-xs px-2 py-1 rounded ${item.payment_status === '已支付' ? 'bg-gray-100 text-gray-700' : 'bg-yellow-100 text-yellow-700'}`}>{item.payment_status}</span></TableCell>
+                      <TableCell><DeleteItemButton itemId={item.id} apiPath="/api/loading-items" /></TableCell>
+                    </TableRow>
+                  ));
+                })()}
               </TableBody>
             </Table>
           )}

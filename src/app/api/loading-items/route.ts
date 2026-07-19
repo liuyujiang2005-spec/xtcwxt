@@ -20,6 +20,8 @@ export async function POST(request: NextRequest) {
 
     // 🔴修复：用事务包裹整个循环，任何一条失败全部回滚
     db.transaction((tx) => {
+      // ── 第一步：解析每条明细的唛头→客户（含建唛/建客户），保持原顺序 ──
+      const resolved: { raw: any; custId: number; markId: number }[] = [];
       for (const item of items) {
         const cleanMarkNo = (item.markNo || '').replace(/^BL-[\d]{6}-/, '').trim();
         const monthTag = item.monthTag || new Date().toISOString().substring(0, 7);
@@ -46,11 +48,60 @@ export async function POST(request: NextRequest) {
           mark = tx.select().from(marks).where(eq(marks.id, Number(result.lastInsertRowid))).get();
           if (!mark) throw new Error(`创建唛头失败: ${cleanMarkNo}`);
         }
-        const custId = mark.customerId;
+        resolved.push({ raw: item, custId: mark.customerId, markId: mark.id });
+      }
 
+      // ── 第二步：算每个运单的客户应收（口径与生成账单一致：
+      //    客户价 × max(运单总体积, 低消保底 海0.5/陆0.3)，落在该运单第一条、其余0） ──
+      const custCache = new Map<number, { pm: any; em: boolean }>();
+      const getCust = (cid: number) => {
+        if (custCache.has(cid)) return custCache.get(cid)!;
+        const c = tx.select().from(customers).where(eq(customers.id, cid)).get();
+        let pm: any = {};
+        if (c?.defaultCurrency === 'THB') { if (c?.priceMatrixThb) try { pm = JSON.parse(c.priceMatrixThb); } catch {} }
+        else if (c?.priceMatrix) { try { pm = JSON.parse(c.priceMatrix); } catch {} }
+        const info = { pm, em: c?.enableMinVolume !== 0 };
+        custCache.set(cid, info);
+        return info;
+      };
+      const getPrice = (pm: any, wh: string | null, transport: string, cargo: string): number => {
+        const m = transport === '海运' ? 'sea' : 'land';
+        const t = (cargo || '普货') === '普货' ? 'regular' : cargo === '商检货' ? 'inspection' : 'sensitive';
+        const key = m + '_' + t;
+        if (wh && typeof pm[wh] === 'object' && pm[wh] !== null && typeof pm[wh][key] === 'number') return (pm[wh] as any)[key];
+        return typeof pm[key] === 'number' ? pm[key] : 0;
+      };
+
+      // 按 客户+运单号 分组（运单号为空的各自成组，不合并）
+      const groups = new Map<string, typeof resolved>();
+      resolved.forEach((r, idx) => {
+        const ok = (r.raw.运单号 || '').trim() || `_${idx}`;
+        const gk = `${r.custId}__${ok}`;
+        if (!groups.has(gk)) groups.set(gk, []);
+        groups.get(gk)!.push(r);
+      });
+      const recvMap = new Map<any, number>();
+      for (const [, group] of groups) {
+        const first = group[0];
+        const { pm, em } = getCust(first.custId);
+        let orderVol = 0;
+        for (const r of group) orderVol = Math.max(orderVol, Number(r.raw.总体积) || 0);
+        const transport = first.raw.运输方式 || '海运';
+        const cargo = first.raw.货型 || '普货';
+        const warehouse = first.raw.仓库 || null;
+        const price = getPrice(pm, warehouse, transport, cargo);
+        const minVol = em ? (transport === '海运' ? 0.5 : 0.3) : 0;
+        const chargeVol = Math.max(orderVol, minVol);
+        const receivable = Math.round(price * chargeVol * 100) / 100;
+        recvMap.set(first.raw, receivable);
+        for (let i = 1; i < group.length; i++) recvMap.set(group[i].raw, 0);
+      }
+
+      // ── 第三步：插入明细，带上客户应收 ──
+      for (const { raw: item, custId, markId } of resolved) {
         tx.insert(loadingItems).values({
           batchId,
-          markId: mark.id,
+          markId,
           customerId: custId,
           品名: item.品名 || null,
           尺寸_长: item.尺寸_长 || null,
@@ -67,6 +118,7 @@ export async function POST(request: NextRequest) {
           运单号: item.运单号 || '',
           单价: item.单价 || 0,
           需支付总价: item.需支付总价 || 0,
+          客户应收: recvMap.get(item) ?? 0,
           货型: item.货型 || '普货',
           运输方式: item.运输方式 || '海运',
           payment_status: '待支付',
