@@ -12,6 +12,7 @@ import { ArrowLeft } from 'lucide-react';
 import { DeleteItemButton } from './DeleteButton';
 import { ReviewActions } from './ReviewActions';
 import { ClassifyButton } from './ClassifyButton';
+import { RecalculateButton } from '@/components/RecalculateButton';
 import { formatAmount } from '@/lib/format';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -77,6 +78,7 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
           {batch.status}
         </Badge>
         {batch.status === '待审核' && <ReviewActions batchId={batch.id} apiPath="/api/shared-containers" listPath="/shared-containers" />}
+        <RecalculateButton batchId={batch.id} apiPath="/api/shared-containers" />
       </div>
       <ClassifyButton batchId={batch.id} items={items} markMap={Object.fromEntries(markMap)} />
 

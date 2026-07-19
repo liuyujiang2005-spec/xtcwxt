@@ -12,6 +12,7 @@ import { LoadingExpenseManager } from './LoadingExpenseManager';
 import { DeleteItemButton } from '../../shared-containers/[id]/DeleteButton';
 import { ReviewActions } from '../../shared-containers/[id]/ReviewActions';
 import { ClassifyButton } from '../../shared-containers/[id]/ClassifyButton';
+import { RecalculateButton } from '@/components/RecalculateButton';
 import { formatAmount } from '@/lib/format';
 
 export default async function LoadingListDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -56,6 +57,7 @@ export default async function LoadingListDetailPage({ params }: { params: Promis
         </div>
         {batch.status && <span className={`text-xs px-2 py-1 rounded ${batch.status === '待审核' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}>{batch.status}</span>}
         {batch.status === '待审核' && <ReviewActions batchId={batch.id} apiPath="/api/loading-batches" listPath="/loading-lists" />}
+        <RecalculateButton batchId={batch.id} apiPath="/api/loading-batches" />
       </div>
       <ClassifyButton batchId={batch.id} type="loading-list" items={items} markMap={Object.fromEntries(markMap)} />
 
