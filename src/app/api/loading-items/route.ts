@@ -48,25 +48,6 @@ export async function POST(request: NextRequest) {
         }
         const custId = mark.customerId;
 
-        const cust = tx.select().from(customers).where(eq(customers.id, custId)).get();
-        const warehouse = item.仓库 || null;
-        const transport = item.运输方式 || '海运';
-        const cargo = item.货型 || '普货';
-        let unitPrice = 0;
-        if (cust?.priceMatrix) {
-          try {
-            const matrix = JSON.parse(cust.priceMatrix);
-            const m = transport === '海运' ? 'sea' : 'land';
-            const t = cargo === '普货' ? 'regular' : cargo === '商检货' ? 'inspection' : 'sensitive';
-            const key = m + '_' + t;
-            if (warehouse && matrix[warehouse] && typeof matrix[warehouse][key] === 'number') {
-              unitPrice = matrix[warehouse][key];
-            } else if (typeof matrix[key] === 'number') {
-              unitPrice = matrix[key];
-            }
-          } catch { /* 价格矩阵解析失败，使用默认值 0 */ }
-        }
-
         tx.insert(loadingItems).values({
           batchId,
           markId: mark.id,
@@ -82,12 +63,12 @@ export async function POST(request: NextRequest) {
           总重量: item.总重量 || null,
           箱数: item.箱数 ?? null,
           pcs数量: item.pcs数量 ?? null,
-          仓库: warehouse,
+          仓库: item.仓库 || null,
           运单号: item.运单号 || '',
-          单价: unitPrice,
+          单价: item.单价 || 0,
           需支付总价: item.需支付总价 || 0,
-          货型: cargo,
-          运输方式: transport,
+          货型: item.货型 || '普货',
+          运输方式: item.运输方式 || '海运',
           payment_status: '待支付',
         }).run();
       }
