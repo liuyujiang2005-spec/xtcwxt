@@ -1,7 +1,7 @@
 import { getCurrentUser } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { db } from '@/db/index';
-import { directIncome, expenses, paymentsReceived, paymentsMade, customerMetrics, customers, sharedContainerItems, loadingItems } from '@/db/schema';
+import { directIncome, expenses, paymentsReceived, paymentsMade, customerMetrics, customers, sharedContainerItems, loadingItems, marks, sharedContainerBatches, loadingBatches } from '@/db/schema';
 import { desc } from 'drizzle-orm';
 import { formatAmount } from '@/lib/format';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -27,20 +27,32 @@ export default async function DashboardPage() {
   const allCustomers = await db.select().from(customers).all();
   const custCurrencyMap = new Map(allCustomers.map(c => [c.id, c.defaultCurrency || 'CNY']));
 
+  // 营收/成本按"业务月份"(唛头 monthTag)归月，且只统计已确认(非待审核)的批次
+  const allMarks = await db.select().from(marks).all();
+  const markMonthMap = new Map(allMarks.map(m => [m.id, m.monthTag]));
+  const allScBatches = await db.select().from(sharedContainerBatches).all();
+  const allLdBatches = await db.select().from(loadingBatches).all();
+  const scBatchOk = new Map(allScBatches.map(b => [b.id, b.status !== '待审核']));
+  const ldBatchOk = new Map(allLdBatches.map(b => [b.id, b.status !== '待审核']));
+  const scConfirmed = allScItems.filter(i => scBatchOk.get(i.batchId) === true); // 已确认拼柜明细
+  const ldConfirmed = allLdItems.filter(i => ldBatchOk.get(i.batchId) === true); // 已确认装柜明细
+  const isCNY = (cid: number) => custCurrencyMap.get(cid) !== 'THB';
+  const inMonth = (markId: number) => markMonthMap.get(markId) === currentMonth; // 按业务月份
+
   const monthRevenueCNY = allIncome
     .filter((i) => i.incomeDate?.startsWith(currentMonth) && i.currency !== 'THB')
     .reduce((s, i) => s + i.amount, 0)
-    + allScItems.filter((i) => i.createdAt?.startsWith(currentMonth) && custCurrencyMap.get(i.customerId) !== 'THB').reduce((s, i) => s + (Number(i.客户应收) || 0), 0)
-    + allLdItems.filter((i) => i.createdAt?.startsWith(currentMonth) && custCurrencyMap.get(i.customerId) !== 'THB').reduce((s, i) => s + (Number(i.客户应收) || 0), 0);
+    + scConfirmed.filter((i) => inMonth(i.markId) && isCNY(i.customerId)).reduce((s, i) => s + (Number(i.客户应收) || 0), 0)
+    + ldConfirmed.filter((i) => inMonth(i.markId) && isCNY(i.customerId)).reduce((s, i) => s + (Number(i.客户应收) || 0), 0);
   const monthRevenueTHB = allIncome
     .filter((i) => i.incomeDate?.startsWith(currentMonth) && i.currency === 'THB')
     .reduce((s, i) => s + i.amount, 0)
-    + allScItems.filter((i) => i.createdAt?.startsWith(currentMonth) && custCurrencyMap.get(i.customerId) === 'THB').reduce((s, i) => s + (Number(i.客户应收) || 0), 0)
-    + allLdItems.filter((i) => i.createdAt?.startsWith(currentMonth) && custCurrencyMap.get(i.customerId) === 'THB').reduce((s, i) => s + (Number(i.客户应收) || 0), 0);
+    + scConfirmed.filter((i) => inMonth(i.markId) && !isCNY(i.customerId)).reduce((s, i) => s + (Number(i.客户应收) || 0), 0)
+    + ldConfirmed.filter((i) => inMonth(i.markId) && !isCNY(i.customerId)).reduce((s, i) => s + (Number(i.客户应收) || 0), 0);
 
   const monthCostCNY = allExpenses.filter((e) => e.currency !== 'THB' && e.createdAt?.startsWith(currentMonth)).reduce((s, e) => s + e.amount, 0)
-    + allScItems.filter((i) => i.createdAt?.startsWith(currentMonth)).reduce((s, i) => s + (i.需支付总价 || 0), 0)
-    + allLdItems.filter((i) => i.createdAt?.startsWith(currentMonth)).reduce((s, i) => s + (i.需支付总价 || 0), 0);
+    + scConfirmed.filter((i) => inMonth(i.markId)).reduce((s, i) => s + (i.需支付总价 || 0), 0)
+    + ldConfirmed.filter((i) => inMonth(i.markId)).reduce((s, i) => s + (i.需支付总价 || 0), 0);
   const monthCostTHB = allExpenses.filter((e) => e.currency === 'THB' && e.createdAt?.startsWith(currentMonth)).reduce((s, e) => s + e.amount, 0);
 
   const pendingExpenses = allExpenses.filter((e) => e.status === '待支付');
@@ -50,13 +62,14 @@ export default async function DashboardPage() {
   const paidCNY = allPaid.filter((p) => p.currency !== 'THB').reduce((s, p) => s + p.amount, 0);
   const paidTHB = allPaid.filter((p) => p.currency === 'THB').reduce((s, p) => s + p.amount, 0);
 
+  // 待收基于全部已确认应收(不分月)，待审核批次不计入
   const totalRevenueCNY = allIncome.filter(i => i.currency !== 'THB').reduce((s, i) => s + i.amount, 0)
-    + allScItems.filter(i => custCurrencyMap.get(i.customerId) !== 'THB').reduce((s, i) => s + (Number(i.客户应收) || 0), 0)
-    + allLdItems.filter(i => custCurrencyMap.get(i.customerId) !== 'THB').reduce((s, i) => s + (Number(i.客户应收) || 0), 0);
+    + scConfirmed.filter(i => isCNY(i.customerId)).reduce((s, i) => s + (Number(i.客户应收) || 0), 0)
+    + ldConfirmed.filter(i => isCNY(i.customerId)).reduce((s, i) => s + (Number(i.客户应收) || 0), 0);
   const totalReceivedCNY = allReceived.filter(p => p.currency !== 'THB').reduce((s, p) => s + p.amount, 0);
   const totalRevenueTHB = allIncome.filter(i => i.currency === 'THB').reduce((s, i) => s + i.amount, 0)
-    + allScItems.filter(i => custCurrencyMap.get(i.customerId) === 'THB').reduce((s, i) => s + (Number(i.客户应收) || 0), 0)
-    + allLdItems.filter(i => custCurrencyMap.get(i.customerId) === 'THB').reduce((s, i) => s + (Number(i.客户应收) || 0), 0);
+    + scConfirmed.filter(i => !isCNY(i.customerId)).reduce((s, i) => s + (Number(i.客户应收) || 0), 0)
+    + ldConfirmed.filter(i => !isCNY(i.customerId)).reduce((s, i) => s + (Number(i.客户应收) || 0), 0);
   const totalReceivedTHB = allReceived.filter(p => p.currency === 'THB').reduce((s, p) => s + p.amount, 0);
 
   const topCustomers = await db.select().from(customerMetrics).orderBy(desc(customerMetrics.monthlyVolume)).limit(5).all();

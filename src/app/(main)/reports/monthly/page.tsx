@@ -1,7 +1,7 @@
 import { getCurrentUser } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { db } from '@/db/index';
-import { directIncome, expenses, customers, sharedContainerItems, loadingItems } from '@/db/schema';
+import { directIncome, expenses, customers, sharedContainerItems, loadingItems, marks, sharedContainerBatches, loadingBatches } from '@/db/schema';
 import { sql } from 'drizzle-orm';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -19,6 +19,14 @@ export default async function MonthlyReportPage() {
 
   const allScItems = await db.select().from(sharedContainerItems).all();
   const allLdItems = await db.select().from(loadingItems).all();
+
+  // 按业务月份(唛头monthTag)归月，只统计已确认(非待审核)批次
+  const allMarks = await db.select().from(marks).all();
+  const markMonthMap = new Map(allMarks.map(m => [m.id, m.monthTag]));
+  const allScBatches = await db.select().from(sharedContainerBatches).all();
+  const allLdBatches = await db.select().from(loadingBatches).all();
+  const scBatchOk = new Map(allScBatches.map(b => [b.id, b.status !== '待审核']));
+  const ldBatchOk = new Map(allLdBatches.map(b => [b.id, b.status !== '待审核']));
 
   // 按月汇总直接收入
   const incomeByMonth = await db
@@ -47,21 +55,23 @@ export default async function MonthlyReportPage() {
   const ensure = (m: string) => { if (!accumByMonth.has(m)) accumByMonth.set(m, { recCNY: 0, recTHB: 0, costCNY: 0, costTHB: 0 }); return accumByMonth.get(m)!; };
 
   for (const item of allScItems) {
-    const month = item.createdAt?.substring(0, 7);
+    if (scBatchOk.get(item.batchId) !== true) continue; // 待审核不计入
+    const month = markMonthMap.get(item.markId); // 业务月份
     if (!month) continue;
     const isThb = custCurrencyMap.get(item.customerId) === 'THB';
     const e = ensure(month);
-    if (isThb) { e.recTHB += (item.客户应收 || 0); }
-    else { e.recCNY += (item.客户应收 || 0); }
+    if (isThb) { e.recTHB += (Number(item.客户应收) || 0); }
+    else { e.recCNY += (Number(item.客户应收) || 0); }
     e.costCNY += (item.需支付总价 || 0);
   }
   for (const item of allLdItems) {
-    const month = item.createdAt?.substring(0, 7);
+    if (ldBatchOk.get(item.batchId) !== true) continue; // 待审核不计入
+    const month = markMonthMap.get(item.markId); // 业务月份
     if (!month) continue;
     const isThb = custCurrencyMap.get(item.customerId) === 'THB';
     const e = ensure(month);
-    if (isThb) { e.recTHB += (item.客户应收 || 0); }
-    else { e.recCNY += (item.客户应收 || 0); }
+    if (isThb) { e.recTHB += (Number(item.客户应收) || 0); }
+    else { e.recCNY += (Number(item.客户应收) || 0); }
     e.costCNY += (item.需支付总价 || 0);
   }
 
