@@ -123,42 +123,54 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       <div className="border rounded-lg p-4 space-y-4">
         <p className="text-sm font-bold">人民币</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium">本月营收</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatAmount(monthRevenueCNY)}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium">本月支出</CardTitle>
-              <TrendingDown className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatAmount(monthCostCNY)}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium">待收</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatAmount(pendingReceivableCNY)}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium">待付</CardTitle>
-              <HandCoins className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatAmount(pendingPayableCNY)}</div>
-            </CardContent>
-          </Card>
+          <Link href={`/bills?month=${currentMonth}&tab=cny`} className="block">
+            <Card className="h-full hover:border-primary transition-colors cursor-pointer">
+              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                <CardTitle className="text-sm font-medium">本月营收</CardTitle>
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{formatAmount(monthRevenueCNY)}</div>
+                <p className="text-xs text-muted-foreground mt-1">查看账单明细 ›</p>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href={`/expenses?month=${currentMonth}`} className="block">
+            <Card className="h-full hover:border-primary transition-colors cursor-pointer">
+              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                <CardTitle className="text-sm font-medium">本月支出</CardTitle>
+                <TrendingDown className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{formatAmount(monthCostCNY)}</div>
+                <p className="text-xs text-muted-foreground mt-1">查看支出明细 ›</p>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href="/accounts/customers" className="block">
+            <Card className="h-full hover:border-primary transition-colors cursor-pointer">
+              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                <CardTitle className="text-sm font-medium">待收</CardTitle>
+                <Clock className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{formatAmount(pendingReceivableCNY)}</div>
+                <p className="text-xs text-muted-foreground mt-1">谁欠钱/谁付了 ›</p>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href="/expenses" className="block">
+            <Card className="h-full hover:border-primary transition-colors cursor-pointer">
+              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                <CardTitle className="text-sm font-medium">待付</CardTitle>
+                <HandCoins className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{formatAmount(pendingPayableCNY)}</div>
+                <p className="text-xs text-muted-foreground mt-1">要付的钱明细 ›</p>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
       </div>
 
@@ -166,42 +178,54 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       <div className="border rounded-lg p-4 space-y-4">
         <p className="text-sm font-bold text-orange-600">泰铢</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium text-orange-600">本月营收</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-orange-600">{formatAmount(monthRevenueTHB, 'THB')}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium text-orange-600">本月支出</CardTitle>
-              <TrendingDown className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-orange-600">{formatAmount(monthCostTHB, 'THB')}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium text-orange-600">待收</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-orange-600">{formatAmount(pendingReceivableTHB, 'THB')}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium text-orange-600">待付</CardTitle>
-              <HandCoins className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-orange-600">{formatAmount(pendingPayableTHB, 'THB')}</div>
-            </CardContent>
-          </Card>
+          <Link href={`/bills?month=${currentMonth}&tab=thb`} className="block">
+            <Card className="h-full hover:border-primary transition-colors cursor-pointer">
+              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                <CardTitle className="text-sm font-medium text-orange-600">本月营收</CardTitle>
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-orange-600">{formatAmount(monthRevenueTHB, 'THB')}</div>
+                <p className="text-xs text-muted-foreground mt-1">查看账单明细 ›</p>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href={`/expenses?month=${currentMonth}`} className="block">
+            <Card className="h-full hover:border-primary transition-colors cursor-pointer">
+              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                <CardTitle className="text-sm font-medium text-orange-600">本月支出</CardTitle>
+                <TrendingDown className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-orange-600">{formatAmount(monthCostTHB, 'THB')}</div>
+                <p className="text-xs text-muted-foreground mt-1">查看支出明细 ›</p>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href="/accounts/customers" className="block">
+            <Card className="h-full hover:border-primary transition-colors cursor-pointer">
+              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                <CardTitle className="text-sm font-medium text-orange-600">待收</CardTitle>
+                <Clock className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-orange-600">{formatAmount(pendingReceivableTHB, 'THB')}</div>
+                <p className="text-xs text-muted-foreground mt-1">谁欠钱/谁付了 ›</p>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href="/expenses" className="block">
+            <Card className="h-full hover:border-primary transition-colors cursor-pointer">
+              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                <CardTitle className="text-sm font-medium text-orange-600">待付</CardTitle>
+                <HandCoins className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-orange-600">{formatAmount(pendingPayableTHB, 'THB')}</div>
+                <p className="text-xs text-muted-foreground mt-1">要付的钱明细 ›</p>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
       </div>
 
