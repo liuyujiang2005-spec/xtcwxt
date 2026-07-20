@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
     const missingPriceOrders: string[] = [];
     const keepPaid = (existing as any)?.paidAmount || 0;
 
-    interface WriteItem { table: 'sc' | 'ld'; id: number; rec: number; }
+    interface WriteItem { table: 'sc' | 'ld'; id: number; rec: number; itemRec: number; }
     interface NewBillItem { markId: number; mode: string; amount: number; costAmount: number; }
     const updates: WriteItem[] = [];
     const newBillItems: NewBillItem[] = [];
@@ -139,8 +139,10 @@ export async function POST(request: NextRequest) {
         const item = items[i];
         const cost = item.需支付总价 || 0;
         const rec = i === 0 ? orderReceivable : 0;
+        // 每条明细单独算单项应收(每条自己货型×自己单项体积)，与导入/重算口径一致
+        const itemRec = Math.round(getPrice(warehouse, transport, item.货型) * (Number(item.单项体积) || 0) * 100) / 100;
         const itemIsSc = (item as any).cost_status !== undefined;
-        updates.push({ table: itemIsSc ? 'sc' : 'ld', id: item.id, rec });
+        updates.push({ table: itemIsSc ? 'sc' : 'ld', id: item.id, rec, itemRec });
         newBillItems.push({ markId, mode: itemIsSc ? '拼柜' : '装柜', amount: rec, costAmount: cost });
       }
     }
@@ -167,7 +169,7 @@ export async function POST(request: NextRequest) {
           if (u.table === 'sc') {
             tx.update(sharedContainerItems).set({ 客户应收: u.rec }).where(eq(sharedContainerItems.id, u.id)).run();
           } else {
-            tx.update(loadingItems).set({ 客户应收: u.rec }).where(eq(loadingItems.id, u.id)).run();
+            tx.update(loadingItems).set({ 客户应收: u.rec, 单项应收: u.itemRec }).where(eq(loadingItems.id, u.id)).run();
           }
         }
 
