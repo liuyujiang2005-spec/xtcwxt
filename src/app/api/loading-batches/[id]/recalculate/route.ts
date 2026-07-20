@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db/index';
-import { loadingItems, marks, customers, loadingBatches } from '@/db/schema';
+import { loadingItems, marks, customers, loadingBatches, bills, billItems } from '@/db/schema';
 import { validateSession } from '@/lib/auth';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, or } from 'drizzle-orm';
 import { cargoKey } from '@/lib/pricing';
 
 export async function POST(
@@ -22,6 +22,13 @@ export async function POST(
 
     const items = await db.select().from(loadingItems).where(eq(loadingItems.batchId, batchId)).all();
     if (items.length === 0) return NextResponse.json({ success: true, message: '无明细，无需重算' });
+
+    // 已付款/付一部分账单对应的唛头，重算时整个跳过，绝不动已付款的货
+    const paidRows = await db.select({ markId: billItems.markId }).from(billItems)
+      .innerJoin(bills, eq(billItems.billId, bills.id))
+      .where(or(eq(bills.paymentStatus, '已付款'), eq(bills.paymentStatus, '付一部分'))).all();
+    const paidMarks = new Set(paidRows.map(r => r.markId));
+    let skipped = 0;
 
     await db.transaction((tx) => {
       const custMap = new Map<number, { pm: any; em: boolean }>();
@@ -56,6 +63,7 @@ export async function POST(
 
       for (const [, group] of groups) {
         const first = group[0];
+        if (paidMarks.has(first.markId)) { skipped += group.length; continue; } // 已付款账单的货，跳过
         const { pm, em } = getCust(first.customerId);
         let orderVol = 0;
         for (const item of group) orderVol = Math.max(orderVol, item.总体积 || 0);
@@ -75,7 +83,7 @@ export async function POST(
       }
     });
 
-    return NextResponse.json({ success: true, message: `已重算 ${items.length} 条明细` });
+    return NextResponse.json({ success: true, message: `已重算 ${items.length - skipped} 条明细${skipped > 0 ? `，跳过 ${skipped} 条已付款货物` : ''}` });
   } catch (error) {
     console.error('重算装柜应收失败:', error);
     return NextResponse.json({ error: '重算失败' }, { status: 500 });

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db/index';
-import { sharedContainerItems, customers, sharedContainerBatches } from '@/db/schema';
+import { sharedContainerItems, customers, sharedContainerBatches, bills, billItems } from '@/db/schema';
 import { validateSession } from '@/lib/auth';
-import { eq } from 'drizzle-orm';
+import { eq, or } from 'drizzle-orm';
 import { cargoKey } from '@/lib/pricing';
 
 function getMatrixPrice(pm: any, warehouse: string | null, transport: string, cargo: string): number {
@@ -31,6 +31,13 @@ export async function POST(
     const items = await db.select().from(sharedContainerItems).where(eq(sharedContainerItems.batchId, batchId)).all();
     if (items.length === 0) return NextResponse.json({ success: true, message: '无明细，无需重算' });
 
+    // 已付款/付一部分账单对应的唛头，重算时整个跳过，绝不动已付款的货
+    const paidRows = await db.select({ markId: billItems.markId }).from(billItems)
+      .innerJoin(bills, eq(billItems.billId, bills.id))
+      .where(or(eq(bills.paymentStatus, '已付款'), eq(bills.paymentStatus, '付一部分'))).all();
+    const paidMarks = new Set(paidRows.map(r => r.markId));
+    let skipped = 0;
+
     await db.transaction((tx) => {
       const custCache = new Map<number, { pm: any; em: boolean }>();
       const getCust = (cid: number) => {
@@ -57,6 +64,7 @@ export async function POST(
 
       for (const [, group] of groups) {
         const first = group[0];
+        if (paidMarks.has(first.markId)) { skipped += group.length; continue; } // 已付款账单的货，跳过
         const ci = getCust(first.customerId);
         let orderVol = 0;
         for (const it of group) orderVol = Math.max(orderVol, Number(it.总体积) || 0);
@@ -74,7 +82,7 @@ export async function POST(
       }
     });
 
-    return NextResponse.json({ success: true, message: `已重算 ${items.length} 条明细` });
+    return NextResponse.json({ success: true, message: `已重算 ${items.length - skipped} 条明细${skipped > 0 ? `，跳过 ${skipped} 条已付款货物` : ''}` });
   } catch (error) {
     console.error('重算拼柜应收失败:', error);
     return NextResponse.json({ error: '重算失败' }, { status: 500 });
