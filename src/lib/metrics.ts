@@ -3,7 +3,7 @@ import { marks, paymentsReceived, customerMetrics, sharedContainerItems, loading
 import { eq, and, gte } from 'drizzle-orm';
 
 export async function refreshCustomerMetrics(customerId: number) {
-  const allMarks = await db.select().from(marks).where(eq(marks.customerId, customerId)).all();
+  const allMarks = await db.select().from(marks).where(eq(marks.customerId, customerId)).orderBy(marks.markNo).all();
   if (allMarks.length === 0) {
     // 客户唛头全部删除，清理陈旧指标
     await db.delete(customerMetrics).where(eq(customerMetrics.customerId, customerId));

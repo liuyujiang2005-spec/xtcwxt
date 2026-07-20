@@ -19,7 +19,7 @@ export async function GET(
 
   const items = await db.select().from(sharedContainerItems).where(eq(sharedContainerItems.batchId, batch.id)).all();
   const markIds = [...new Set(items.map(i => i.markId))];
-  const markList = markIds.length > 0 ? await db.select().from(marks).where(inArray(marks.id, markIds)).all() : [];
+  const markList = markIds.length > 0 ? await db.select().from(marks).where(inArray(marks.id, markIds)).orderBy(marks.markNo).all() : [];
   const markMap = new Map(markList.map(m => [m.id, m.markNo]));
   const itemsWithMark = items.map(i => ({ ...i, markNo: markMap.get(i.markId) || '' }));
 

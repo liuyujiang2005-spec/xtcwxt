@@ -29,7 +29,7 @@ export default async function SharedContainersPage({ searchParams }: { searchPar
   let searchedMarks: any[] | null = null;
 
   if (q) {
-    const found = await db.select().from(marks).where(like(marks.markNo, `%${q}%`)).all();
+    const found = await db.select().from(marks).where(like(marks.markNo, `%${q}%`)).orderBy(marks.markNo).all();
     if (found.length > 0) {
       const markIds = found.map(m => m.id);
       const items = await db.select().from(sharedContainerItems).where(inArray(sharedContainerItems.markId, markIds)).all();

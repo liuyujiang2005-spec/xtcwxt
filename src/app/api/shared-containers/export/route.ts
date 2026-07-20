@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     const batchIds = batches.map(b => b.id);
     const allItems = await db.select().from(sharedContainerItems).where(inArray(sharedContainerItems.batchId, batchIds)).all();
     const markIds = [...new Set(allItems.map(i => i.markId))];
-    const markList = await db.select().from(marks).where(inArray(marks.id, markIds)).all();
+    const markList = await db.select().from(marks).where(inArray(marks.id, markIds)).orderBy(marks.markNo).all();
     const markMap = new Map(markList.map(m => [m.id, m.markNo]));
 
     // Sort items by markId, then 运单号 for proper grouping

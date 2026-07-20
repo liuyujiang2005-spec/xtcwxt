@@ -34,7 +34,7 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
   const customerMap = new Map(allCustomers.map((c) => [c.id, c.name]));
 
   const markIds = [...new Set(items.map(i => i.markId))];
-  const markList = markIds.length > 0 ? await db.select().from(marks).where(inArray(marks.id, markIds)).all() : [];
+  const markList = markIds.length > 0 ? await db.select().from(marks).where(inArray(marks.id, markIds)).orderBy(marks.markNo).all() : [];
   const markMap = new Map(markList.map(m => [m.id, m.markNo]));
 
   // 总立方 = 每个运单号对应的总体积累加（按运单号分组取唯一值，和声明的总立方一致）

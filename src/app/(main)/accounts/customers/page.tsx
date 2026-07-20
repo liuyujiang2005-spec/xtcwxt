@@ -61,6 +61,7 @@ export default async function CustomerAccountsPage({
   const allMarks = await db
     .select({ id: marks.id, markNo: marks.markNo, customerId: marks.customerId })
     .from(marks)
+    .orderBy(marks.markNo)
     .all();
 
   // 可用月份

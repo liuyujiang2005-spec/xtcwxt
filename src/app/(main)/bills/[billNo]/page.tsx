@@ -22,7 +22,7 @@ export default async function BillDetailPage({ params }: { params: Promise<{ bil
 
   const items = await db.select().from(billItems).where(eq(billItems.billId, bill.id)).all();
   const markIds = items.map(i => i.markId);
-  const markList = await db.select().from(marks).where(inArray(marks.id, markIds)).all();
+  const markList = await db.select().from(marks).where(inArray(marks.id, markIds)).orderBy(marks.markNo).all();
   const markMap = new Map(markList.map(m => [m.id, m]));
 
   const custIds = [...new Set(markList.map(m => m.customerId))];
