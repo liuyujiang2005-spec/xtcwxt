@@ -1,15 +1,15 @@
 const CNY_FORMATTER = new Intl.NumberFormat('zh-CN', {
   style: 'currency',
   currency: 'CNY',
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
+  minimumFractionDigits: 3,
+  maximumFractionDigits: 3,
 });
 
 const THB_FORMATTER = new Intl.NumberFormat('th-TH', {
   style: 'currency',
   currency: 'THB',
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
+  minimumFractionDigits: 3,
+  maximumFractionDigits: 3,
 });
 
 export function formatAmount(amount: number, currency: string = 'CNY'): string {
@@ -21,7 +21,7 @@ export function formatAmount(amount: number, currency: string = 'CNY'): string {
   return CNY_FORMATTER.format(amount);
 }
 
-export function formatNumber(n: number, decimals: number = 2): string {
+export function formatNumber(n: number, decimals: number = 3): string {
   if (!isFinite(n)) return '—';
   return n.toFixed(decimals);
 }
