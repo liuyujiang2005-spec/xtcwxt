@@ -84,6 +84,7 @@ export const sharedContainerItems = sqliteTable('shared_container_items', {
   货型: text('货型'),
   运输方式: text('运输方式'),
   客户应收: integer('客户应收'),
+  单项应收: real('单项应收'),
   订单总价: real('订单总价'),
   运单号: text('运单号'),
   cost_status: text('cost_status').default('待支出'),

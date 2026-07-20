@@ -88,6 +88,7 @@ sqlite.exec(`
     货型 TEXT,
     运输方式 TEXT,
     客户应收 INTEGER,
+    单项应收 REAL,
     订单总价 REAL,
     运单号 TEXT,
     cost_status TEXT DEFAULT '待支出',

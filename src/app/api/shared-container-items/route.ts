@@ -81,6 +81,7 @@ export async function POST(request: NextRequest) {
         groups.get(gk)!.push(r);
       });
       const recvMap = new Map<any, number>();
+      const itemRecvMap = new Map<any, number>();
       for (const [, group] of groups) {
         const first = group[0];
         const custInfo = getCust(first.custId);
@@ -91,6 +92,11 @@ export async function POST(request: NextRequest) {
         const receivable = waybillReceivable(group.map(r => r.raw), (cargo) => getMatrixPrice(custInfo.priceMatrix, warehouse, transport, cargo), minVol);
         recvMap.set(first.raw, receivable);
         for (let i = 1; i < group.length; i++) recvMap.set(group[i].raw, 0);
+        // 每条明细单独算单项应收(每条自己货型×自己单项体积)
+        for (const r of group) {
+          const price = getMatrixPrice(custInfo.priceMatrix, warehouse, transport, r.raw.货型);
+          itemRecvMap.set(r.raw, Math.round(price * (Number(r.raw.单项体积) || 0) * 100) / 100);
+        }
       }
 
       // ── 第三步：插入明细，带上按运单算好的客户应收 ──
@@ -121,6 +127,7 @@ export async function POST(request: NextRequest) {
           订单总价: item.订单总价 || 0,
           运单号: item.运单号 || '',
           客户应收: receivable,
+          单项应收: itemRecvMap.get(item) ?? 0,
           cost_status: '待支出',
           ai_verified: item.ai_verified || 0,
           ai_verify_msg: item.ai_verify_msg || null,

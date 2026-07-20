@@ -71,6 +71,12 @@ export async function POST(
         const minVol = ci.em ? (transport === '海运' ? 0.5 : 0.3) : 0;
         // 每条按自己货型定价后加总(一个运单里货型可能不同)，低消按比例放大
         const receivable = waybillReceivable(group, (cargo) => getMatrixPrice(ci.pm, warehouse, transport, cargo), minVol);
+        // 每条明细单独算单项应收并落库
+        for (const item of group) {
+          const price = getMatrixPrice(ci.pm, warehouse, transport, item.货型);
+          const itemRecv = Math.round(price * (Number(item.单项体积) || 0) * 100) / 100;
+          tx.update(sharedContainerItems).set({ 单项应收: itemRecv }).where(eq(sharedContainerItems.id, item.id)).run();
+        }
         tx.update(sharedContainerItems).set({ 客户应收: receivable }).where(eq(sharedContainerItems.id, first.id)).run();
         for (let i = 1; i < group.length; i++) {
           tx.update(sharedContainerItems).set({ 客户应收: 0 }).where(eq(sharedContainerItems.id, group[i].id)).run();

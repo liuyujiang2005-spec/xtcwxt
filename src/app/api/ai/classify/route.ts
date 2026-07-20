@@ -167,7 +167,7 @@ export async function POST(request: NextRequest) {
 
         for (const u of updates) {
           if (u.table === 'sc') {
-            tx.update(sharedContainerItems).set({ 客户应收: u.rec }).where(eq(sharedContainerItems.id, u.id)).run();
+            tx.update(sharedContainerItems).set({ 客户应收: u.rec, 单项应收: u.itemRec }).where(eq(sharedContainerItems.id, u.id)).run();
           } else {
             tx.update(loadingItems).set({ 客户应收: u.rec, 单项应收: u.itemRec }).where(eq(loadingItems.id, u.id)).run();
           }
