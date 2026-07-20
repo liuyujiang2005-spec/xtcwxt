@@ -33,27 +33,44 @@ export async function POST(
 
     await db.transaction((tx) => {
       const custCache = new Map<number, { pm: any; em: boolean }>();
-      for (const item of items) {
-        let ci = custCache.get(item.customerId);
+      const getCust = (cid: number) => {
+        let ci = custCache.get(cid);
         if (!ci) {
-          const c = tx.select().from(customers).where(eq(customers.id, item.customerId)).get();
+          const c = tx.select().from(customers).where(eq(customers.id, cid)).get();
           let pm: any = {};
           if (c?.defaultCurrency === 'THB') { if (c?.priceMatrixThb) try { pm = JSON.parse(c.priceMatrixThb); } catch {} }
           else if (c?.priceMatrix) { try { pm = JSON.parse(c.priceMatrix); } catch {} }
           ci = { pm, em: c?.enableMinVolume !== 0 };
-          custCache.set(item.customerId, ci);
+          custCache.set(cid, ci);
         }
+        return ci;
+      };
 
-        const transport = item.运输方式 || '海运';
-        const cargo = item.货型 || '普货';
-        const warehouse = (item as any).仓库 || null;
+      // 按 客户+运单 分组，口径与生成账单一致：客户价 × max(运单总体积, 低消)，落运单第一条、其余0
+      const groups = new Map<string, typeof items>();
+      items.forEach((item, idx) => {
+        const ok = ((item as any).运单号 || '').trim() || `_${idx}`;
+        const gk = `${item.customerId}__${ok}`;
+        if (!groups.has(gk)) groups.set(gk, []);
+        groups.get(gk)!.push(item);
+      });
+
+      for (const [, group] of groups) {
+        const first = group[0];
+        const ci = getCust(first.customerId);
+        let orderVol = 0;
+        for (const it of group) orderVol = Math.max(orderVol, Number(it.总体积) || 0);
+        const transport = first.运输方式 || '海运';
+        const cargo = first.货型 || '普货';
+        const warehouse = (first as any).仓库 || null;
         const price = getMatrixPrice(ci.pm, warehouse, transport, cargo);
-        const vol = item.单箱体积 ?? item.总体积 ?? 0;
         const minVol = ci.em ? (transport === '海运' ? 0.5 : 0.3) : 0;
-        const chargeVol = Math.max(vol, minVol);
+        const chargeVol = Math.max(orderVol, minVol);
         const receivable = Math.round(price * chargeVol * 100) / 100;
-
-        tx.update(sharedContainerItems).set({ 客户应收: receivable }).where(eq(sharedContainerItems.id, item.id)).run();
+        tx.update(sharedContainerItems).set({ 客户应收: receivable }).where(eq(sharedContainerItems.id, first.id)).run();
+        for (let i = 1; i < group.length; i++) {
+          tx.update(sharedContainerItems).set({ 客户应收: 0 }).where(eq(sharedContainerItems.id, group[i].id)).run();
+        }
       }
     });
 

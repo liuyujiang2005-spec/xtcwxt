@@ -30,7 +30,21 @@ export async function POST(request: NextRequest) {
 
     await db.transaction((tx) => {
       const custCache = new Map<number, { priceMatrix: any; enableMinVol: boolean }>();
+      const getCust = (custId: number) => {
+        let custInfo = custCache.get(custId);
+        if (!custInfo) {
+          const cust = tx.select().from(customers).where(eq(customers.id, custId)).get();
+          let pm: any = {};
+          if (cust?.defaultCurrency === 'THB') { if (cust?.priceMatrixThb) try { pm = JSON.parse(cust.priceMatrixThb); } catch {} }
+          else if (cust?.priceMatrix) { try { pm = JSON.parse(cust.priceMatrix); } catch {} }
+          custInfo = { priceMatrix: pm, enableMinVol: cust?.enableMinVolume !== 0 };
+          custCache.set(custId, custInfo);
+        }
+        return custInfo;
+      };
 
+      // ── 第一步：解析每条明细的唛头→客户（含建唛/建客户），保持原顺序 ──
+      const resolved: { raw: any; custId: number; markId: number }[] = [];
       for (const item of items) {
         const cleanMarkNo = (item.markNo || '').replace(/^BL-[\d]{6}-/, '').trim();
         const monthTag = item.monthTag || new Date().toISOString().substring(0, 7);
@@ -54,31 +68,41 @@ export async function POST(request: NextRequest) {
           mark = tx.select().from(marks).where(eq(marks.id, Number(result.lastInsertRowid))).get();
           if (!mark) throw new Error(`创建唛头失败: ${item.markNo}`);
         }
+        resolved.push({ raw: item, custId: mark.customerId, markId: mark.id });
+      }
 
-        const custId = mark.customerId;
-
-        let custInfo = custCache.get(custId);
-        if (!custInfo) {
-          const cust = tx.select().from(customers).where(eq(customers.id, custId)).get();
-          let pm: any = {};
-          if (cust?.defaultCurrency === 'THB') { if (cust?.priceMatrixThb) try { pm = JSON.parse(cust.priceMatrixThb); } catch {} }
-          else if (cust?.priceMatrix) { try { pm = JSON.parse(cust.priceMatrix); } catch {} }
-          custInfo = { priceMatrix: pm, enableMinVol: cust?.enableMinVolume !== 0 };
-          custCache.set(custId, custInfo);
-        }
-
-        const transport = item.运输方式 || '海运';
-        const cargo = item.货型 || '普货';
-        const warehouse = item.仓库 || null;
-        const unitPrice = getMatrixPrice(custInfo.priceMatrix, warehouse, transport, cargo);
-        const vol = item.单箱体积 ?? item.总体积 ?? 0;
+      // ── 第二步：按客户+运单分组算应收（口径与生成账单一致：
+      //    客户价 × max(运单总体积, 低消保底 海0.5/陆0.3)，落运单第一条、其余0） ──
+      const groups = new Map<string, typeof resolved>();
+      resolved.forEach((r, idx) => {
+        const ok = (r.raw.运单号 || '').trim() || `_${idx}`;
+        const gk = `${r.custId}__${ok}`;
+        if (!groups.has(gk)) groups.set(gk, []);
+        groups.get(gk)!.push(r);
+      });
+      const recvMap = new Map<any, number>();
+      for (const [, group] of groups) {
+        const first = group[0];
+        const custInfo = getCust(first.custId);
+        let orderVol = 0;
+        for (const r of group) orderVol = Math.max(orderVol, Number(r.raw.总体积) || 0);
+        const transport = first.raw.运输方式 || '海运';
+        const cargo = first.raw.货型 || '普货';
+        const warehouse = first.raw.仓库 || null;
+        const price = getMatrixPrice(custInfo.priceMatrix, warehouse, transport, cargo);
         const minVol = custInfo.enableMinVol ? (transport === '海运' ? 0.5 : 0.3) : 0;
-        const chargeVol = Math.max(vol, minVol);
-        const receivable = item.客户应收 ?? Math.round(unitPrice * chargeVol * 100) / 100;
+        const chargeVol = Math.max(orderVol, minVol);
+        const receivable = Math.round(price * chargeVol * 100) / 100;
+        recvMap.set(first.raw, receivable);
+        for (let i = 1; i < group.length; i++) recvMap.set(group[i].raw, 0);
+      }
 
+      // ── 第三步：插入明细，带上按运单算好的客户应收 ──
+      for (const { raw: item, custId, markId } of resolved) {
+        const receivable = recvMap.get(item) ?? 0;
         tx.insert(sharedContainerItems).values({
           batchId,
-          markId: mark.id,
+          markId,
           customerId: custId,
           品名: item.品名 || null,
           尺寸_长: item.尺寸_长 ?? null,
