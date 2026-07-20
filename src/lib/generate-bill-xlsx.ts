@@ -6,7 +6,7 @@ export interface BillRow {
   货型: string; 品名: string; 尺寸: string; 件数: number; 国内单号: string;
   单项体积: number; 单项重量: number; 总体积: number; 总重量: number;
   计费体积: number; 总计费体积: number; 单价: number; 订单总价: number;
-  备注: string; 结算状态: string;
+  备注: string;
 }
 
 const TPL_PATH = path.join(process.cwd(), 'public', 'bill_template.xlsx');
