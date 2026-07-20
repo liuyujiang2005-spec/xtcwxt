@@ -149,19 +149,20 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
               <p className="text-xs mt-2">批次: {batch.batchNo} | 状态: {batch.status}</p>
             </div>
           ) : (
-            <Table>
+            <div className="border rounded-lg overflow-auto max-h-80">
+            <Table className="[&_td]:border [&_th]:border [&_td]:border-gray-300 [&_th]:border-gray-300">
               <TableHeader><TableRow>
-                <TableHead>唛头</TableHead><TableHead>品名</TableHead><TableHead>仓库</TableHead><TableHead>货型</TableHead><TableHead>运输</TableHead>
-                <TableHead className="text-right">总体积</TableHead><TableHead className="text-right">单项体积</TableHead>
-                <TableHead className="text-right">箱数</TableHead><TableHead className="text-right">单箱数量</TableHead>
+                <TableHead>唛头</TableHead><TableHead>品名</TableHead><TableHead>运单号</TableHead><TableHead>仓库</TableHead><TableHead className="text-right">总体积</TableHead>
+                <TableHead className="text-right">单项体积</TableHead><TableHead className="text-right">箱数</TableHead><TableHead className="text-right">单箱数量</TableHead>
                 <TableHead className="max-w-[100px]">国内单号</TableHead><TableHead className="text-right w-20">总重量</TableHead>
+                <TableHead>货型</TableHead><TableHead>运输</TableHead>
                 <TableHead className="text-right">成本单价</TableHead><TableHead className="text-right">成本</TableHead>
                 <TableHead className="text-right">单项应收</TableHead><TableHead className="text-right">应收</TableHead>
                 <TableHead>结算</TableHead><TableHead>状态</TableHead><TableHead className="w-10"></TableHead>
               </TableRow></TableHeader>
               <TableBody>
                 {(() => {
-                  // 两级合并：先按唛头，唛头内再按连续运单号；运单级合并 总体积/应收，单项应收按条
+                  // 两级合并：先按唛头，唛头内再按连续运单号
                   type Row = { item: (typeof items)[number]; isMarkFirst: boolean; markRowSpan: number; isOrderFirst: boolean; orderRowSpan: number };
                   const flat: Row[] = [];
                   let ci = 0;
@@ -189,14 +190,16 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
                     <TableRow key={item.id}>
                       {isMarkFirst ? <TableCell className="font-medium align-top" rowSpan={markRowSpan}>{markMap.get(item.markId) || '-'}</TableCell> : null}
                       <TableCell className="max-w-[120px] truncate" title={item.品名 || ''}>{item.品名 || '-'}</TableCell>
-                      <TableCell>{item.仓库 || '-'}</TableCell>
-                      <TableCell>{item.货型 || '-'}</TableCell><TableCell>{item.运输方式 || '-'}</TableCell>
+                      {isOrderFirst ? <TableCell className="text-xs font-mono align-top" rowSpan={orderRowSpan}>{item.运单号 || '-'}</TableCell> : null}
+                      {isOrderFirst ? <TableCell className="align-top" rowSpan={orderRowSpan}>{item.仓库 || '-'}</TableCell> : null}
                       {isOrderFirst ? <TableCell className="text-right align-top" rowSpan={orderRowSpan}>{(item.总体积 ?? 0).toFixed(6)}</TableCell> : null}
                       <TableCell className="text-right">{item.单项体积 || '-'}</TableCell>
                       <TableCell className="text-right">{item.箱数 || '-'}</TableCell>
                       <TableCell className="text-right">{item.单箱数量 || '-'}</TableCell>
-                       <TableCell className="text-xs max-w-[100px] truncate">{item.国内单号 || '-'}</TableCell>
-                      <TableCell className="text-right">{item.总重量 || '-'}</TableCell>
+                      <TableCell className="text-xs max-w-[100px] truncate">{item.国内单号 || '-'}</TableCell>
+                      {isOrderFirst ? <TableCell className="text-right align-top" rowSpan={orderRowSpan}>{item.总重量 || '-'}</TableCell> : null}
+                      {isOrderFirst ? <TableCell className="align-top" rowSpan={orderRowSpan}>{item.货型 || '-'}</TableCell> : null}
+                      {isOrderFirst ? <TableCell className="align-top" rowSpan={orderRowSpan}>{item.运输方式 || '-'}</TableCell> : null}
                       <TableCell className="text-right">{formatAmount((item.成本单价 || 0))}</TableCell>
                       <TableCell className="text-right">{formatAmount((item.需支付总价 || 0))}</TableCell>
                       <TableCell className="text-right">{formatAmount((item as any).单项应收 || 0, cur(item.customerId))}</TableCell>
@@ -209,6 +212,7 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
                 })()}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardContent>
       </Card>
