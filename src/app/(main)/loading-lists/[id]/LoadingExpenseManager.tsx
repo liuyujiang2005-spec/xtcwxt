@@ -75,31 +75,29 @@ export function LoadingExpenseManager({
     <Card>
       <CardHeader><CardTitle>费用管理</CardTitle></CardHeader>
       <CardContent>
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-3">
           {EXPENSE_TYPES.map((type) => {
             const entry = entries[type];
             return (
-              <div key={type} className="flex items-center gap-3">
-                <span className="w-16 text-sm font-medium">{type}</span>
-                <div className="flex-1 flex items-center gap-2">
-                  <Input
-                    type="number" step="0.01" placeholder="0.00"
-                    className="h-8 w-28"
-                    value={entry.amount}
-                    onChange={(e) => setEntries({ ...entries, [type]: { ...entry, amount: e.target.value } })}
-                  />
-                  <select
-                    className="h-8 w-16 rounded-lg border border-input bg-transparent px-2 text-sm"
-                    value={entry.currency}
-                    onChange={(e) => setEntries({ ...entries, [type]: { ...entry, currency: e.target.value } })}
-                  >
-                    <option value="CNY">CNY</option>
-                    <option value="THB">THB</option>
-                  </select>
-                  <span className={`text-xs px-2 py-1 rounded ${entry.status === '已支付' ? 'bg-gray-100 text-gray-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                    {entry.status}
-                  </span>
-                </div>
+              <div key={type} className="flex items-center gap-2">
+                <span className="w-24 text-sm font-medium shrink-0 whitespace-nowrap">{type}</span>
+                <Input
+                  type="number" step="0.01" placeholder="0.00"
+                  className="h-8 flex-1 min-w-0"
+                  value={entry.amount}
+                  onChange={(e) => setEntries({ ...entries, [type]: { ...entry, amount: e.target.value } })}
+                />
+                <select
+                  className="h-8 w-14 rounded-lg border border-input bg-transparent px-1 text-xs shrink-0"
+                  value={entry.currency}
+                  onChange={(e) => setEntries({ ...entries, [type]: { ...entry, currency: e.target.value } })}
+                >
+                  <option value="CNY">CNY</option>
+                  <option value="THB">THB</option>
+                </select>
+                <span className={`text-xs px-1.5 py-1 rounded shrink-0 ${entry.status === '已支付' ? 'bg-gray-100 text-gray-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                  {entry.status}
+                </span>
               </div>
             );
           })}
