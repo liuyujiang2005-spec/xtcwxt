@@ -137,9 +137,8 @@ export async function GET(request: NextRequest) {
         总计费体积: cv,
         单价: up,
         订单总价: oRec,
-        备注: (item as any).备注 || '',
-        结算状态: (item as any).cost_status ?? (item as any).payment_status ?? '',
-      });
+         备注: (item as any).备注 || '',
+       });
     }
   }
 

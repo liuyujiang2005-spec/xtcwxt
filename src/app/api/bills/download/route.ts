@@ -86,9 +86,8 @@ export async function GET(request: NextRequest) {
         总计费体积: volume,
         单价: Number((unitPrice || 0).toFixed(6)),
         订单总价: amountYuan,
-        备注: item.备注 || '',
-        结算状态: (item as any).cost_status ?? (item as any).payment_status ?? '',
-      });
+         备注: item.备注 || '',
+       });
     }
   };
 
