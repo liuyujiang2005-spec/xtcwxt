@@ -58,8 +58,8 @@ export default async function LoadingListDetailPage({ params }: { params: Promis
         {batch.status && <span className={`text-xs px-2 py-1 rounded ${batch.status === '待审核' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}>{batch.status}</span>}
         {batch.status === '待审核' && <ReviewActions batchId={batch.id} apiPath="/api/loading-batches" listPath="/loading-lists" />}
         <RecalculateButton batchId={batch.id} apiPath="/api/loading-batches" />
+        <ClassifyButton batchId={batch.id} type="loading-list" items={items} markMap={Object.fromEntries(markMap)} />
       </div>
-      <ClassifyButton batchId={batch.id} type="loading-list" items={items} markMap={Object.fromEntries(markMap)} />
 
       {/* 本柜成本小结 */}
       <Card className="border-2">
@@ -108,7 +108,7 @@ export default async function LoadingListDetailPage({ params }: { params: Promis
                 <TableHead>客户</TableHead><TableHead>品名</TableHead><TableHead>运单号</TableHead><TableHead>仓库</TableHead><TableHead className="text-right">总体积</TableHead>
                 <TableHead className="text-right">单项体积</TableHead><TableHead className="text-right">箱数</TableHead><TableHead className="text-right">单箱数量</TableHead>
                 <TableHead>国内单号</TableHead><TableHead className="text-right">总重量</TableHead>
-                <TableHead>货型</TableHead><TableHead>运输</TableHead>                <TableHead className="text-right">单价</TableHead><TableHead className="text-right">单项应收</TableHead>
+                <TableHead>货型</TableHead><TableHead>运输</TableHead><TableHead className="text-right">单价</TableHead><TableHead className="text-right">单项应收</TableHead>
                 <TableHead className="text-right">应收</TableHead><TableHead>状态</TableHead><TableHead className="w-10"></TableHead>
               </TableRow></TableHeader>
               <TableBody>

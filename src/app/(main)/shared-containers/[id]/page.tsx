@@ -91,8 +91,8 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
         </Badge>
         {batch.status === '待审核' && <ReviewActions batchId={batch.id} apiPath="/api/shared-containers" listPath="/shared-containers" />}
         <RecalculateButton batchId={batch.id} apiPath="/api/shared-containers" />
+        <ClassifyButton batchId={batch.id} items={items} markMap={Object.fromEntries(markMap)} />
       </div>
-      <ClassifyButton batchId={batch.id} items={items} markMap={Object.fromEntries(markMap)} />
 
       {/* 本柜成本小结 */}
       <Card className="border-2">
