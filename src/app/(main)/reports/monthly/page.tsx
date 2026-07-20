@@ -104,7 +104,7 @@ export default async function MonthlyReportPage() {
     ...accumByMonth.keys(),
   ])].filter(Boolean).sort().reverse();
 
-  // 每月汇总(营收/支出/利润) + 全月合计
+  // 每月汇总(应收/成本) + 全月合计。系统不算利润(跨币种汇率不好算,用户手动)
   const monthAgg = allMonths.map((month) => {
     const directCNY = incomeByMonth.filter(r => r.month === month && r.currency !== 'THB').reduce((s, r) => s + (r.total || 0), 0);
     const directTHB = incomeByMonth.filter(r => r.month === month && r.currency === 'THB').reduce((s, r) => s + (r.total || 0), 0);
@@ -115,13 +115,11 @@ export default async function MonthlyReportPage() {
     const expTHB = expenseByMonth.filter(r => r.month === month && r.currency === 'THB').reduce((s, r) => s + (r.total || 0), 0);
     const costCNY = expCNY + am.costCNY;
     const costTHB = expTHB;
-    return { month, revCNY, revTHB, costCNY, costTHB, profitCNY: revCNY - costCNY, profitTHB: revTHB - costTHB };
+    return { month, revCNY, revTHB, costCNY, costTHB };
   });
-  const totalCNY = monthAgg.reduce((a, m) => ({ rev: a.rev + m.revCNY, cost: a.cost + m.costCNY, profit: a.profit + m.profitCNY }), { rev: 0, cost: 0, profit: 0 });
-  const totalTHB = monthAgg.reduce((a, m) => ({ rev: a.rev + m.revTHB, cost: a.cost + m.costTHB, profit: a.profit + m.profitTHB }), { rev: 0, cost: 0, profit: 0 });
+  const totalCNY = monthAgg.reduce((a, m) => ({ rev: a.rev + m.revCNY, cost: a.cost + m.costCNY }), { rev: 0, cost: 0 });
+  const totalTHB = monthAgg.reduce((a, m) => ({ rev: a.rev + m.revTHB, cost: a.cost + m.costTHB }), { rev: 0, cost: 0 });
   const hasTHB = monthAgg.some(m => m.revTHB || m.costTHB);
-
-  const profitCls = (v: number) => v < 0 ? 'text-red-600' : 'text-green-600';
 
   return (
     <div className="space-y-6">
@@ -137,7 +135,7 @@ export default async function MonthlyReportPage() {
             <CardContent className="p-0">
               <Table>
                 <TableHeader><TableRow>
-                  <TableHead>月份</TableHead><TableHead className="text-right">营收</TableHead><TableHead className="text-right">支出</TableHead><TableHead className="text-right">利润</TableHead>
+                  <TableHead>月份</TableHead><TableHead className="text-right">应收</TableHead><TableHead className="text-right">成本</TableHead>
                 </TableRow></TableHeader>
                 <TableBody>
                   {monthAgg.map(m => (
@@ -145,14 +143,12 @@ export default async function MonthlyReportPage() {
                       <TableCell className="font-medium"><Link href={`/bills?month=${m.month}&tab=cny`} className="hover:underline">{m.month}</Link></TableCell>
                       <TableCell className="text-right">{formatAmount(m.revCNY)}</TableCell>
                       <TableCell className="text-right text-red-600">{formatAmount(m.costCNY)}</TableCell>
-                      <TableCell className={`text-right font-bold ${profitCls(m.profitCNY)}`}>{formatAmount(m.profitCNY)}</TableCell>
                     </TableRow>
                   ))}
                   <TableRow className="bg-muted">
                     <TableCell className="font-bold">合计</TableCell>
                     <TableCell className="text-right font-bold">{formatAmount(totalCNY.rev)}</TableCell>
                     <TableCell className="text-right font-bold text-red-600">{formatAmount(totalCNY.cost)}</TableCell>
-                    <TableCell className={`text-right font-bold ${profitCls(totalCNY.profit)}`}>{formatAmount(totalCNY.profit)}</TableCell>
                   </TableRow>
                 </TableBody>
               </Table>
@@ -166,7 +162,7 @@ export default async function MonthlyReportPage() {
               <CardContent className="p-0">
                 <Table>
                   <TableHeader><TableRow>
-                    <TableHead>月份</TableHead><TableHead className="text-right">营收</TableHead><TableHead className="text-right">支出</TableHead><TableHead className="text-right">利润</TableHead>
+                    <TableHead>月份</TableHead><TableHead className="text-right">应收</TableHead><TableHead className="text-right">成本</TableHead>
                   </TableRow></TableHeader>
                   <TableBody>
                     {monthAgg.map(m => (
@@ -174,14 +170,12 @@ export default async function MonthlyReportPage() {
                         <TableCell className="font-medium"><Link href={`/bills?month=${m.month}&tab=thb`} className="hover:underline">{m.month}</Link></TableCell>
                         <TableCell className="text-right">{formatAmount(m.revTHB, 'THB')}</TableCell>
                         <TableCell className="text-right text-red-600">{formatAmount(m.costTHB, 'THB')}</TableCell>
-                        <TableCell className={`text-right font-bold ${profitCls(m.profitTHB)}`}>{formatAmount(m.profitTHB, 'THB')}</TableCell>
                       </TableRow>
                     ))}
                     <TableRow className="bg-muted">
                       <TableCell className="font-bold">合计</TableCell>
                       <TableCell className="text-right font-bold">{formatAmount(totalTHB.rev, 'THB')}</TableCell>
                       <TableCell className="text-right font-bold text-red-600">{formatAmount(totalTHB.cost, 'THB')}</TableCell>
-                      <TableCell className={`text-right font-bold ${profitCls(totalTHB.profit)}`}>{formatAmount(totalTHB.profit, 'THB')}</TableCell>
                     </TableRow>
                   </TableBody>
                 </Table>
@@ -199,27 +193,23 @@ export default async function MonthlyReportPage() {
                 <CardHeader><CardTitle>{m.month}</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
                   <p className="text-sm font-bold text-muted-foreground">人民币</p>
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-2 gap-4">
                     <Link href={`/bills?month=${m.month}&tab=cny`} className="block">
                       <div className="text-center p-3 bg-muted rounded-lg hover:bg-muted/70 cursor-pointer">
-                        <p className="text-sm text-muted-foreground">营收 ›</p>
+                        <p className="text-sm text-muted-foreground">应收 ›</p>
                         <p className="text-lg font-bold">{formatAmount(m.revCNY)}</p>
                       </div>
                     </Link>
                     <Link href={`/expenses?month=${m.month}`} className="block">
                       <div className="text-center p-3 bg-muted rounded-lg hover:bg-muted/70 cursor-pointer">
-                        <p className="text-sm text-muted-foreground">支出 ›</p>
+                        <p className="text-sm text-muted-foreground">成本 ›</p>
                         <p className="text-lg font-bold text-red-600">{formatAmount(m.costCNY)}</p>
                       </div>
                     </Link>
-                    <div className="text-center p-3 bg-muted rounded-lg">
-                      <p className="text-sm text-muted-foreground">利润</p>
-                      <p className={`text-lg font-bold ${profitCls(m.profitCNY)}`}>{formatAmount(m.profitCNY)}</p>
-                    </div>
                   </div>
                   {cnyCusts.length > 0 && (
                     <Table>
-                      <TableHeader><TableRow><TableHead>客户</TableHead><TableHead className="text-right">营收(CNY)</TableHead></TableRow></TableHeader>
+                      <TableHeader><TableRow><TableHead>客户</TableHead><TableHead className="text-right">应收(CNY)</TableHead></TableRow></TableHeader>
                       <TableBody>
                         {cnyCusts.map(([cid, v]) => (
                           <TableRow key={cid}><TableCell>{customerMap.get(cid) || '-'}</TableCell><TableCell className="text-right">{formatAmount(v.CNY)}</TableCell></TableRow>
@@ -230,27 +220,23 @@ export default async function MonthlyReportPage() {
                   {(m.revTHB || m.costTHB || thbCusts.length > 0) && (
                     <>
                       <p className="text-sm font-bold text-orange-600">泰铢</p>
-                      <div className="grid grid-cols-3 gap-4">
+                      <div className="grid grid-cols-2 gap-4">
                         <Link href={`/bills?month=${m.month}&tab=thb`} className="block">
                           <div className="text-center p-3 bg-muted rounded-lg hover:bg-muted/70 cursor-pointer">
-                            <p className="text-sm text-muted-foreground text-orange-600">营收 ›</p>
+                            <p className="text-sm text-muted-foreground text-orange-600">应收 ›</p>
                             <p className="text-lg font-bold text-orange-600">{formatAmount(m.revTHB, 'THB')}</p>
                           </div>
                         </Link>
                         <Link href={`/expenses?month=${m.month}`} className="block">
                           <div className="text-center p-3 bg-muted rounded-lg hover:bg-muted/70 cursor-pointer">
-                            <p className="text-sm text-muted-foreground text-orange-600">支出 ›</p>
+                            <p className="text-sm text-muted-foreground text-orange-600">成本 ›</p>
                             <p className="text-lg font-bold text-orange-600">{formatAmount(m.costTHB, 'THB')}</p>
                           </div>
                         </Link>
-                        <div className="text-center p-3 bg-muted rounded-lg">
-                          <p className="text-sm text-muted-foreground text-orange-600">利润</p>
-                          <p className={`text-lg font-bold ${profitCls(m.profitTHB)}`}>{formatAmount(m.profitTHB, 'THB')}</p>
-                        </div>
                       </div>
                       {thbCusts.length > 0 && (
                         <Table>
-                          <TableHeader><TableRow><TableHead>客户</TableHead><TableHead className="text-right">营收(THB)</TableHead></TableRow></TableHeader>
+                          <TableHeader><TableRow><TableHead>客户</TableHead><TableHead className="text-right">应收(THB)</TableHead></TableRow></TableHeader>
                           <TableBody>
                             {thbCusts.map(([cid, v]) => (
                               <TableRow key={cid}><TableCell>{customerMap.get(cid) || '-'}</TableCell><TableCell className="text-right">{formatAmount(v.THB, 'THB')}</TableCell></TableRow>
