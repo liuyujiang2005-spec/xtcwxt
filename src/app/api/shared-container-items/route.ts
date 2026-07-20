@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
           尺寸_长: item.尺寸_长 ?? null,
           尺寸_宽: item.尺寸_宽 ?? null,
           尺寸_高: item.尺寸_高 ?? null,
-          单箱体积: item.单箱体积 ?? null,
+          单项体积: item.单项体积 ?? null,
           总体积: item.总体积,
           国内单号: item.国内单号 || null,
           单箱数量: item.单箱数量 ?? null,

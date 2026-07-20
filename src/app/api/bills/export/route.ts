@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
       const warehouse = (item as any).仓库 || null;
       const okey = (item as any).运单号 || '_' + (item as any).id;
       const up = getMatrixPrice(pm, warehouse, transport, (item as any).货型 || '');
-      const cv = orderChargeVolMap.get(okey) || Math.max((item as any).单箱体积 || 0, minVol(transport));
+      const cv = orderChargeVolMap.get(okey) || Math.max((item as any).单项体积 || 0, minVol(transport));
       const ct = (item as any).箱数 ?? 0;
       const oRec = orderReceivableMap.get(okey) || 0;
 
@@ -129,11 +129,11 @@ export async function GET(request: NextRequest) {
         尺寸: dims,
         件数: ct,
         国内单号: (item as any).国内单号 ?? '',
-        单项体积: (item as any).单箱体积 ?? 0,
+        单项体积: (item as any).单项体积 ?? 0,
         单项重量: (item as any).单项重量 ?? 0,
         总体积: vol,
         总重量: (item as any).总重量 ?? 0,
-        计费体积: (item as any).单箱体积 ?? 0,
+        计费体积: (item as any).单项体积 ?? 0,
         总计费体积: cv,
         单价: up,
         订单总价: oRec,

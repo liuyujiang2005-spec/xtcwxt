@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
 
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet('拼柜明细');
-    const headers = ['批次号','日期','唛头','运输方式','运单号','货型','品名','尺寸(cm)','件数(箱)','国内单号','单箱体积','总重量','总体积','成本单价','需支付总价','订单总价','结算状态','客户应收'];
+    const headers = ['批次号','日期','唛头','运输方式','运单号','货型','品名','尺寸(cm)','件数(箱)','国内单号','单项体积','总重量','总体积','成本单价','需支付总价','订单总价','结算状态','客户应收'];
     const hRow = ws.addRow(headers);
     hRow.eachCell((cell: any) => { cell.font = { bold: true }; cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9E1F2' } }; });
 
@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
         dims,
         item.箱数 ?? '',
         item.国内单号 || '',
-        item.单箱体积 ?? '',
+        item.单项体积 ?? '',
         item.总重量 ?? '',
         item.总体积 ?? '',
         item.成本单价 ?? '',

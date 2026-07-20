@@ -106,7 +106,7 @@ export default async function LoadingListDetailPage({ params }: { params: Promis
             <Table className="[&_td]:border [&_th]:border [&_td]:border-gray-300 [&_th]:border-gray-300">
               <TableHeader><TableRow>
                 <TableHead>客户</TableHead><TableHead>品名</TableHead><TableHead>运单号</TableHead><TableHead>仓库</TableHead><TableHead className="text-right">总体积</TableHead>
-                <TableHead className="text-right">单箱体积</TableHead><TableHead className="text-right">箱数</TableHead><TableHead className="text-right">单箱数量</TableHead>
+                <TableHead className="text-right">单项体积</TableHead><TableHead className="text-right">箱数</TableHead><TableHead className="text-right">单箱数量</TableHead>
                 <TableHead>国内单号</TableHead><TableHead className="text-right">总重量</TableHead>
                 <TableHead>货型</TableHead><TableHead>运输</TableHead><TableHead className="text-right">单价</TableHead>
                 <TableHead className="text-right">应收</TableHead><TableHead>状态</TableHead><TableHead className="w-10"></TableHead>
@@ -143,7 +143,7 @@ export default async function LoadingListDetailPage({ params }: { params: Promis
                       {isOrderFirst ? <TableCell className="text-xs font-mono align-top" rowSpan={orderRowSpan}>{item.运单号 || '-'}</TableCell> : null}
                       {isOrderFirst ? <TableCell className="align-top" rowSpan={orderRowSpan}>{(item as any).仓库 || '-'}</TableCell> : null}
                       {isOrderFirst ? <TableCell className="text-right align-top" rowSpan={orderRowSpan}>{(item.总体积 ?? 0).toFixed(6)}</TableCell> : null}
-                      <TableCell className="text-right">{item.单箱体积 || '-'}</TableCell>
+                      <TableCell className="text-right">{item.单项体积 || '-'}</TableCell>
                       <TableCell className="text-right">{item.箱数 || '-'}</TableCell>
                       <TableCell className="text-right">{item.单箱数量 || '-'}</TableCell>
                       <TableCell className="text-xs">{item.国内单号 || '-'}</TableCell>

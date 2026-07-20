@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
     for (const item of items) {
       const mark = markMap.get(item.markId);
       const volume = item.总体积 ?? 0;
-      const singleVolume = item.单箱体积 ?? 0;
+      const singleVolume = item.单项体积 ?? 0;
       const count = item.箱数 ?? 0;
       const amountYuan = item.客户应收 ?? 0;
       const waybillKey = item.运单号 || mark?.markNo || `_${item.id}`;

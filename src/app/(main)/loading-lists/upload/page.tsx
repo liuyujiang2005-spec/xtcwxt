@@ -115,7 +115,7 @@ export default function UploadLoadingListPage() {
         尺寸_长: item.尺寸_长 || 0,
         尺寸_宽: item.尺寸_宽 || 0,
         尺寸_高: item.尺寸_高 || 0,
-        单箱体积: item.单项体积 || 0,
+        单项体积: item.单项体积 || 0,
         总体积: item.总体积 || item.单项体积 || 0,
         国内单号: item.国内单号 || '',
         单箱数量: item.件数 || 0,

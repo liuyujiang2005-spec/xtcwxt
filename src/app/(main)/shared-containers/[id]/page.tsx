@@ -115,7 +115,7 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
             <Table>
               <TableHeader><TableRow>
                 <TableHead>唛头</TableHead><TableHead>品名</TableHead><TableHead>仓库</TableHead><TableHead>货型</TableHead><TableHead>运输</TableHead>
-                <TableHead className="text-right">总体积</TableHead><TableHead className="text-right">单箱体积</TableHead>
+                <TableHead className="text-right">总体积</TableHead><TableHead className="text-right">单项体积</TableHead>
                 <TableHead className="text-right">箱数</TableHead><TableHead className="text-right">单箱数量</TableHead>
                 <TableHead>国内单号</TableHead><TableHead className="text-right">总重量</TableHead>
                 <TableHead className="text-right">成本单价</TableHead>                <TableHead className="text-right">成本</TableHead>
@@ -128,7 +128,7 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
                   <TableCell>{item.仓库 || '-'}</TableCell>
                   <TableCell>{item.货型 || '-'}</TableCell><TableCell>{item.运输方式 || '-'}</TableCell>
                   <TableCell className="text-right">{(item.总体积 ?? 0).toFixed(6)}</TableCell>
-                  <TableCell className="text-right">{item.单箱体积 || '-'}</TableCell>
+                  <TableCell className="text-right">{item.单项体积 || '-'}</TableCell>
                   <TableCell className="text-right">{item.箱数 || '-'}</TableCell>
                   <TableCell className="text-right">{item.单箱数量 || '-'}</TableCell>
                   <TableCell className="text-xs">{item.国内单号 || '-'}</TableCell>

@@ -111,7 +111,7 @@ export default async function BillDetailPage({ params }: { params: Promise<{ bil
                       <TableHead>货型</TableHead>
                       <TableHead>运输</TableHead>
                       <TableHead className="text-right">总体积</TableHead>
-                      <TableHead className="text-right">单箱体积</TableHead>
+                      <TableHead className="text-right">单项体积</TableHead>
                       <TableHead className="text-right">件数</TableHead>
                       <TableHead>国内单号</TableHead>
                       <TableHead className="text-right">总重量</TableHead>
@@ -151,7 +151,7 @@ export default async function BillDetailPage({ params }: { params: Promise<{ bil
                                 {(item.总体积 ?? 0).toFixed(6)}
                               </TableCell>
                             ) : null}
-                            <TableCell className="border text-right">{item.单箱体积 ?? '-'}</TableCell>
+                            <TableCell className="border text-right">{item.单项体积 ?? '-'}</TableCell>
                             <TableCell className="border text-right">{item.箱数 || '-'}</TableCell>
                             <TableCell className="border text-xs">{item.国内单号 || '-'}</TableCell>
                             <TableCell className="border text-right">{item.总重量 || '-'}</TableCell>
