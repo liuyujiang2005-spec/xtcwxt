@@ -23,8 +23,9 @@ export function ClassifyButton({ batchId, type = 'shared-container', items = [],
   const [selectedBatches, setSelectedBatches] = useState<number[]>([batchId]);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
 
-  // Load all batches for multi-select
-  useEffect(() => { fetch('/api/shared-containers').then(r => r.json()).then(d => setBatches(Array.isArray(d) ? d : [])).catch(() => {}); }, []);
+  // Load all batches for multi-select（按类型拉对应列表：装柜拉装柜批次、拼柜拉拼柜批次）
+  const listApi = type === 'loading-list' ? '/api/loading-batches' : '/api/shared-containers';
+  useEffect(() => { fetch(listApi).then(r => r.json()).then(d => setBatches(Array.isArray(d) ? d : [])).catch(() => {}); }, [listApi]);
 
   const toggleBatch = (bid: number) => {
     setSelectedBatches(prev => prev.includes(bid) ? prev.filter(b => b !== bid) : [...prev, bid]);
