@@ -3,7 +3,7 @@ import { db } from '@/db/index';
 import { bills, billItems, sharedContainerItems, loadingItems, customers } from '@/db/schema';
 import { validateSession } from '@/lib/auth';
 import { eq } from 'drizzle-orm';
-import { cargoKey } from '@/lib/pricing';
+import { cargoKey, waybillReceivable } from '@/lib/pricing';
 
 export async function PATCH(request: NextRequest) {
   const st = request.cookies.get('session')?.value;
@@ -29,7 +29,7 @@ export async function PATCH(request: NextRequest) {
     const em = customer?.enableMinVolume !== 0;
     const minVol = (transport: string): number => { if (!em) return 0; return transport === '海运' ? 0.5 : 0.3; };
 
-    const getPrice = (wh: string | null, transport: string, cargo: string): number => {
+    const getPrice = (wh: string | null, transport: string, cargo: string | null | undefined): number => {
       const m = transport === '海运' ? 'sea' : 'land';
       const t = cargoKey(cargo);
       const key = m + '_' + t;
@@ -62,17 +62,12 @@ export async function PATCH(request: NextRequest) {
         if (!orders.has(ok)) orders.set(ok, []);
         orders.get(ok)!.push(item);
       }
-      for (const [ok, items] of orders) {
-        let orderVol = 0;
-        for (const item of items) orderVol = Math.max(orderVol, (item as any).总体积 || 0);
-
+      for (const [, items] of orders) {
         const first = items[0];
         const transport = (first as any).运输方式 || '海运';
-        const cargo = (first as any).货型 || '普货';
         const warehouse = (first as any).仓库 || null;
-        const unitPrice = getPrice(warehouse, transport, cargo);
-        const chargeVol = Math.max(orderVol, minVol(transport));
-        const orderRecv = unitPrice * chargeVol;
+        // 每条按自己货型定价后加总(一个运单里货型可能不同)，低消按比例放大
+        const orderRecv = waybillReceivable(items as any, (cargo) => getPrice(warehouse, transport, cargo), minVol(transport));
         totalReceivable += orderRecv;
 
         for (let i = 0; i < items.length; i++) {

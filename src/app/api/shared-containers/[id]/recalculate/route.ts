@@ -3,9 +3,9 @@ import { db } from '@/db/index';
 import { sharedContainerItems, customers, sharedContainerBatches, bills, billItems } from '@/db/schema';
 import { validateSession } from '@/lib/auth';
 import { eq, or } from 'drizzle-orm';
-import { cargoKey } from '@/lib/pricing';
+import { cargoKey, waybillReceivable } from '@/lib/pricing';
 
-function getMatrixPrice(pm: any, warehouse: string | null, transport: string, cargo: string): number {
+function getMatrixPrice(pm: any, warehouse: string | null, transport: string, cargo: string | null | undefined): number {
   const m = transport === '海运' ? 'sea' : 'land';
   const t = cargoKey(cargo);
   const key = m + '_' + t;
@@ -66,15 +66,11 @@ export async function POST(
         const first = group[0];
         if (paidMarks.has(first.markId)) { skipped += group.length; continue; } // 已付款账单的货，跳过
         const ci = getCust(first.customerId);
-        let orderVol = 0;
-        for (const it of group) orderVol = Math.max(orderVol, Number(it.总体积) || 0);
         const transport = first.运输方式 || '海运';
-        const cargo = first.货型 || '普货';
         const warehouse = (first as any).仓库 || null;
-        const price = getMatrixPrice(ci.pm, warehouse, transport, cargo);
         const minVol = ci.em ? (transport === '海运' ? 0.5 : 0.3) : 0;
-        const chargeVol = Math.max(orderVol, minVol);
-        const receivable = Math.round(price * chargeVol * 100) / 100;
+        // 每条按自己货型定价后加总(一个运单里货型可能不同)，低消按比例放大
+        const receivable = waybillReceivable(group, (cargo) => getMatrixPrice(ci.pm, warehouse, transport, cargo), minVol);
         tx.update(sharedContainerItems).set({ 客户应收: receivable }).where(eq(sharedContainerItems.id, first.id)).run();
         for (let i = 1; i < group.length; i++) {
           tx.update(sharedContainerItems).set({ 客户应收: 0 }).where(eq(sharedContainerItems.id, group[i].id)).run();

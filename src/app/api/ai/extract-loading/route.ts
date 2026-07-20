@@ -7,7 +7,7 @@ import { writeFile, unlink } from 'fs/promises';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
 import { parseViaPythonService, mapPythonResult } from '@/lib/table-parser-client';
-import { cargoKey, isKnownCargo, isKnownTransport } from '@/lib/pricing';
+import { cargoKey, isKnownCargo, isKnownTransport, waybillReceivable } from '@/lib/pricing';
 
 export async function POST(request: NextRequest) {
   const sessionToken = request.cookies.get('session')?.value;
@@ -89,34 +89,30 @@ function applyPriceMatrix(items: any[], pm: { matrix: any; isThb: boolean; enabl
   for (const [, group] of orderGroups) {
     const first = group[0];
     const transport = first.运输方式 === '海运' ? 'sea' : first.运输方式 === '陆运' ? 'land' : 'sea';
-    const cargo = first.货型 || '';
-    const type = cargoKey(cargo);
-    const key = `${transport}_${type}`;
     const warehouse = first.仓库 || null;
-
-    let matrixPrice = 0;
-    if (warehouse && matrix[warehouse] && typeof matrix[warehouse] === 'object' && typeof matrix[warehouse][key] === 'number') {
-      matrixPrice = matrix[warehouse][key];
-    } else if (typeof matrix[key] === 'number') {
-      matrixPrice = matrix[key];
-    }
+    const priceOf = (cargo: any): number => {
+      const k = `${transport}_${cargoKey(cargo)}`;
+      if (warehouse && matrix[warehouse] && typeof matrix[warehouse] === 'object' && typeof matrix[warehouse][k] === 'number') return matrix[warehouse][k];
+      return typeof matrix[k] === 'number' ? matrix[k] : 0;
+    };
 
     // 运单总体积：总体积字段是运单合计（前向填充/合并），取组内最大值即为合计
     let orderVol = 0;
     for (const it of group) orderVol = Math.max(orderVol, Number(it.总体积) || 0);
 
     const minVol = pm.enableMinVol ? (first.运输方式 === '陆运' ? 0.3 : 0.5) : 0;
-    const chargeVol = Math.max(orderVol, minVol);
-    const orderReceivable = matrixPrice * chargeVol;
+    // 每条按自己货型定价后加总(一个运单里货型可能不同)，低消按比例放大
+    const orderReceivable = waybillReceivable(group, priceOf, minVol);
 
     recvMap.set(first, orderReceivable);
     for (let i = 1; i < group.length; i++) recvMap.set(group[i], 0);
 
     // 取价不确定就报警，别闷头兜底乱套价
     const reasons: string[] = [];
-    if (!isKnownCargo(first.货型)) reasons.push(`货型『${first.货型}』无法识别，价格档位可能取错`);
+    const badCargo = [...new Set(group.filter((it: any) => !isKnownCargo(it.货型)).map((it: any) => it.货型))];
+    if (badCargo.length) reasons.push(`货型『${badCargo.join('/')}』无法识别，价格档位可能取错`);
     if (first.运输方式 && !isKnownTransport(first.运输方式)) reasons.push(`运输方式『${first.运输方式}』无法识别`);
-    if (matrixPrice === 0 && orderVol > 0) reasons.push('未配价格');
+    if (group.some((it: any) => priceOf(it.货型) === 0) && orderVol > 0) reasons.push('有货型未配价格');
     if (reasons.length) { for (const it of group) warnMap.set(it, reasons.join('；')); }
   }
 

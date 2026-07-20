@@ -32,3 +32,28 @@ export function isKnownCargo(cargo: string | null | undefined): boolean {
 export function isKnownTransport(transport: string | null | undefined): boolean {
   return transport === '海运' || transport === '陆运';
 }
+
+/**
+ * 计算一个运单的客户应收。
+ * 一个运单里不同产品的货型可能不同(如空压机商检、蚊帐普货)，所以每条按自己货型定价：
+ *   应收 = Σ(客户价(该条货型) × 该条单项体积)
+ * 低消保底：运单总体积不足低消时，按比例放大到低消体积(混货型比例保持)。
+ * @param items 该运单下的明细(需含 货型/单箱体积/总体积)
+ * @param priceOf 按货型取客户价的函数(仓库/运输方式已固定为运单的值)
+ * @param minVol 低消保底体积(海0.5/陆0.3；关低消传0)
+ */
+export function waybillReceivable(
+  items: { 货型?: string | null; 单箱体积?: number | null; 总体积?: number | null }[],
+  priceOf: (cargo: string | null | undefined) => number,
+  minVol: number,
+): number {
+  let base = 0;
+  for (const it of items) base += priceOf(it.货型) * (Number(it.单箱体积) || 0);
+  // 运单总体积：总体积字段是运单合计(每行重复)，取组内最大值即为合计
+  let orderVol = 0;
+  for (const it of items) orderVol = Math.max(orderVol, Number(it.总体积) || 0);
+  if (orderVol <= 0) for (const it of items) orderVol += (Number(it.单箱体积) || 0); // 兜底用单项体积之和
+  if (orderVol <= 0) return 0;
+  const chargeVol = Math.max(orderVol, minVol);
+  return Math.round((base * chargeVol) / orderVol * 100) / 100;
+}
