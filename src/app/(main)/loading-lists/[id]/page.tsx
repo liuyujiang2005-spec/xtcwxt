@@ -147,7 +147,7 @@ export default async function LoadingListDetailPage({ params }: { params: Promis
                       <TableCell className="text-right">{item.箱数 || '-'}</TableCell>
                       <TableCell className="text-right">{item.单箱数量 || '-'}</TableCell>
                       <TableCell className="text-xs">{item.国内单号 || '-'}</TableCell>
-                      <TableCell className="text-right">{item.总重量 || '-'}</TableCell>
+                      {isOrderFirst ? <TableCell className="text-right align-top" rowSpan={orderRowSpan}>{item.总重量 || '-'}</TableCell> : null}
                       <TableCell>{item.货型 || '-'}</TableCell>
                       {isOrderFirst ? <TableCell className="align-top" rowSpan={orderRowSpan}>{item.运输方式 || '-'}</TableCell> : null}
                       <TableCell className="text-right">{(Number(item.单价) || 0).toFixed(2)}</TableCell>
