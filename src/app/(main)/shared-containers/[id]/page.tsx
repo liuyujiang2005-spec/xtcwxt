@@ -63,15 +63,16 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
   const feeCost = costList.reduce((s, c) => s + c.amount, 0);
   const totalAllCost = goodsCost + feeCost;
 
-  const byMark = new Map<number, { markNo: string; volume: number; cost: number; count: number; seenOrders: Set<string> }>();
+  const byMark = new Map<number, { markNo: string; volume: number; cost: number; receivable: number; count: number; seenOrders: Set<string> }>();
   items.forEach((item) => {
-    const m = byMark.get(item.markId) || { markNo: markMap.get(item.markId) || `#${item.markId}`, volume: 0, cost: 0, count: 0, seenOrders: new Set<string>() };
+    const m = byMark.get(item.markId) || { markNo: markMap.get(item.markId) || `#${item.markId}`, volume: 0, cost: 0, receivable: 0, count: 0, seenOrders: new Set<string>() };
     const orderKey = item.运单号 || `m${item.markId}`;
     if (!m.seenOrders.has(orderKey)) {
       m.volume += item.总体积;
       m.cost += orderCosts.get(orderKey) || 0;
       m.seenOrders.add(orderKey);
     }
+    m.receivable += (Number(item.客户应收) || 0);
     m.count++;
     byMark.set(item.markId, m);
   });
@@ -129,11 +130,11 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
         <Card>
           <CardHeader><CardTitle>按唛头统计</CardTitle></CardHeader>
           <CardContent className="p-0"><Table><TableHeader><TableRow>
-            <TableHead>唛头</TableHead><TableHead className="text-right">件数</TableHead><TableHead className="text-right">总体积</TableHead><TableHead className="text-right">总成本</TableHead>
+            <TableHead>唛头</TableHead><TableHead className="text-right">件数</TableHead><TableHead className="text-right">总体积</TableHead><TableHead className="text-right">应收</TableHead><TableHead className="text-right">总成本</TableHead>
           </TableRow></TableHeader><TableBody>
             {markStats.map((m) => (<TableRow key={m.markNo}>
               <TableCell className="font-medium">{m.markNo}</TableCell><TableCell className="text-right">{m.count}</TableCell>
-              <TableCell className="text-right font-bold">{(m.volume ?? 0).toFixed(6)} m³</TableCell><TableCell className="text-right">{formatAmount((m.cost ?? 0))}</TableCell>
+              <TableCell className="text-right font-bold">{(m.volume ?? 0).toFixed(6)} m³</TableCell><TableCell className="text-right text-green-600">{formatAmount((m.receivable ?? 0), isThb ? 'THB' : 'CNY')}</TableCell><TableCell className="text-right">{formatAmount((m.cost ?? 0))}</TableCell>
             </TableRow>))}
           </TableBody></Table></CardContent>
         </Card>
