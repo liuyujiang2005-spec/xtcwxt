@@ -125,6 +125,7 @@ sqlite.exec(`
     单价 REAL,
     需支付总价 REAL,
     客户应收 REAL,
+    单项应收 REAL,
     货型 TEXT,
     运输方式 TEXT,
     payment_status TEXT DEFAULT '待支付',
