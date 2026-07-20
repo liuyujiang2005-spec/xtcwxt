@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
       const warehouse = first.仓库 || null;
       const unitPrice = getPrice(warehouse, transport, cargo);
       const chargeVol = Math.max(orderVol, minVol(transport));
-      const orderReceivable = unitPrice * chargeVol;
+      const orderReceivable = Math.round(unitPrice * chargeVol * 100) / 100; // 与导入一致，2位小数
 
       totalVol += first.总体积 || 0;
 
@@ -208,7 +208,8 @@ export async function POST(request: NextRequest) {
       唛头: r.markNo, 客户: r.customerName, 件数: r.itemCount,
       总体积: r.totalVolume, 订单总价: r.totalCost.toFixed(6),
     }));
-    const prompt = `分析以下拼柜账单分类数据，按客户、运输方式、货物类型做汇总，标记异常。\n\n${JSON.stringify(summary, null, 2)}\n\n返回JSON：{"summary":"一段中文总结","anomalies":[{"唛头":"xxx","问题":"描述"}],"按客户汇总":[{"客户":"xx","账单数":1,"总金额":123}]}`;
+    const bizLabel = isSc ? '拼柜' : '装柜';
+    const prompt = `分析以下${bizLabel}账单分类数据，按客户、运输方式、货物类型做汇总，标记异常。\n\n${JSON.stringify(summary, null, 2)}\n\n返回JSON：{"summary":"一段中文总结","anomalies":[{"唛头":"xxx","问题":"描述"}],"按客户汇总":[{"客户":"xx","账单数":1,"总金额":123}]}`;
     const raw = await aiChat('你是物流财务分类助手，只返回JSON。', prompt);
     const json = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
     classifyResult = JSON.parse(json);
