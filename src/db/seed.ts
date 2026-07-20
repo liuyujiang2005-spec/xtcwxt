@@ -150,6 +150,7 @@ sqlite.exec(`
   CREATE TABLE IF NOT EXISTS expenses (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     loading_batch_id INTEGER REFERENCES loading_batches(id),
+    shared_container_batch_id INTEGER REFERENCES shared_container_batches(id),
     expense_type TEXT NOT NULL,
     amount INTEGER NOT NULL,
     currency TEXT DEFAULT 'CNY',
@@ -160,7 +161,8 @@ sqlite.exec(`
     remark TEXT,
     receipt_url TEXT,
     created_at TEXT DEFAULT (datetime('now')),
-    UNIQUE(loading_batch_id, expense_type)
+    UNIQUE(loading_batch_id, expense_type),
+    UNIQUE(shared_container_batch_id, expense_type)
   );
 
   CREATE TABLE IF NOT EXISTS payments_received (
