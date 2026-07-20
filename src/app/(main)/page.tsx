@@ -4,19 +4,22 @@ import { db } from '@/db/index';
 import { directIncome, expenses, paymentsReceived, paymentsMade, customerMetrics, customers, sharedContainerItems, loadingItems, marks, sharedContainerBatches, loadingBatches } from '@/db/schema';
 import { desc } from 'drizzle-orm';
 import { formatAmount } from '@/lib/format';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { TrendingUp, TrendingDown, Clock, HandCoins } from 'lucide-react';
+import { TrendingUp, TrendingDown, Clock, HandCoins, Wallet } from 'lucide-react';
 
 function getCurrentMonth() {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ month?: string }> }) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
-  const currentMonth = getCurrentMonth();
+  const sp = await searchParams;
+  const currentMonth = sp.month || getCurrentMonth(); // 选定月份，默认当月
 
   const allIncome = await db.select().from(directIncome).all();
   const allExpenses = await db.select().from(expenses).all();
@@ -30,6 +33,11 @@ export default async function DashboardPage() {
   // 营收/成本按"业务月份"(唛头 monthTag)归月，且只统计已确认(非待审核)的批次
   const allMarks = await db.select().from(marks).all();
   const markMonthMap = new Map(allMarks.map(m => [m.id, m.monthTag]));
+  const availableMonths = [...new Set([
+    ...allMarks.map(m => m.monthTag),
+    ...allIncome.map(i => (i.incomeDate || '').substring(0, 7)),
+    ...allExpenses.map(e => (e.createdAt || '').substring(0, 7)),
+  ])].filter(Boolean).sort().reverse();
   const allScBatches = await db.select().from(sharedContainerBatches).all();
   const allLdBatches = await db.select().from(loadingBatches).all();
   const scBatchOk = new Map(allScBatches.map(b => [b.id, b.status !== '待审核']));
@@ -80,7 +88,36 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">仪表盘</h1>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <h1 className="text-2xl font-bold">仪表盘</h1>
+        <form method="get" className="flex gap-2 items-end">
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">月份</label>
+            <select name="month" defaultValue={currentMonth} className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm w-36">
+              {availableMonths.map(m => (<option key={m} value={m}>{m}</option>))}
+            </select>
+          </div>
+          <Button type="submit" variant="outline" size="sm">查看</Button>
+        </form>
+      </div>
+
+      {/* 累计总额(不分月) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-sm font-medium">累计总营收（人民币）</CardTitle>
+            <Wallet className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent><div className="text-2xl font-bold">{formatAmount(totalRevenueCNY)}</div></CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-sm font-medium text-orange-600">累计总营收（泰铢）</CardTitle>
+            <Wallet className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent><div className="text-2xl font-bold text-orange-600">{formatAmount(totalRevenueTHB, 'THB')}</div></CardContent>
+        </Card>
+      </div>
 
       {/* 人民币区块 */}
       <div className="border rounded-lg p-4 space-y-4">

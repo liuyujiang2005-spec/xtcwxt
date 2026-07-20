@@ -14,26 +14,41 @@ import { PayExpenseButton, PayScItemButton, PayLdItemButton, BatchPayScButton, B
 import { MarkCollapsibleCard } from '@/components/MarkCollapsibleCard';
 import { formatAmount } from '@/lib/format';
 
-export default async function ExpensesPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+export default async function ExpensesPage({ searchParams }: { searchParams: Promise<{ q?: string; month?: string }> }) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
   const sp = await searchParams;
   const q = sp.q || '';
+  const month = sp.month || '';
 
-  const allExpenses = await db.select().from(expenses).all();
+  const allExpensesRaw = await db.select().from(expenses).all();
   const allScItems = await db.select().from(sharedContainerItems).all();
   const allLdItems = await db.select().from(loadingItems).all();
   const allMarks = await db.select().from(marks).all();
   const markMap = new Map(allMarks.map(m => [m.id, m.markNo]));
+  const markMonthMap = new Map(allMarks.map(m => [m.id, m.monthTag]));
+
+  // 月份下拉可选值：自建费用createdAt月 + 唛头业务月
+  const availableMonths = [...new Set([
+    ...allExpensesRaw.map(e => (e.createdAt || '').substring(0, 7)),
+    ...allMarks.map(m => m.monthTag),
+  ])].filter(Boolean).sort().reverse();
+
+  // 按月份过滤：自建费用按createdAt月，拼柜/装柜成本按唛头业务月
+  const allExpenses = month ? allExpensesRaw.filter(e => (e.createdAt || '').startsWith(month)) : allExpensesRaw;
 
   // Filter by mark
   let scItems = allScItems;
   let ldItems = allLdItems;
   if (q) {
     const matchingMarks = allMarks.filter(m => (m.markNo || '').includes(q)).map(m => m.id);
-    scItems = allScItems.filter(i => matchingMarks.includes(i.markId));
-    ldItems = allLdItems.filter(i => matchingMarks.includes(i.markId));
+    scItems = scItems.filter(i => matchingMarks.includes(i.markId));
+    ldItems = ldItems.filter(i => matchingMarks.includes(i.markId));
+  }
+  if (month) {
+    scItems = scItems.filter(i => markMonthMap.get(i.markId) === month);
+    ldItems = ldItems.filter(i => markMonthMap.get(i.markId) === month);
   }
 
   const scPending = scItems.filter((i) => i.cost_status === '待支出').reduce((s, i) => s + (i.需支付总价 || 0), 0);
@@ -73,9 +88,23 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">支出总表</h1>
-      <div className="flex justify-end">
-        <NewExpenseDialog />
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <h1 className="text-2xl font-bold">支出总表</h1>
+        <div className="flex items-end gap-2">
+          <form method="get" className="flex gap-2 items-end">
+            {q && <input type="hidden" name="q" value={q} />}
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">月份</label>
+              <select name="month" defaultValue={month} className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm w-36">
+                <option value="">全部月份</option>
+                {availableMonths.map(m => (<option key={m} value={m}>{m}</option>))}
+              </select>
+            </div>
+            <Button type="submit" variant="outline" size="sm">筛选</Button>
+            {month && <Link href={`/expenses${q ? `?q=${q}` : ''}`}><Button variant="ghost" size="sm">清除</Button></Link>}
+          </form>
+          <NewExpenseDialog />
+        </div>
       </div>
 
       <h2 className="text-lg font-bold">人民币支出</h2>
@@ -138,9 +167,10 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold">拼柜成本 · 按唛头</h2>
             <form method="get" className="flex gap-2 items-end">
+              {month && <input type="hidden" name="month" value={month} />}
               <input name="q" defaultValue={q} placeholder="搜索唛头..." className="h-8 rounded-lg border px-2.5 text-sm w-40" />
               <Button type="submit" variant="outline" size="sm">筛选</Button>
-              {q && <Link href="/costs"><Button variant="ghost" size="sm">清除</Button></Link>}
+              {q && <Link href={`/expenses${month ? `?month=${month}` : ''}`}><Button variant="ghost" size="sm">清除</Button></Link>}
             </form>
           </div>
           {Array.from(scByMark.entries()).map(([markId, items]) => {

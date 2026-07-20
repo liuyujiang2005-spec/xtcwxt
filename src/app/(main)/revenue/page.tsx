@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation';
 import { db } from '@/db/index';
 import { directIncome, customers } from '@/db/schema';
 import { desc } from 'drizzle-orm';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { NewIncomeDialog } from './NewIncomeDialog';
@@ -10,11 +12,16 @@ import { DeleteIncomeButton } from './DeleteIncomeButton';
 import { EditIncomeDialog } from './EditIncomeDialog';
 import { formatAmount } from '@/lib/format';
 
-export default async function RevenuePage() {
+export default async function RevenuePage({ searchParams }: { searchParams: Promise<{ month?: string }> }) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
-  const allIncome = await db.select().from(directIncome).orderBy(desc(directIncome.incomeDate)).all();
+  const sp = await searchParams;
+  const month = sp.month || '';
+
+  const allIncomeRaw = await db.select().from(directIncome).orderBy(desc(directIncome.incomeDate)).all();
+  const availableMonths = [...new Set(allIncomeRaw.map(i => (i.incomeDate || '').substring(0, 7)))].filter(Boolean).sort().reverse();
+  const allIncome = month ? allIncomeRaw.filter(i => (i.incomeDate || '').startsWith(month)) : allIncomeRaw;
   const allCustomers = await db.select().from(customers).all();
   const customerMap = new Map(allCustomers.map((c) => [c.id, c.name]));
 
@@ -44,6 +51,17 @@ export default async function RevenuePage() {
         <h1 className="text-2xl font-bold">收入总表</h1>
         <NewIncomeDialog />
       </div>
+      <form method="get" className="flex gap-2 items-end flex-wrap">
+        <div className="space-y-1">
+          <label className="text-xs text-muted-foreground">月份</label>
+          <select name="month" defaultValue={month} className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm w-36">
+            <option value="">全部月份</option>
+            {availableMonths.map(m => (<option key={m} value={m}>{m}</option>))}
+          </select>
+        </div>
+        <Button type="submit" variant="outline" size="sm">筛选</Button>
+        {month && <Link href="/revenue"><Button variant="ghost" size="sm">清除</Button></Link>}
+      </form>
 
       <h2 className="text-lg font-bold">人民币收入</h2>
 
