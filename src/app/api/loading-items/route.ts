@@ -82,16 +82,22 @@ export async function POST(request: NextRequest) {
         groups.get(gk)!.push(r);
       });
       const recvMap = new Map<any, number>();
+      const itemRecvMap = new Map<any, number>();
       for (const [, group] of groups) {
         const first = group[0];
         const { pm, em } = getCust(first.custId);
         const transport = first.raw.运输方式 || '海运';
         const warehouse = first.raw.仓库 || null;
         const minVol = em ? (transport === '海运' ? 0.5 : 0.3) : 0;
-        // 每条按自己货型定价后加总(一个运单里货型可能不同)，低消按比例放大
         const receivable = waybillReceivable(group.map(r => r.raw), (cargo) => getPrice(pm, warehouse, transport, cargo), minVol);
         recvMap.set(first.raw, receivable);
         for (let i = 1; i < group.length; i++) recvMap.set(group[i].raw, 0);
+        // 每条明细单独算单项应收
+        for (const r of group) {
+          const price = getPrice(pm, warehouse, transport, r.raw.货型);
+          const itemRecv = Math.round(price * (Number(r.raw.单项体积) || 0) * 100) / 100;
+          itemRecvMap.set(r.raw, itemRecv);
+        }
       }
 
       // ── 第三步：插入明细，带上客户应收 ──
@@ -115,7 +121,8 @@ export async function POST(request: NextRequest) {
           运单号: item.运单号 || '',
           单价: item.单价 || 0,
           需支付总价: item.需支付总价 || 0,
-          客户应收: recvMap.get(item) ?? 0,
+           客户应收: recvMap.get(item) ?? 0,
+           单项应收: itemRecvMap.get(item) ?? 0,
           货型: item.货型 || '普货',
           运输方式: item.运输方式 || '海运',
           payment_status: '待支付',

@@ -123,6 +123,7 @@ export const loadingItems = sqliteTable('loading_items', {
   单价: real('单价'),
   需支付总价: real('需支付总价'),
   客户应收: real('客户应收'),
+  单项应收: real('单项应收'),
   仓库: text('仓库'),
   运单号: text('运单号'),
   货型: text('货型'),

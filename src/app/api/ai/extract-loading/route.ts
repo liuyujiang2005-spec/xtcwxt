@@ -123,6 +123,14 @@ function applyPriceMatrix(items: any[], pm: { matrix: any; isThb: boolean; enabl
     const reason = warn
       ? (item.reason ? item.reason + '；' + warn : warn)
       : item.reason || '';
-    return { ...item, 应收: receivable, verdict, reason };
+    // 每条明细单独算单项应收
+    const transKey = item.运输方式 === '海运' ? 'sea' : item.运输方式 === '陆运' ? 'land' : 'sea';
+    const wh = item.仓库 || null;
+    const k = transKey + '_' + cargoKey(item.货型);
+    let itemPrice = 0;
+    if (wh && matrix[wh] && typeof matrix[wh] === 'object' && typeof matrix[wh][k] === 'number') itemPrice = matrix[wh][k];
+    else if (typeof matrix[k] === 'number') itemPrice = matrix[k];
+    const itemRecv = Math.round(itemPrice * (Number(item.单项体积) || 0) * 100) / 100;
+    return { ...item, 应收: receivable, 单项应收: itemRecv, verdict, reason };
   });
 }

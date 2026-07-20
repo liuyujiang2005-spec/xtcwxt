@@ -71,7 +71,13 @@ export async function POST(
         // 每条按自己货型定价后加总(一个运单里货型可能不同)，低消按比例放大
         const receivable = waybillReceivable(group, (cargo) => getPrice(pm, warehouse, transport, cargo), minVol);
 
-        // 第一条设应收，其余设 0
+        // 每条明细单独算单项应收并落库
+        for (const item of group) {
+          const price = getPrice(pm, warehouse, transport, item.货型);
+          const itemRecv = Math.round(price * (Number(item.单项体积) || 0) * 100) / 100;
+          tx.update(loadingItems).set({ 单项应收: itemRecv }).where(eq(loadingItems.id, item.id)).run();
+        }
+        // 第一条设运单总应收，其余设 0
         tx.update(loadingItems).set({ 客户应收: receivable }).where(eq(loadingItems.id, first.id)).run();
         for (let i = 1; i < group.length; i++) {
           tx.update(loadingItems).set({ 客户应收: 0 }).where(eq(loadingItems.id, group[i].id)).run();

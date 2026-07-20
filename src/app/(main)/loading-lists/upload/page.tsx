@@ -18,7 +18,7 @@ interface ScItem {
   总重量: number; 计费体积: number; 总计费体积: number; 单价: number;
   单项价格: number; 订单总价: number; 备注: string; 结算状态: string; 柜号: string;
   尺寸_长: number; 尺寸_宽: number; 尺寸_高: number;
-  应收: number;
+  应收: number; 单项应收: number;
   verdict: string; reason: string;
 }
 
@@ -166,7 +166,7 @@ export default function UploadLoadingListPage() {
                 <TableHead className="sticky top-0 bg-muted">品名</TableHead><TableHead className="sticky top-0 bg-muted">尺寸</TableHead><TableHead className="sticky top-0 bg-muted text-right">件数</TableHead>
                 <TableHead className="sticky top-0 bg-muted">国内单号</TableHead><TableHead className="sticky top-0 bg-muted text-right">单项体积</TableHead><TableHead className="sticky top-0 bg-muted text-right">单项重量</TableHead>
                 <TableHead className="sticky top-0 bg-muted text-right">总体积</TableHead><TableHead className="sticky top-0 bg-muted text-right">总重量</TableHead><TableHead className="sticky top-0 bg-muted text-right">计费体积</TableHead><TableHead className="sticky top-0 bg-muted text-right">总计费体积</TableHead>
-                <TableHead className="sticky top-0 bg-muted text-right">单价</TableHead><TableHead className="sticky top-0 bg-muted text-right">单项价格</TableHead><TableHead className="sticky top-0 bg-muted text-right">订单总价</TableHead>
+                <TableHead className="sticky top-0 bg-muted text-right">单价</TableHead><TableHead className="sticky top-0 bg-muted text-right">单项应收</TableHead><TableHead className="sticky top-0 bg-muted text-right">单项价格</TableHead><TableHead className="sticky top-0 bg-muted text-right">订单总价</TableHead>
                 <TableHead className="sticky top-0 bg-muted">备注</TableHead><TableHead className="sticky top-0 bg-muted">结算</TableHead><TableHead className="sticky top-0 bg-muted">柜号</TableHead><TableHead className="sticky top-0 bg-muted">状态</TableHead>
               </TableRow></TableHeader>
               <TableBody>{grouped.map(g => g.items.map((item, ri) => (
@@ -187,7 +187,7 @@ export default function UploadLoadingListPage() {
                   {ri === 0 ? <TableCell className="text-right" rowSpan={g.items.length}>{item.总重量 || '-'}</TableCell> : null}
                   <TableCell className="text-right">{item.计费体积 || '-'}</TableCell>
                   {ri === 0 ? <TableCell className="text-right" rowSpan={g.items.length}>{item.总计费体积 || '-'}</TableCell> : null}
-                  <TableCell className="text-right">{item.单价 || '-'}</TableCell><TableCell className="text-right">{item.单项价格 || '-'}</TableCell>
+                  <TableCell className="text-right">{item.单价 || '-'}</TableCell><TableCell className="text-right">{item.单项应收 ?? '-'}</TableCell><TableCell className="text-right">{item.单项价格 || '-'}</TableCell>
                   {ri === 0 ? <TableCell className="text-right" rowSpan={g.items.length}>{item.订单总价 || '-'}</TableCell> : null}
                   <TableCell className="text-xs max-w-[80px] truncate">{item.备注 || '-'}</TableCell>
                   <TableCell>{item.结算状态 || '-'}</TableCell><TableCell>{item.柜号 || '-'}</TableCell>

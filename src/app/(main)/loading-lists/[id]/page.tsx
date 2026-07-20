@@ -108,7 +108,7 @@ export default async function LoadingListDetailPage({ params }: { params: Promis
                 <TableHead>客户</TableHead><TableHead>品名</TableHead><TableHead>运单号</TableHead><TableHead>仓库</TableHead><TableHead className="text-right">总体积</TableHead>
                 <TableHead className="text-right">单项体积</TableHead><TableHead className="text-right">箱数</TableHead><TableHead className="text-right">单箱数量</TableHead>
                 <TableHead>国内单号</TableHead><TableHead className="text-right">总重量</TableHead>
-                <TableHead>货型</TableHead><TableHead>运输</TableHead><TableHead className="text-right">单价</TableHead>
+                <TableHead>货型</TableHead><TableHead>运输</TableHead>                <TableHead className="text-right">单价</TableHead><TableHead className="text-right">单项应收</TableHead>
                 <TableHead className="text-right">应收</TableHead><TableHead>状态</TableHead><TableHead className="w-10"></TableHead>
               </TableRow></TableHeader>
               <TableBody>
@@ -151,6 +151,7 @@ export default async function LoadingListDetailPage({ params }: { params: Promis
                       <TableCell>{item.货型 || '-'}</TableCell>
                       {isOrderFirst ? <TableCell className="align-top" rowSpan={orderRowSpan}>{item.运输方式 || '-'}</TableCell> : null}
                       <TableCell className="text-right">{(Number(item.单价) || 0).toFixed(2)}</TableCell>
+                      <TableCell className="text-right">{formatAmount((item as any).单项应收 || 0, custCurrencyMap.get(item.customerId) === 'THB' ? 'THB' : 'CNY')}</TableCell>
                       {isOrderFirst ? <TableCell className="text-right text-green-600 align-top" rowSpan={orderRowSpan}>{formatAmount((item.客户应收 || 0), custCurrencyMap.get(item.customerId) === 'THB' ? 'THB' : 'CNY')}</TableCell> : null}
                       <TableCell><span className={`text-xs px-2 py-1 rounded ${item.payment_status === '已支付' ? 'bg-gray-100 text-gray-700' : 'bg-yellow-100 text-yellow-700'}`}>{item.payment_status}</span></TableCell>
                       <TableCell><DeleteItemButton itemId={item.id} apiPath="/api/loading-items" /></TableCell>
