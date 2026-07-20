@@ -96,7 +96,7 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
 
       {/* 本柜成本小结 */}
       <Card className="border-2">
-        <CardHeader className="pb-2"><CardTitle className="text-sm">本柜成本小结</CardTitle></CardHeader>
+        <CardHeader className="pb-2"><CardTitle className="text-sm text-red-600">本柜成本小结</CardTitle></CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
@@ -127,7 +127,7 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
       <LoadingExpenseManager batchId={batch.id} initialExpenses={costList as any} batchType="shared-container" />
 
       {markStats.length > 0 && (
-        <Card>
+        <Card className="max-w-2xl">
           <CardHeader><CardTitle>按唛头统计</CardTitle></CardHeader>
           <CardContent className="p-0"><Table><TableHeader><TableRow>
             <TableHead>唛头</TableHead><TableHead className="text-right">件数</TableHead><TableHead className="text-right">总体积</TableHead><TableHead className="text-right">应收</TableHead><TableHead className="text-right">总成本</TableHead>
@@ -149,7 +149,7 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
               <p className="text-xs mt-2">批次: {batch.batchNo} | 状态: {batch.status}</p>
             </div>
           ) : (
-            <div className="border rounded-lg overflow-auto max-h-80">
+            <div className="border rounded-lg overflow-auto max-h-[600px]">
             <Table className="[&_td]:border [&_th]:border [&_td]:border-gray-300 [&_th]:border-gray-300">
               <TableHeader><TableRow>
                 <TableHead>唛头</TableHead><TableHead>品名</TableHead><TableHead>运单号</TableHead><TableHead>仓库</TableHead><TableHead className="text-right">总体积</TableHead>

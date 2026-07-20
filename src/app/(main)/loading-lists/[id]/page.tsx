@@ -63,7 +63,7 @@ export default async function LoadingListDetailPage({ params }: { params: Promis
 
       {/* 本柜成本小结 */}
       <Card className="border-2">
-        <CardHeader className="pb-2"><CardTitle className="text-sm">本柜成本小结</CardTitle></CardHeader>
+        <CardHeader className="pb-2"><CardTitle className="text-sm text-red-600">本柜成本小结</CardTitle></CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
@@ -102,7 +102,7 @@ export default async function LoadingListDetailPage({ params }: { params: Promis
               <p className="text-xs mt-2">批次: {batch.batchNo} | 文件: {batch.originalFilename || '-'}</p>
             </div>
           ) : (
-            <div className="border rounded-lg overflow-auto max-h-80">
+            <div className="border rounded-lg overflow-auto max-h-[600px]">
             <Table className="[&_td]:border [&_th]:border [&_td]:border-gray-300 [&_th]:border-gray-300">
               <TableHeader><TableRow>
                 <TableHead>客户</TableHead><TableHead>品名</TableHead><TableHead>运单号</TableHead><TableHead>仓库</TableHead><TableHead className="text-right">总体积</TableHead>
