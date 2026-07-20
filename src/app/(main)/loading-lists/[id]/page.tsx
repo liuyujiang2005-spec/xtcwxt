@@ -147,8 +147,8 @@ export default async function LoadingListDetailPage({ params }: { params: Promis
                       <TableCell className="text-right">{item.箱数 || '-'}</TableCell>
                       <TableCell className="text-right">{item.单箱数量 || '-'}</TableCell>
                       <TableCell className="text-xs">{item.国内单号 || '-'}</TableCell>
-                      {isOrderFirst ? <TableCell className="text-right align-top" rowSpan={orderRowSpan}>{item.总重量 || '-'}</TableCell> : null}
-                      {isOrderFirst ? <TableCell className="align-top" rowSpan={orderRowSpan}>{item.货型 || '-'}</TableCell> : null}
+                      <TableCell className="text-right">{item.总重量 || '-'}</TableCell>
+                      <TableCell>{item.货型 || '-'}</TableCell>
                       {isOrderFirst ? <TableCell className="align-top" rowSpan={orderRowSpan}>{item.运输方式 || '-'}</TableCell> : null}
                       <TableCell className="text-right">{(Number(item.单价) || 0).toFixed(2)}</TableCell>
                       {isOrderFirst ? <TableCell className="text-right text-green-600 align-top" rowSpan={orderRowSpan}>{formatAmount((item.客户应收 || 0), custCurrencyMap.get(item.customerId) === 'THB' ? 'THB' : 'CNY')}</TableCell> : null}
