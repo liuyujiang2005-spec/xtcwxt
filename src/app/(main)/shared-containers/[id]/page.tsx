@@ -96,7 +96,7 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
 
       {/* 本柜成本小结 */}
       <Card className="border-2">
-        <CardHeader className="pb-2"><CardTitle className="text-sm text-red-600">本柜成本小结</CardTitle></CardHeader>
+        <CardHeader className="pb-2"><CardTitle className="text-sm">本柜成本小结</CardTitle></CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
@@ -163,7 +163,7 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
               <TableBody>
                 {(() => {
                   // 两级合并：先按唛头，唛头内再按连续运单号
-                  type Row = { item: (typeof items)[number]; isMarkFirst: boolean; markRowSpan: number; isOrderFirst: boolean; orderRowSpan: number };
+                  type Row = { item: (typeof items)[number]; isMarkFirst: boolean; markRowSpan: number; isOrderFirst: boolean; orderRowSpan: number; isLoss: boolean };
                   const flat: Row[] = [];
                   let ci = 0;
                   while (ci < items.length) {
@@ -177,8 +177,11 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
                       let oj = oi + 1;
                       if (ok) { while (oj < markRows.length && ((markRows[oj] as any).运单号 || '').trim() === ok) oj++; }
                       const orderRows = markRows.slice(oi, oj);
+                      const recv = orderRows.reduce((s, it) => s + (Number((it as any).客户应收) || 0), 0);
+                      const cost = orderRows.reduce((s, it) => s + (Number((it as any).需支付总价) || 0), 0);
+                      const isLoss = recv < cost; // 该运单应收 < 货物成本 = 亏本
                       orderRows.forEach((item, ri) => {
-                        flat.push({ item, isMarkFirst: markFirst, markRowSpan: markRows.length, isOrderFirst: ri === 0, orderRowSpan: orderRows.length });
+                        flat.push({ item, isMarkFirst: markFirst, markRowSpan: markRows.length, isOrderFirst: ri === 0, orderRowSpan: orderRows.length, isLoss });
                         markFirst = false;
                       });
                       oi = oj;
@@ -186,8 +189,8 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
                     ci = cj;
                   }
                   const cur = (cid: number) => custCurrencyMap.get(cid) === 'THB' ? 'THB' : 'CNY';
-                  return flat.map(({ item, isMarkFirst, markRowSpan, isOrderFirst, orderRowSpan }) => (
-                    <TableRow key={item.id}>
+                  return flat.map(({ item, isMarkFirst, markRowSpan, isOrderFirst, orderRowSpan, isLoss }) => (
+                    <TableRow key={item.id} className={isLoss ? 'bg-red-50' : ''}>
                       {isMarkFirst ? <TableCell className="font-medium align-top" rowSpan={markRowSpan}>{markMap.get(item.markId) || '-'}</TableCell> : null}
                       <TableCell className="max-w-[120px] truncate" title={item.品名 || ''}>{item.品名 || '-'}</TableCell>
                       {isOrderFirst ? <TableCell className="text-xs font-mono align-top" rowSpan={orderRowSpan}>{item.运单号 || '-'}</TableCell> : null}
@@ -203,7 +206,7 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
                       <TableCell className="text-right">{formatAmount((item.成本单价 || 0))}</TableCell>
                       <TableCell className="text-right">{formatAmount((item.需支付总价 || 0))}</TableCell>
                       <TableCell className="text-right">{formatAmount((item as any).单项应收 || 0, cur(item.customerId))}</TableCell>
-                      {isOrderFirst ? <TableCell className="text-right text-green-600 align-top" rowSpan={orderRowSpan}>{formatAmount((Number(item.客户应收) || 0), cur(item.customerId))}</TableCell> : null}
+                      {isOrderFirst ? <TableCell className={`text-right align-top ${isLoss ? 'text-red-600 font-bold' : 'text-green-600'}`} rowSpan={orderRowSpan}>{formatAmount((Number(item.客户应收) || 0), cur(item.customerId))}</TableCell> : null}
                       <TableCell>{item.cost_status || '-'}</TableCell>
                       <TableCell><Badge className={item.cost_status === '已支出' ? 'bg-gray-100 text-gray-700' : 'bg-yellow-100 text-yellow-700'}>{item.cost_status || '-'}</Badge></TableCell>
                       <TableCell><DeleteItemButton itemId={item.id} apiPath="/api/shared-container-items" /></TableCell>

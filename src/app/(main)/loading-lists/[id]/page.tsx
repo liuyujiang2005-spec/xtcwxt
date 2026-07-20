@@ -63,7 +63,7 @@ export default async function LoadingListDetailPage({ params }: { params: Promis
 
       {/* 本柜成本小结 */}
       <Card className="border-2">
-        <CardHeader className="pb-2"><CardTitle className="text-sm text-red-600">本柜成本小结</CardTitle></CardHeader>
+        <CardHeader className="pb-2"><CardTitle className="text-sm">本柜成本小结</CardTitle></CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
@@ -114,7 +114,7 @@ export default async function LoadingListDetailPage({ params }: { params: Promis
               <TableBody>
                 {(() => {
                   // 两级合并：先按客户，客户内再按连续运单号；运单级合并 运单号/仓库/总体积/货型/运输/单价/应收
-                  type Row = { item: (typeof items)[number]; isCustFirst: boolean; custRowSpan: number; isOrderFirst: boolean; orderRowSpan: number };
+                  type Row = { item: (typeof items)[number]; isCustFirst: boolean; custRowSpan: number; isOrderFirst: boolean; orderRowSpan: number; isLoss: boolean };
                   const flat: Row[] = [];
                   let ci = 0;
                   while (ci < items.length) {
@@ -128,16 +128,19 @@ export default async function LoadingListDetailPage({ params }: { params: Promis
                       let oj = oi + 1;
                       if (ok) { while (oj < custRows.length && ((custRows[oj] as any).运单号 || '').trim() === ok) oj++; }
                       const orderRows = custRows.slice(oi, oj);
+                      const recv = orderRows.reduce((s, it) => s + (Number((it as any).客户应收) || 0), 0);
+                      const cost = orderRows.reduce((s, it) => s + (Number((it as any).需支付总价) || 0), 0);
+                      const isLoss = recv < cost; // 该运单应收 < 货物成本 = 亏本
                       orderRows.forEach((item, ri) => {
-                        flat.push({ item, isCustFirst: custFirst, custRowSpan: custRows.length, isOrderFirst: ri === 0, orderRowSpan: orderRows.length });
+                        flat.push({ item, isCustFirst: custFirst, custRowSpan: custRows.length, isOrderFirst: ri === 0, orderRowSpan: orderRows.length, isLoss });
                         custFirst = false;
                       });
                       oi = oj;
                     }
                     ci = cj;
                   }
-                  return flat.map(({ item, isCustFirst, custRowSpan, isOrderFirst, orderRowSpan }) => (
-                    <TableRow key={item.id}>
+                  return flat.map(({ item, isCustFirst, custRowSpan, isOrderFirst, orderRowSpan, isLoss }) => (
+                    <TableRow key={item.id} className={isLoss ? 'bg-red-50' : ''}>
                       {isCustFirst ? <TableCell className="font-medium align-top" rowSpan={custRowSpan}>{customerMap.get(item.customerId) || '-'}</TableCell> : null}
                       <TableCell className="max-w-[120px] truncate" title={item.品名 || ''}>{item.品名 || '-'}</TableCell>
                       {isOrderFirst ? <TableCell className="text-xs font-mono align-top" rowSpan={orderRowSpan}>{item.运单号 || '-'}</TableCell> : null}
@@ -152,7 +155,7 @@ export default async function LoadingListDetailPage({ params }: { params: Promis
                       {isOrderFirst ? <TableCell className="align-top" rowSpan={orderRowSpan}>{item.运输方式 || '-'}</TableCell> : null}
                       <TableCell className="text-right">{(Number(item.单价) || 0).toFixed(3)}</TableCell>
                       <TableCell className="text-right">{formatAmount((item as any).单项应收 || 0, custCurrencyMap.get(item.customerId) === 'THB' ? 'THB' : 'CNY')}</TableCell>
-                      {isOrderFirst ? <TableCell className="text-right text-green-600 align-top" rowSpan={orderRowSpan}>{formatAmount((item.客户应收 || 0), custCurrencyMap.get(item.customerId) === 'THB' ? 'THB' : 'CNY')}</TableCell> : null}
+                      {isOrderFirst ? <TableCell className={`text-right align-top ${isLoss ? 'text-red-600 font-bold' : 'text-green-600'}`} rowSpan={orderRowSpan}>{formatAmount((item.客户应收 || 0), custCurrencyMap.get(item.customerId) === 'THB' ? 'THB' : 'CNY')}</TableCell> : null}
                       <TableCell><span className={`text-xs px-2 py-1 rounded ${item.payment_status === '已支付' ? 'bg-gray-100 text-gray-700' : 'bg-yellow-100 text-yellow-700'}`}>{item.payment_status}</span></TableCell>
                       <TableCell><DeleteItemButton itemId={item.id} apiPath="/api/loading-items" /></TableCell>
                     </TableRow>
