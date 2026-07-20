@@ -156,6 +156,7 @@ export const directIncome = sqliteTable('direct_income', {
 export const expenses = sqliteTable('expenses', {
   id: integer('id').primaryKey(),
   loadingBatchId: integer('loading_batch_id').references(() => loadingBatches.id),
+  sharedContainerBatchId: integer('shared_container_batch_id').references(() => sharedContainerBatches.id),
   expenseType: text('expense_type').notNull(),
   amount: integer('amount').notNull(),
   currency: text('currency').default('CNY'),

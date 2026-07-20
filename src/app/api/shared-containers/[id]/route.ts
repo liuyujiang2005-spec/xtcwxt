@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db/index';
-import { sharedContainerBatches, sharedContainerItems, marks, bills, billItems } from '@/db/schema';
+import { sharedContainerBatches, sharedContainerItems, marks, bills, billItems, expenses } from '@/db/schema';
 import { validateSession } from '@/lib/auth';
 import { eq, inArray } from 'drizzle-orm';
 
@@ -93,8 +93,9 @@ export async function DELETE(
         }
       }
 
-      // 3. 删除明细和批次
+      // 3. 删除明细、费用和批次
       tx.delete(sharedContainerItems).where(eq(sharedContainerItems.batchId, batchId)).run();
+      tx.delete(expenses).where(eq(expenses.sharedContainerBatchId, batchId)).run();
       tx.delete(sharedContainerBatches).where(eq(sharedContainerBatches.id, batchId)).run();
     });
     return NextResponse.json({ success: true });

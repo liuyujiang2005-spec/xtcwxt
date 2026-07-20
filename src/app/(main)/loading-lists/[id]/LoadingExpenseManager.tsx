@@ -12,9 +12,11 @@ const EXPENSE_TYPES = ['报关费', '拖车费', '文件费', '操作费', 'THC'
 export function LoadingExpenseManager({
   batchId,
   initialExpenses,
+  batchType = 'loading',
 }: {
   batchId: number;
   initialExpenses: { id: number; expenseType: string; amount: number; currency: string; status: string }[];
+  batchType?: 'loading' | 'shared-container';
 }) {
   const router = useRouter();
   const expenseMap = new Map(initialExpenses.map((e) => [e.expenseType, e]));
@@ -49,10 +51,13 @@ export function LoadingExpenseManager({
           });
           if (!res.ok) throw new Error('保存失败');
         } else if (amount > 0) {
+          const body: any = { expenseType: type, amount, currency: entry.currency };
+          if (batchType === 'shared-container') body.sharedContainerBatchId = batchId;
+          else body.loadingBatchId = batchId;
           const res = await fetch('/api/expenses', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ loadingBatchId: batchId, expenseType: type, amount, currency: entry.currency }),
+            body: JSON.stringify(body),
           });
           if (!res.ok) throw new Error('保存失败');
           const data = await res.json();

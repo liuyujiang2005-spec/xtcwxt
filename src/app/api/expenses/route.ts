@@ -31,6 +31,7 @@ export async function POST(request: NextRequest) {
 
   const result = await db.insert(expenses).values({
     loadingBatchId: body.loadingBatchId || null,
+    sharedContainerBatchId: body.sharedContainerBatchId || null,
     expenseType: body.expenseType.trim(),
     amount: body.amount,
     currency: body.currency || 'CNY',

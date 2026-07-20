@@ -2,7 +2,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { redirect, notFound } from 'next/navigation';
 import Link from 'next/link';
 import { db } from '@/db/index';
-import { sharedContainerBatches, sharedContainerItems, customers, marks } from '@/db/schema';
+import { sharedContainerBatches, sharedContainerItems, customers, marks, expenses } from '@/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +13,7 @@ import { DeleteItemButton } from './DeleteButton';
 import { ReviewActions } from './ReviewActions';
 import { ClassifyButton } from './ClassifyButton';
 import { RecalculateButton } from '@/components/RecalculateButton';
+import { LoadingExpenseManager } from '../../loading-lists/[id]/LoadingExpenseManager';
 import { formatAmount } from '@/lib/format';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -56,6 +57,12 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
   const custCurrencyMap = new Map(allCustomers.map(c => [c.id, c.defaultCurrency || 'CNY']));
   const isThb = items.length > 0 && custCurrencyMap.get(items[0].customerId) === 'THB';
 
+  // 费用管理
+  const costList = await db.select().from(expenses).where(eq(expenses.sharedContainerBatchId, batch.id)).all();
+  const goodsCost = items.reduce((s, i) => s + (Number(i.需支付总价) || 0), 0);
+  const feeCost = costList.reduce((s, c) => s + c.amount, 0);
+  const totalAllCost = goodsCost + feeCost;
+
   const byMark = new Map<number, { markNo: string; volume: number; cost: number; count: number; seenOrders: Set<string> }>();
   items.forEach((item) => {
     const m = byMark.get(item.markId) || { markNo: markMap.get(item.markId) || `#${item.markId}`, volume: 0, cost: 0, count: 0, seenOrders: new Set<string>() };
@@ -86,14 +93,37 @@ export default async function SharedContainerDetailPage({ params }: { params: Pr
       </div>
       <ClassifyButton batchId={batch.id} items={items} markMap={Object.fromEntries(markMap)} />
 
+      {/* 本柜成本小结 */}
+      <Card className="border-2">
+        <CardHeader className="pb-2"><CardTitle className="text-sm">本柜成本小结</CardTitle></CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <p className="text-xs text-muted-foreground">货物成本（货款）</p>
+              <p className="text-xl font-bold text-red-600">{formatAmount(goodsCost)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">各项费用</p>
+              <p className="text-xl font-bold text-red-600">{formatAmount(feeCost)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">总成本（货款+费用）</p>
+              <p className="text-xl font-bold text-red-600">{formatAmount(totalAllCost)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">应收合计</p>
+              <p className="text-xl font-bold text-green-600">{formatAmount(totalReceivable, isThb ? 'THB' : 'CNY')}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-3 gap-4">
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm">总立方</CardTitle></CardHeader>
           <CardContent><span className="text-xl font-bold">{totalVolume.toFixed(6)} m³</span></CardContent></Card>
-        <Card><CardHeader className="pb-2"><CardTitle className="text-sm">总成本</CardTitle></CardHeader>
-          <CardContent><span className="text-xl font-bold text-red-600">{formatAmount((totalCost ?? 0))}</span></CardContent></Card>
-        <Card><CardHeader className="pb-2"><CardTitle className="text-sm">应收合计</CardTitle></CardHeader>
-          <CardContent><span className="text-xl font-bold text-green-600">{formatAmount(totalReceivable, isThb ? 'THB' : 'CNY')}</span></CardContent></Card>
       </div>
+
+      <LoadingExpenseManager batchId={batch.id} initialExpenses={costList as any} batchType="shared-container" />
 
       {markStats.length > 0 && (
         <Card>
