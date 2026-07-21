@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
   }
 
   await db.update(loadingItems)
-    .set({ payment_status: '已支付' })
+    .set({ payment_status: '已支付', paidDate: new Date().toISOString().substring(0, 10) })
     .where(inArray(loadingItems.markId, markIds));
 
   return NextResponse.json({ success: true });

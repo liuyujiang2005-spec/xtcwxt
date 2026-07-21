@@ -13,7 +13,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const { id } = await params;
   const body = await request.json();
   const updates: any = {};
-  if (body.payment_status !== undefined) updates.payment_status = body.payment_status;
+  if (body.payment_status !== undefined) {
+    updates.payment_status = body.payment_status;
+    updates.paidDate = body.payment_status === '已支付' ? new Date().toISOString().substring(0, 10) : null;
+  }
   if (body.需支付总价 !== undefined) updates.需支付总价 = body.需支付总价;
   await db.update(loadingItems).set(updates).where(eq(loadingItems.id, parseInt(id)));
   return NextResponse.json({ success: true });

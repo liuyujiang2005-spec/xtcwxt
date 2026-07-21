@@ -88,6 +88,7 @@ export const sharedContainerItems = sqliteTable('shared_container_items', {
   订单总价: real('订单总价'),
   运单号: text('运单号'),
   cost_status: text('cost_status').default('待支出'),
+  paidDate: text('paid_date'),
   ai_verified: integer('ai_verified').default(0),
   ai_verify_msg: text('ai_verify_msg'),
   createdAt: text('created_at').default(sql`(datetime('now'))`),
@@ -130,6 +131,7 @@ export const loadingItems = sqliteTable('loading_items', {
   货型: text('货型'),
   运输方式: text('运输方式'),
   payment_status: text('payment_status').default('待支付'),
+  paidDate: text('paid_date'),
   createdAt: text('created_at').default(sql`(datetime('now'))`),
 }, (table) => ({
   batchIdIdx: index('li_batch_id_idx').on(table.batchId),

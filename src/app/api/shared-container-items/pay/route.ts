@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
   }
 
   await db.update(sharedContainerItems)
-    .set({ cost_status: '已支出' })
+    .set({ cost_status: '已支出', paidDate: new Date().toISOString().substring(0, 10) })
     .where(inArray(sharedContainerItems.markId, markIds));
 
   return NextResponse.json({ success: true });

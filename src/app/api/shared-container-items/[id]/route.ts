@@ -16,7 +16,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (typeof body.成本单价 === 'number') updates.成本单价 = body.成本单价;
   if (typeof body.客户应收 === 'number') updates.客户应收 = body.客户应收;
   if (typeof body.需支付总价 === 'number') updates.需支付总价 = body.需支付总价;
-  if (body.cost_status !== undefined) updates.cost_status = body.cost_status;
+  if (body.cost_status !== undefined) {
+    updates.cost_status = body.cost_status;
+    updates.paidDate = body.cost_status === '已支出' ? new Date().toISOString().substring(0, 10) : null;
+  }
   if (Object.keys(updates).length === 0) return NextResponse.json({ error: '没有要更新的字段' }, { status: 400 });
 
   await db.update(sharedContainerItems).set(updates).where(eq(sharedContainerItems.id, parseInt(id)));

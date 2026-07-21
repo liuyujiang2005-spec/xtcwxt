@@ -92,6 +92,7 @@ sqlite.exec(`
     订单总价 REAL,
     运单号 TEXT,
     cost_status TEXT DEFAULT '待支出',
+    paid_date TEXT,
     ai_verified INTEGER DEFAULT 0,
     ai_verify_msg TEXT,
     created_at TEXT DEFAULT (datetime('now'))
@@ -130,6 +131,7 @@ sqlite.exec(`
     货型 TEXT,
     运输方式 TEXT,
     payment_status TEXT DEFAULT '待支付',
+    paid_date TEXT,
     created_at TEXT DEFAULT (datetime('now'))
   );
 
