@@ -132,7 +132,7 @@ export function BillItemsTable({
                             <span className="inline-flex items-center gap-1">
                               {(item.尺寸_长 || item.尺寸_宽 || item.尺寸_高)
                                 ? `${item.尺寸_长 ?? 0}×${item.尺寸_宽 ?? 0}×${item.尺寸_高 ?? 0}` : '-'}
-                              {editable && <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => startDim(item)}><Pencil className="h-3 w-3 text-muted-foreground" /></Button>}
+                              {editable && <Button size="icon" variant="ghost" className="h-6 w-6" disabled={saving} onClick={() => startDim(item)}><Pencil className="h-3 w-3 text-muted-foreground" /></Button>}
                             </span>
                           )}
                         </TableCell>
@@ -154,7 +154,7 @@ export function BillItemsTable({
                             ) : (
                               <span className="inline-flex items-center gap-1 justify-end">
                                 <span className="text-green-600">{isThb ? formatAmount(item._orderRecv || 0, 'THB') : formatAmount(item._orderRecv || 0)}</span>
-                                {editable && <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => startRecv(item)}><Pencil className="h-3 w-3 text-muted-foreground" /></Button>}
+                                {editable && <Button size="icon" variant="ghost" className="h-6 w-6" disabled={saving} onClick={() => startRecv(item)}><Pencil className="h-3 w-3 text-muted-foreground" /></Button>}
                               </span>
                             )}
                           </TableCell>

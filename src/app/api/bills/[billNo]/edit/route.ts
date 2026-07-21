@@ -8,6 +8,9 @@ import { cargoKey, waybillReceivable } from '@/lib/pricing';
 const round6 = (n: number) => Math.round(n * 1e6) / 1e6;
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
+// 带 HTTP 状态码的错误,事务内抛出后由 catch 按 status 返回(修复#2:not-found应404而非500)
+const httpError = (message: string, status: number) => Object.assign(new Error(message), { status });
+
 function getMatrixPrice(pm: any, warehouse: string | null, transport: string, cargo: string | null | undefined): number {
   const m = transport === '海运' ? 'sea' : 'land';
   const t = cargoKey(cargo);
@@ -83,6 +86,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const { billNo } = await params;
   const body = await request.json();
 
+  // 修复#3:入口校验必要参数,避免 undefined 传入定位查询
+  if (body.type !== 'dims' && body.type !== 'recv') return NextResponse.json({ error: '未知编辑类型' }, { status: 400 });
+  if (body.sourceType !== 'sc' && body.sourceType !== 'ld') return NextResponse.json({ error: '缺少或非法 sourceType' }, { status: 400 });
+  if (typeof body.sourceItemId !== 'number') return NextResponse.json({ error: '缺少或非法 sourceItemId' }, { status: 400 });
+
   try {
     const bill = db.select().from(bills).where(eq(bills.billNo, billNo)).get();
     if (!bill) return NextResponse.json({ error: '账单不存在' }, { status: 404 });
@@ -104,11 +112,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         eq(billLines.sourceType, body.sourceType),
         eq(billLines.sourceItemId, body.sourceItemId),
       )).get();
-      if (!line) throw new Error('明细不存在');
+      if (!line) throw httpError('明细不存在', 404); // 修复#2
 
       if (body.type === 'dims') {
         const L = Number(body.尺寸_长) || 0, W = Number(body.尺寸_宽) || 0, H = Number(body.尺寸_高) || 0;
-        const boxes = Number(line.箱数) || 1;
+        // 修复#4:箱数为0时按0算(体积为0),仅 null/undefined 才默认1
+        const boxes = Number(line.箱数 ?? 1);
         const unitVol = round6((L * W * H) / 1e6 * boxes);
         tx.update(billLines).set({ 尺寸_长: L, 尺寸_宽: W, 尺寸_高: H, 单项体积: unitVol }).where(eq(billLines.id, line.id)).run();
         // 该运单总体积 = 组内单项体积之和，写回组内每条
@@ -127,7 +136,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         tx.update(billLines).set({ 客户应收: val }).where(eq(billLines.id, grp[0].id)).run();
         for (let i = 1; i < grp.length; i++) tx.update(billLines).set({ 客户应收: 0 }).where(eq(billLines.id, grp[i].id)).run();
       } else {
-        throw new Error('未知编辑类型');
+        throw httpError('未知编辑类型', 400);
       }
 
       recalcBillItems(tx, bill.id);
@@ -136,14 +145,17 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       const items = tx.select().from(billItems).where(eq(billItems.billId, bill.id)).all();
       const total = round2(items.reduce((s: number, it: any) => s + (Number(it.amount) || 0), 0));
       const paid = Number(bill.paidAmount) || 0;
+      // 修复#1:编辑应收后同步重算付款状态和剩余(否则已付款账单改高应收后状态仍显已付款、剩余可为负)
+      const newRemaining = Math.max(0, round2(total - paid));
+      const newStatus = paid > 0 ? (total > paid ? '付一部分' : '已付款') : '待付款';
       tx.update(bills).set({
-        totalAmount: total, remainingAmount: round2(total - paid), manualAdjusted: 1,
+        totalAmount: total, remainingAmount: newRemaining, paymentStatus: newStatus, manualAdjusted: 1,
       }).where(eq(bills.id, bill.id)).run();
     });
 
     return NextResponse.json({ success: true });
   } catch (e: any) {
     console.error('编辑账单失败:', e);
-    return NextResponse.json({ error: e?.message || '编辑失败' }, { status: 500 });
+    return NextResponse.json({ error: e?.message || '编辑失败' }, { status: e?.status || 500 }); // 修复#2:按错误状态码返回
   }
 }
