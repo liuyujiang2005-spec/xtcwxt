@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db/index';
-import { sharedContainerItems, loadingItems, marks, billItems, customers, bills } from '@/db/schema';
+import { sharedContainerItems, loadingItems, marks, billItems, billLines, customers, bills } from '@/db/schema';
 import { validateSession } from '@/lib/auth';
 import { eq, inArray } from 'drizzle-orm';
 import { generateBillXlsx, type BillRow } from '@/lib/generate-bill-xlsx';
@@ -69,13 +69,29 @@ export async function GET(request: NextRequest) {
     ldByMark.get(i.markId)!.push(i);
   });
 
+  // 账单手改过(有快照)则用 bill_lines 建行,反映用户改的尺寸/体积/应收;成本相关列不变
+  const snapLines = await db.select().from(billLines).where(eq(billLines.billId, billId)).all();
+  const hasSnapshot = snapLines.length > 0;
+  // 快照缺的次要列(单项重量/备注)从源明细按 id 补(这些不可编辑,源值即可)
+  const scExtra = new Map(allScItems.map(i => [i.id, i]));
+  const ldExtra = new Map(allLdItems.map(i => [i.id, i]));
+  const linesByMark = new Map<number, any[]>();
+  if (hasSnapshot) {
+    for (const l of snapLines) {
+      const src: any = l.sourceType === 'sc' ? scExtra.get(l.sourceItemId as number) : ldExtra.get(l.sourceItemId as number);
+      const mapped = { ...l, 单项重量: (src as any)?.单项重量 ?? 0, 备注: (src as any)?.备注 ?? '' };
+      if (!linesByMark.has(l.markId)) linesByMark.set(l.markId, []);
+      linesByMark.get(l.markId)!.push(mapped);
+    }
+  }
+
   const rows: BillRow[] = [];
 
   for (const mId of markIds) {
     const mark = markMap.get(mId);
-    const scItems = scByMark.get(mId) || [];
-    const ldItems = ldByMark.get(mId) || [];
-    const allItems = [...scItems, ...ldItems];
+    const allItems = hasSnapshot
+      ? (linesByMark.get(mId) || [])
+      : [...(scByMark.get(mId) || []), ...(ldByMark.get(mId) || [])];
     if (allItems.length === 0) continue;
 
     // ── 按运单号分组，计算每个运单的应收 ──
