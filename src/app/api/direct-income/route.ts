@@ -22,14 +22,20 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   if (!body.customerId || !Number.isFinite(body.customerId) || body.customerId <= 0) return NextResponse.json({ error: '缺少客户' }, { status: 400 });
   if (!body.amount || !Number.isFinite(body.amount) || body.amount <= 0) return NextResponse.json({ error: '金额必须为正数' }, { status: 400 });
-  const result = await db.insert(directIncome).values({
-    markId: body.markId || null,
-    customerId: body.customerId,
-    amount: body.amount,
-    currency: body.currency || 'CNY',
-    volume: body.volume || null,
-    incomeDate: body.incomeDate,
-    remark: body.remark || null,
-  });
-  return NextResponse.json({ success: true, id: Number(result.lastInsertRowid) });
+  if (!body.incomeDate || typeof body.incomeDate !== 'string' || !body.incomeDate.trim()) return NextResponse.json({ error: '请选择收入日期' }, { status: 400 });
+  try {
+    const result = await db.insert(directIncome).values({
+      markId: body.markId || null,
+      customerId: body.customerId,
+      amount: body.amount,
+      currency: body.currency || 'CNY',
+      volume: body.volume || null,
+      incomeDate: body.incomeDate,
+      remark: body.remark || null,
+    });
+    return NextResponse.json({ success: true, id: Number(result.lastInsertRowid) });
+  } catch (error) {
+    console.error('录入直接收入失败:', error);
+    return NextResponse.json({ error: '录入失败' }, { status: 500 });
+  }
 }

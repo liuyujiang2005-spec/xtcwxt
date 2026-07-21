@@ -23,8 +23,11 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
+    if (!body.name || typeof body.name !== 'string' || !body.name.trim()) {
+      return NextResponse.json({ error: '客户名称不能为空' }, { status: 400 });
+    }
     await db.insert(customers).values({
-      name: body.name,
+      name: body.name.trim(),
       contact: body.contact || null,
       priceMatrix: body.priceMatrix || null,
       defaultCurrency: body.defaultCurrency || 'CNY',

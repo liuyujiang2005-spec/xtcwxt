@@ -10,7 +10,8 @@ export async function GET(
 ) {
   const sessionToken = request.cookies.get('session')?.value;
   if (!sessionToken) return NextResponse.json({ error: '未登录' }, { status: 401 });
-  await validateSession(sessionToken);
+  const user = await validateSession(sessionToken);
+  if (!user) return NextResponse.json({ error: '登录已过期' }, { status: 401 }); // 修复:原来只调用不检查返回值,任意非空cookie即可读记录(鉴权绕过)
 
   const { id } = await params;
   const item = await db.select().from(directIncome).where(eq(directIncome.id, parseInt(id))).get();

@@ -9,6 +9,7 @@ export async function POST(request: NextRequest) {
   if (!sessionToken) return NextResponse.json({ error: '未登录' }, { status: 401 });
   const user = await validateSession(sessionToken);
   if (!user) return NextResponse.json({ error: '登录过期' }, { status: 401 });
+  if (user.role === 'viewer') return NextResponse.json({ error: '无权限' }, { status: 403 }); // 与其他写接口一致,只读用户不得上传文件
 
   try {
     const formData = await request.formData();
