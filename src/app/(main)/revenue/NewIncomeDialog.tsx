@@ -28,14 +28,18 @@ export function NewIncomeDialog() {
   const [incomeDate, setIncomeDate] = useState(new Date().toISOString().substring(0, 10));
   const [remark, setRemark] = useState('');
   const [loading, setLoading] = useState(false);
+  const [custError, setCustError] = useState(false);
+
+  const loadCustomers = () => {
+    setCustError(false);
+    fetch('/api/customers')
+      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+      .then(data => setCustomers(Array.isArray(data) ? data : []))
+      .catch(() => setCustError(true));
+  };
 
   useEffect(() => {
-    if (open && customers.length === 0) {
-      fetch('/api/customers')
-        .then(r => r.json())
-        .then(data => setCustomers(Array.isArray(data) ? data : []))
-        .catch(() => {});
-    }
+    if (open && customers.length === 0) loadCustomers();
   }, [open]);
 
   const handleSubmit = async () => {
@@ -94,6 +98,7 @@ export function NewIncomeDialog() {
                 ))}
               </SelectContent>
             </Select>
+            {custError && <button type="button" onClick={loadCustomers} className="text-xs text-red-600 underline">客户加载失败，点此重试</button>}
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">

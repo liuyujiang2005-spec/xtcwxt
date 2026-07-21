@@ -39,10 +39,19 @@ export default function LoadingManualPage({ params }: { params: Promise<{ id: st
   const [rows, setRows] = useState<RowData[]>([emptyRow()]);
   const [saving, setSaving] = useState(false);
 
+  const [custError, setCustError] = useState(false);
+  const loadCustomers = () => {
+    setCustError(false);
+    fetch('/api/customers')
+      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+      .then(d => setCustomers(Array.isArray(d) ? d : []))
+      .catch(() => setCustError(true));
+  };
+
   useEffect(() => {
     let cancelled = false;
     params.then(p => { if (!cancelled) setBatchId(parseInt(p.id)); });
-    fetch('/api/customers').then(r => r.json()).then(d => { if (!cancelled) setCustomers(Array.isArray(d) ? d : []); }).catch(() => {});
+    loadCustomers();
     return () => { cancelled = true; };
   }, []);
 
@@ -112,6 +121,12 @@ export default function LoadingManualPage({ params }: { params: Promise<{ id: st
           </Button>
         </div>
       </div>
+
+      {custError && (
+        <div className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
+          客户列表加载失败，下拉可能选不到客户。<button type="button" onClick={loadCustomers} className="underline font-medium">点此重试</button>
+        </div>
+      )}
 
       <Card>
         <CardContent className="p-0">
