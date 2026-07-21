@@ -95,6 +95,8 @@ export function BillItemsTable({
                     <TableHead className="text-right">总体积</TableHead>
                     <TableHead className="text-right">单项体积</TableHead>
                     <TableHead className="text-right">件数</TableHead>
+                    <TableHead>国内单号</TableHead>
+                    <TableHead className="text-right">总重量</TableHead>
                     <TableHead className="text-right">成本</TableHead>
                     <TableHead className="text-right">应收</TableHead>
                     <TableHead>类型</TableHead>
@@ -137,6 +139,8 @@ export function BillItemsTable({
                         {isFirstInOrder ? <TableCell className="border text-right font-medium" rowSpan={orderRowSpan}>{(item.总体积 ?? 0).toFixed(6)}</TableCell> : null}
                         <TableCell className="border text-right">{item.单项体积 ?? '-'}</TableCell>
                         <TableCell className="border text-right">{item.箱数 || '-'}</TableCell>
+                        <TableCell className="border text-xs">{item.国内单号 || '-'}</TableCell>
+                        <TableCell className="border text-right">{item.总重量 || '-'}</TableCell>
                         <TableCell className="border text-right text-red-600">{formatAmount(item.需支付总价 || 0)}</TableCell>
                         {/* 应收 可编辑(运单首条) */}
                         {isFirstInOrder ? (

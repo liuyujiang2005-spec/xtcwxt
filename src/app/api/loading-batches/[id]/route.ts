@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db/index';
-import { loadingBatches, loadingItems, expenses, bills, billItems } from '@/db/schema';
+import { loadingBatches, loadingItems, expenses, bills, billItems, billLines } from '@/db/schema';
 import { validateSession } from '@/lib/auth';
 import { eq, inArray } from 'drizzle-orm';
 
@@ -86,6 +86,7 @@ export async function DELETE(
 
         // 只删未付款的账单和账单明细
         if (unpaidIds.length > 0) {
+          tx.delete(billLines).where(inArray(billLines.billId, unpaidIds)).run();
           tx.delete(billItems).where(inArray(billItems.billId, unpaidIds)).run();
           tx.delete(bills).where(inArray(bills.id, unpaidIds)).run();
         }
