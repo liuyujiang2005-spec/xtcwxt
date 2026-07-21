@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { ArrowLeft, Download } from 'lucide-react';
 import { PaymentForm } from './PaymentForm';
 import { BillItemsTable } from './BillItemsTable';
+import { ReceiptUploader } from '../ReceiptUploader';
 import { formatAmount } from '@/lib/format';
 
 export default async function BillDetailPage({ params }: { params: Promise<{ billNo: string }> }) {
@@ -112,6 +113,14 @@ export default async function BillDetailPage({ params }: { params: Promise<{ bil
         currentStatus={pStatus}
         currency={bill.currency || 'CNY'}
       />
+
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-sm">付款水单</CardTitle></CardHeader>
+        <CardContent className="flex items-center gap-3">
+          <ReceiptUploader apiPath="/api/bills" entityId={bill.id} currentUrl={(bill as any).receiptUrl} updateField="receiptUrl" />
+          <span className="text-xs text-muted-foreground">{(bill as any).receiptUrl ? '已上传，点缩略图可查看，右上角×可删除' : '客户付款后，上传付款水单（图片或PDF）'}</span>
+        </CardContent>
+      </Card>
 
       <div className="flex items-center gap-2">
         <a href={`/api/bills/export?billId=${bill.id}`}><Button variant="outline" size="sm"><Download className="h-3.5 w-3.5 mr-1" />导出Excel</Button></a>

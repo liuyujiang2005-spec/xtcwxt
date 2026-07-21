@@ -64,8 +64,12 @@ export function ReceiptUploader({ apiPath, entityId, currentUrl, updateField = '
     <div className="flex items-center gap-2">
       {preview ? (
         <div className="relative inline-block">
-          <a href={preview} target="_blank" rel="noopener">
-            <img src={preview} alt="水单" className="h-12 w-12 object-cover rounded border" />
+          <a href={preview} target="_blank" rel="noopener" title="点击查看大图/PDF">
+            {preview.toLowerCase().endsWith('.pdf') ? (
+              <div className="h-12 w-12 rounded border flex items-center justify-center bg-muted text-[10px] font-medium text-muted-foreground">PDF</div>
+            ) : (
+              <img src={preview} alt="水单" className="h-12 w-12 object-cover rounded border" />
+            )}
           </a>
           <button onClick={removeImage} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs"><X size={10} /></button>
         </div>
@@ -79,7 +83,7 @@ export function ReceiptUploader({ apiPath, entityId, currentUrl, updateField = '
           {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
         </Button>
       )}
-      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
+      <input ref={fileInputRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={handleFile} />
     </div>
   );
 }

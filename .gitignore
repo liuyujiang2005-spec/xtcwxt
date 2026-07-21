@@ -45,3 +45,6 @@ data.db
 data.db-shm
 data.db-wal
 data.db.bak
+
+# 上传的水单/凭证(客户财务文件,不进仓库)
+/public/uploads/
