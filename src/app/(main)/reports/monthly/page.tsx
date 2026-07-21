@@ -1,7 +1,7 @@
 import { getCurrentUser } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { db } from '@/db/index';
-import { directIncome, expenses, customers, sharedContainerItems, loadingItems, marks, sharedContainerBatches, loadingBatches, paymentsReceived } from '@/db/schema';
+import { directIncome, expenses, customers, sharedContainerItems, loadingItems, marks, sharedContainerBatches, loadingBatches, paymentsReceived, bills, billItems } from '@/db/schema';
 import { sql } from 'drizzle-orm';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -64,6 +64,20 @@ export default async function MonthlyReportPage() {
     return mm.get(cid)!;
   };
 
+  // 账单覆盖：已生成账单的唛头，应收用账单值(可能被手动调整)；未生成账单的用系统算的。成本永远按源明细。
+  const allBills = await db.select().from(bills).all();
+  const billById = new Map(allBills.map(b => [b.id, b]));
+  const allBillItems = await db.select().from(billItems).all();
+  const billByMark = new Map<number, { amount: number; isThb: boolean; monthTag: string; customerId: number }>();
+  for (const bi of allBillItems) {
+    const b = billById.get(bi.billId);
+    if (!b) continue;
+    const prev = billByMark.get(bi.markId);
+    if (prev) prev.amount += Number(bi.amount) || 0;
+    else billByMark.set(bi.markId, { amount: Number(bi.amount) || 0, isThb: (b.currency || 'CNY') === 'THB', monthTag: b.monthTag, customerId: b.customerId });
+  }
+  const isBilled = (mid: number) => billByMark.has(mid);
+
   for (const item of [...allScItems, ...allLdItems]) {
     const ok = (item as any).cost_status !== undefined ? scBatchOk.get(item.batchId) : ldBatchOk.get(item.batchId);
     if (ok !== true) continue; // 待审核不计入
@@ -72,10 +86,20 @@ export default async function MonthlyReportPage() {
     const isThb = custCurrencyMap.get(item.customerId) === 'THB';
     const rec = Number(item.客户应收) || 0;
     const e = ensure(month);
-    const rc = ensureRC(month, item.customerId);
-    if (isThb) { e.recTHB += rec; rc.THB += rec; }
-    else { e.recCNY += rec; rc.CNY += rec; }
+    // 应收：已开账单的唛头跳过源值(后面用账单值补)；成本始终按源明细
+    if (!isBilled(item.markId)) {
+      const rc = ensureRC(month, item.customerId);
+      if (isThb) { e.recTHB += rec; rc.THB += rec; }
+      else { e.recCNY += rec; rc.CNY += rec; }
+    }
     e.costCNY += (item.需支付总价 || 0);
+  }
+  // 补进账单应收(按账单月份/客户/币种)
+  for (const v of billByMark.values()) {
+    const e = ensure(v.monthTag);
+    const rc = ensureRC(v.monthTag, v.customerId);
+    if (v.isThb) { e.recTHB += v.amount; rc.THB += v.amount; }
+    else { e.recCNY += v.amount; rc.CNY += v.amount; }
   }
 
   // 已收: 按收款日期归月(客户收款记录)

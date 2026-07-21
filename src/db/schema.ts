@@ -212,6 +212,7 @@ export const bills = sqliteTable('bills', {
   currency: text('currency').default('CNY'),
   status: text('status').default('待生成'),
   receiptUrl: text('receipt_url'),
+  manualAdjusted: integer('manual_adjusted').default(0),
   createdAt: text('created_at').default(sql`(datetime('now'))`),
 }, (table) => ({
   customerMonthIdx: index('bills_customer_month_idx').on(table.customerId, table.monthTag),
@@ -226,6 +227,33 @@ export const billItems = sqliteTable('bill_items', {
   costAmount: real('cost_amount').default(0),
 }, (table) => ({
   billIdIdx: index('bi_bill_id_idx').on(table.billId),
+}));
+
+// 账单独立明细快照:第一次编辑账单时从原始明细拷入,之后随便改,只影响应收,不碰成本明细
+export const billLines = sqliteTable('bill_lines', {
+  id: integer('id').primaryKey(),
+  billId: integer('bill_id').references(() => bills.id).notNull(),
+  markId: integer('mark_id').references(() => marks.id).notNull(),
+  sourceType: text('source_type').notNull(), // 'sc' | 'ld'
+  sourceItemId: integer('source_item_id'),
+  运单号: text('运单号'),
+  品名: text('品名'),
+  仓库: text('仓库'),
+  货型: text('货型'),
+  运输方式: text('运输方式'),
+  尺寸_长: real('尺寸_长'),
+  尺寸_宽: real('尺寸_宽'),
+  尺寸_高: real('尺寸_高'),
+  单项体积: real('单项体积'),
+  总体积: real('总体积'),
+  箱数: integer('箱数'),
+  国内单号: text('国内单号'),
+  总重量: real('总重量'),
+  需支付总价: real('需支付总价'), // 成本快照,只显示不改
+  客户应收: real('客户应收'),     // 每运单首条,可编辑
+  createdAt: text('created_at').default(sql`(datetime('now'))`),
+}, (table) => ({
+  billIdIdx: index('bl_bill_id_idx').on(table.billId),
 }));
 
 export const customerMetrics = sqliteTable('customer_metrics', {

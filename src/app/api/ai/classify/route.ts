@@ -87,6 +87,11 @@ export async function POST(request: NextRequest) {
         results.push({ markId, billId: existing.id, billNo, markNo, customerName: custMap.get(custId)?.name || markNo, itemCount: group.length, totalVolume: round6(0), totalCost: round6(0), skipped: true });
         continue;
       }
+      // 已手动调整过的账单：跳过，绝不用系统算的值覆盖手改
+      if ((existing as any).manualAdjusted) {
+        results.push({ markId, billId: existing.id, billNo, markNo, customerName: custMap.get(custId)?.name || markNo, itemCount: group.length, totalVolume: round6(0), totalCost: round6(0), skipped: true });
+        continue;
+      }
     }
 
     // 确定参与计算的明细范围：账单已存在时取该唛头全部明细，否则只取本次选中批次的

@@ -1,7 +1,7 @@
 import { getCurrentUser } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { db } from '@/db/index';
-import { directIncome, expenses, paymentsReceived, paymentsMade, customerMetrics, customers, sharedContainerItems, loadingItems, marks, sharedContainerBatches, loadingBatches } from '@/db/schema';
+import { directIncome, expenses, paymentsReceived, paymentsMade, customerMetrics, customers, sharedContainerItems, loadingItems, marks, sharedContainerBatches, loadingBatches, bills, billItems } from '@/db/schema';
 import { desc } from 'drizzle-orm';
 import { formatAmount } from '@/lib/format';
 import Link from 'next/link';
@@ -47,16 +47,35 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const isCNY = (cid: number) => custCurrencyMap.get(cid) !== 'THB';
   const inMonth = (markId: number) => markMonthMap.get(markId) === currentMonth; // 按业务月份
 
+  // 账单覆盖：已生成账单的唛头，应收用账单值(可能被手动调整过)；未生成账单的用系统算的
+  const allBills = await db.select().from(bills).all();
+  const billById = new Map(allBills.map(b => [b.id, b]));
+  const allBillItems = await db.select().from(billItems).all();
+  const billByMark = new Map<number, { amount: number; isCNY: boolean; monthTag: string }>();
+  for (const bi of allBillItems) {
+    const b = billById.get(bi.billId);
+    if (!b) continue;
+    const prev = billByMark.get(bi.markId);
+    if (prev) prev.amount += Number(bi.amount) || 0;
+    else billByMark.set(bi.markId, { amount: Number(bi.amount) || 0, isCNY: (b.currency || 'CNY') !== 'THB', monthTag: b.monthTag });
+  }
+  const isBilled = (mid: number) => billByMark.has(mid);
+  // 账单应收合计(billed marks)：cny=是否人民币, month=null 表示全部月份
+  const billedRecv = (cny: boolean, month: string | null) =>
+    [...billByMark.values()].filter(v => v.isCNY === cny && (month ? v.monthTag === month : true)).reduce((s, v) => s + v.amount, 0);
+
   const monthRevenueCNY = allIncome
     .filter((i) => i.incomeDate?.startsWith(currentMonth) && i.currency !== 'THB')
     .reduce((s, i) => s + i.amount, 0)
-    + scConfirmed.filter((i) => inMonth(i.markId) && isCNY(i.customerId)).reduce((s, i) => s + (Number(i.客户应收) || 0), 0)
-    + ldConfirmed.filter((i) => inMonth(i.markId) && isCNY(i.customerId)).reduce((s, i) => s + (Number(i.客户应收) || 0), 0);
+    + scConfirmed.filter((i) => inMonth(i.markId) && isCNY(i.customerId) && !isBilled(i.markId)).reduce((s, i) => s + (Number(i.客户应收) || 0), 0)
+    + ldConfirmed.filter((i) => inMonth(i.markId) && isCNY(i.customerId) && !isBilled(i.markId)).reduce((s, i) => s + (Number(i.客户应收) || 0), 0)
+    + billedRecv(true, currentMonth);
   const monthRevenueTHB = allIncome
     .filter((i) => i.incomeDate?.startsWith(currentMonth) && i.currency === 'THB')
     .reduce((s, i) => s + i.amount, 0)
-    + scConfirmed.filter((i) => inMonth(i.markId) && !isCNY(i.customerId)).reduce((s, i) => s + (Number(i.客户应收) || 0), 0)
-    + ldConfirmed.filter((i) => inMonth(i.markId) && !isCNY(i.customerId)).reduce((s, i) => s + (Number(i.客户应收) || 0), 0);
+    + scConfirmed.filter((i) => inMonth(i.markId) && !isCNY(i.customerId) && !isBilled(i.markId)).reduce((s, i) => s + (Number(i.客户应收) || 0), 0)
+    + ldConfirmed.filter((i) => inMonth(i.markId) && !isCNY(i.customerId) && !isBilled(i.markId)).reduce((s, i) => s + (Number(i.客户应收) || 0), 0)
+    + billedRecv(false, currentMonth);
 
   const monthCostCNY = allExpenses.filter((e) => e.currency !== 'THB' && e.createdAt?.startsWith(currentMonth)).reduce((s, e) => s + e.amount, 0)
     + scConfirmed.filter((i) => inMonth(i.markId)).reduce((s, i) => s + (i.需支付总价 || 0), 0)
@@ -70,14 +89,16 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const paidCNY = allPaid.filter((p) => p.currency !== 'THB').reduce((s, p) => s + p.amount, 0);
   const paidTHB = allPaid.filter((p) => p.currency === 'THB').reduce((s, p) => s + p.amount, 0);
 
-  // 待收基于全部已确认应收(不分月)，待审核批次不计入
+  // 待收基于全部已确认应收(不分月)，待审核批次不计入；已生成账单的唛头用账单值
   const totalRevenueCNY = allIncome.filter(i => i.currency !== 'THB').reduce((s, i) => s + i.amount, 0)
-    + scConfirmed.filter(i => isCNY(i.customerId)).reduce((s, i) => s + (Number(i.客户应收) || 0), 0)
-    + ldConfirmed.filter(i => isCNY(i.customerId)).reduce((s, i) => s + (Number(i.客户应收) || 0), 0);
+    + scConfirmed.filter(i => isCNY(i.customerId) && !isBilled(i.markId)).reduce((s, i) => s + (Number(i.客户应收) || 0), 0)
+    + ldConfirmed.filter(i => isCNY(i.customerId) && !isBilled(i.markId)).reduce((s, i) => s + (Number(i.客户应收) || 0), 0)
+    + billedRecv(true, null);
   const totalReceivedCNY = allReceived.filter(p => p.currency !== 'THB').reduce((s, p) => s + p.amount, 0);
   const totalRevenueTHB = allIncome.filter(i => i.currency === 'THB').reduce((s, i) => s + i.amount, 0)
-    + scConfirmed.filter(i => !isCNY(i.customerId)).reduce((s, i) => s + (Number(i.客户应收) || 0), 0)
-    + ldConfirmed.filter(i => !isCNY(i.customerId)).reduce((s, i) => s + (Number(i.客户应收) || 0), 0);
+    + scConfirmed.filter(i => !isCNY(i.customerId) && !isBilled(i.markId)).reduce((s, i) => s + (Number(i.客户应收) || 0), 0)
+    + ldConfirmed.filter(i => !isCNY(i.customerId) && !isBilled(i.markId)).reduce((s, i) => s + (Number(i.客户应收) || 0), 0)
+    + billedRecv(false, null);
   const totalReceivedTHB = allReceived.filter(p => p.currency === 'THB').reduce((s, p) => s + p.amount, 0);
 
   const topCustomers = await db.select().from(customerMetrics).orderBy(desc(customerMetrics.monthlyVolume)).limit(5).all();

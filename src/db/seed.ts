@@ -202,6 +202,7 @@ sqlite.exec(`
     receipt_url TEXT,
     currency TEXT DEFAULT 'CNY',
     status TEXT DEFAULT '待生成',
+    manual_adjusted INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now'))
   );
 
@@ -212,6 +213,30 @@ sqlite.exec(`
     mode TEXT NOT NULL,
     amount REAL NOT NULL,
     cost_amount REAL DEFAULT 0
+  );
+
+  CREATE TABLE IF NOT EXISTS bill_lines (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    bill_id INTEGER NOT NULL REFERENCES bills(id),
+    mark_id INTEGER NOT NULL REFERENCES marks(id),
+    source_type TEXT NOT NULL,
+    source_item_id INTEGER,
+    运单号 TEXT,
+    品名 TEXT,
+    仓库 TEXT,
+    货型 TEXT,
+    运输方式 TEXT,
+    尺寸_长 REAL,
+    尺寸_宽 REAL,
+    尺寸_高 REAL,
+    单项体积 REAL,
+    总体积 REAL,
+    箱数 INTEGER,
+    国内单号 TEXT,
+    总重量 REAL,
+    需支付总价 REAL,
+    客户应收 REAL,
+    created_at TEXT DEFAULT (datetime('now'))
   );
 
   CREATE TABLE IF NOT EXISTS customer_metrics (
@@ -239,6 +264,7 @@ sqlite.exec(`
   CREATE INDEX IF NOT EXISTS payments_received_customer_id_idx ON payments_received(customer_id);
   CREATE INDEX IF NOT EXISTS bills_customer_month_idx ON bills(customer_id, month_tag);
   CREATE INDEX IF NOT EXISTS bi_bill_id_idx ON bill_items(bill_id);
+  CREATE INDEX IF NOT EXISTS bl_bill_id_idx ON bill_lines(bill_id);
 `);
 
 const existingAdmin = sqlite.prepare('SELECT id FROM users WHERE username = ?').get('admin');

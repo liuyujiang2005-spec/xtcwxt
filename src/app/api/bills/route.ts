@@ -19,6 +19,9 @@ export async function PATCH(request: NextRequest) {
     // ── 读取阶段（事务外） ──
     const bill = await db.select().from(bills).where(eq(bills.id, recalcId)).get();
     if (!bill) return NextResponse.json({ error: '账单不存在' }, { status: 404 });
+    if ((bill as any).manualAdjusted) {
+      return NextResponse.json({ error: '该账单已手动调整，重算会覆盖你的手改，已跳过' }, { status: 409 });
+    }
 
     const customer = await db.select().from(customers).where(eq(customers.id, bill.customerId)).get();
     let pm: any = {};
