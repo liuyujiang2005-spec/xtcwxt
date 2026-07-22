@@ -3,7 +3,7 @@ import { db } from '@/db/index';
 import { bills, billItems, billLines, marks, sharedContainerItems, loadingItems, customers } from '@/db/schema';
 import { validateSession } from '@/lib/auth';
 import { eq, and, inArray } from 'drizzle-orm';
-import { cargoKey, waybillReceivable } from '@/lib/pricing';
+import { cargoKey, waybillReceivable, pickMatrixPrice } from '@/lib/pricing';
 
 const round6 = (n: number) => Math.round(n * 1e6) / 1e6;
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -12,11 +12,8 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 const httpError = (message: string, status: number) => Object.assign(new Error(message), { status });
 
 function getMatrixPrice(pm: any, warehouse: string | null, transport: string, cargo: string | null | undefined): number {
-  const m = transport === '海运' ? 'sea' : 'land';
-  const t = cargoKey(cargo);
-  const key = m + '_' + t;
-  if (warehouse && typeof pm[warehouse] === 'object' && pm[warehouse] !== null && typeof pm[warehouse][key] === 'number') return (pm[warehouse] as any)[key];
-  return typeof pm[key] === 'number' ? pm[key] : 0;
+  const key = (transport === '海运' ? 'sea' : 'land') + '_' + cargoKey(cargo);
+  return pickMatrixPrice(pm, warehouse, key);
 }
 
 // 首次编辑时把原始明细快照进 bill_lines，之后账单只读/改这份快照，绝不动成本明细

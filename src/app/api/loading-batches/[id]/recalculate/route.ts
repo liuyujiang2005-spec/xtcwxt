@@ -3,7 +3,7 @@ import { db } from '@/db/index';
 import { loadingItems, marks, customers, loadingBatches, bills, billItems } from '@/db/schema';
 import { validateSession } from '@/lib/auth';
 import { eq, and, or } from 'drizzle-orm';
-import { cargoKey, waybillReceivable } from '@/lib/pricing';
+import { cargoKey, waybillReceivable, pickMatrixPrice } from '@/lib/pricing';
 
 export async function POST(
   request: NextRequest,
@@ -45,11 +45,8 @@ export async function POST(
       };
 
       const getPrice = (pm: any, wh: string | null, transport: string, cargo: string | null | undefined): number => {
-        const m = transport === '海运' ? 'sea' : 'land';
-        const t = cargoKey(cargo);
-        const key = m + '_' + t;
-        if (wh && typeof pm[wh] === 'object' && pm[wh] !== null && typeof pm[wh][key] === 'number') return (pm[wh] as any)[key];
-        return typeof pm[key] === 'number' ? pm[key] : 0;
+        const key = (transport === '海运' ? 'sea' : 'land') + '_' + cargoKey(cargo);
+        return pickMatrixPrice(pm, wh, key);
       };
 
       // 按 客户+运单号 分组

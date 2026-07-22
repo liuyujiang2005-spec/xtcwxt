@@ -34,6 +34,24 @@ export function isKnownTransport(transport: string | null | undefined): boolean 
 }
 
 /**
+ * 从价格矩阵按仓库+档位key取价,带仓库名规范化。
+ * 明细里的仓库可能是简写"东莞",而价格矩阵配置界面用的是"东莞仓",
+ * 精确匹配会取不到价导致应收=0。这里对仓库名做三种兜底:原样 / 加"仓" / 去"仓"。
+ * 都取不到再退到矩阵平铺 key(旧格式),最后返回0。
+ * @param key 档位key,如 sea_regular / land_inspection
+ */
+export function pickMatrixPrice(pm: any, warehouse: string | null | undefined, key: string): number {
+  if (pm && warehouse) {
+    const wh = String(warehouse).trim();
+    for (const cand of [wh, wh + '仓', wh.replace(/仓$/, '')]) {
+      const w = pm[cand];
+      if (w && typeof w === 'object' && typeof w[key] === 'number') return w[key];
+    }
+  }
+  return pm && typeof pm[key] === 'number' ? pm[key] : 0;
+}
+
+/**
  * 计算一个运单的客户应收。
  * 一个运单里不同产品的货型可能不同(如空压机商检、蚊帐普货)，所以每条按自己货型定价：
  *   应收 = Σ(客户价(该条货型) × 该条单项体积)

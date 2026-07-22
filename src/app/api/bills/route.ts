@@ -3,7 +3,7 @@ import { db } from '@/db/index';
 import { bills, billItems, sharedContainerItems, loadingItems, customers } from '@/db/schema';
 import { validateSession } from '@/lib/auth';
 import { eq } from 'drizzle-orm';
-import { cargoKey, waybillReceivable } from '@/lib/pricing';
+import { cargoKey, waybillReceivable, pickMatrixPrice } from '@/lib/pricing';
 
 export async function PATCH(request: NextRequest) {
   const st = request.cookies.get('session')?.value;
@@ -33,13 +33,8 @@ export async function PATCH(request: NextRequest) {
     const minVol = (transport: string): number => { if (!em) return 0; return transport === '海运' ? 0.5 : 0.3; };
 
     const getPrice = (wh: string | null, transport: string, cargo: string | null | undefined): number => {
-      const m = transport === '海运' ? 'sea' : 'land';
-      const t = cargoKey(cargo);
-      const key = m + '_' + t;
-      if (wh && typeof pm[wh] === 'object' && pm[wh] !== null) {
-        if (typeof (pm[wh] as any)[key] === 'number') return (pm[wh] as any)[key];
-      }
-      return typeof pm[key] === 'number' ? pm[key] : 0;
+      const key = (transport === '海运' ? 'sea' : 'land') + '_' + cargoKey(cargo);
+      return pickMatrixPrice(pm, wh, key);
     };
 
     const bits = await db.select().from(billItems).where(eq(billItems.billId, recalcId)).all();

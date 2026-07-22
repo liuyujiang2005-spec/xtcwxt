@@ -3,14 +3,11 @@ import { db } from '@/db/index';
 import { sharedContainerItems, customers, sharedContainerBatches, bills, billItems } from '@/db/schema';
 import { validateSession } from '@/lib/auth';
 import { eq, or } from 'drizzle-orm';
-import { cargoKey, waybillReceivable } from '@/lib/pricing';
+import { cargoKey, waybillReceivable, pickMatrixPrice } from '@/lib/pricing';
 
 function getMatrixPrice(pm: any, warehouse: string | null, transport: string, cargo: string | null | undefined): number {
-  const m = transport === '海运' ? 'sea' : 'land';
-  const t = cargoKey(cargo);
-  const key = m + '_' + t;
-  if (warehouse && typeof pm[warehouse] === 'object' && pm[warehouse] !== null && typeof pm[warehouse][key] === 'number') return (pm[warehouse] as any)[key];
-  return typeof pm[key] === 'number' ? pm[key] : 0;
+  const key = (transport === '海运' ? 'sea' : 'land') + '_' + cargoKey(cargo);
+  return pickMatrixPrice(pm, warehouse, key);
 }
 
 export async function POST(

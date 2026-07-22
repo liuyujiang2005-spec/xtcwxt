@@ -4,14 +4,11 @@ import { sharedContainerItems, loadingItems, marks, billItems, billLines, custom
 import { validateSession } from '@/lib/auth';
 import { eq, inArray } from 'drizzle-orm';
 import { generateBillXlsx, type BillRow } from '@/lib/generate-bill-xlsx';
-import { cargoKey } from '@/lib/pricing';
+import { cargoKey, pickMatrixPrice } from '@/lib/pricing';
 
 function getMatrixPrice(pm: any, warehouse: string | null, transport: string, cargo: string): number {
-  const m = transport === '海运' ? 'sea' : 'land';
-  const t = cargoKey(cargo);
-  const key = m + '_' + t;
-  if (warehouse && pm[warehouse] && typeof pm[warehouse][key] === 'number') return pm[warehouse][key];
-  return typeof pm[key] === 'number' ? pm[key] : 0;
+  const key = (transport === '海运' ? 'sea' : 'land') + '_' + cargoKey(cargo);
+  return pickMatrixPrice(pm, warehouse, key);
 }
 
 export async function GET(request: NextRequest) {
