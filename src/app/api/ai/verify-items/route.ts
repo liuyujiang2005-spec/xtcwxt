@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
       const itemsForAi = batchItems.map(({ originalIndex, item }) => ({
         itemId: originalIndex,
         品名: item.品名 || '-',
-         体积: item.计费体积 ?? item.总体积 ?? item.体积 ?? '-',
+         体积: item.计费体积 ?? item.单项体积 ?? item.总体积 ?? item.体积 ?? '-',
         货型: item.货型 || '-',
         运输方式: item.运输方式 || '-',
         ...(isSc
