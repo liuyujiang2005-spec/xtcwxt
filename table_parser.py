@@ -251,6 +251,26 @@ def parse_data(ws, rules):
         v = ws.cell(row=header_row, column=ci).value
         if v:
             col_map[str(v).strip()] = ci
+
+    # 两行表头处理:"尺寸"是合并表头、下一行分成 长/宽/高 三个子列时,
+    # 主表头行第8/9列是空的进不了 col_map,取数只会拿到"长"。这里识别子表头,
+    # 记住长/宽/高三列列号,取数时拼成"长×宽×高"。
+    dim_cols = None
+    if "尺寸" in col_map:
+        szi = col_map["尺寸"]
+        sub_row = header_row + 1
+        lc = wc = hc = None
+        for ci in range(szi, min(szi + 4, ws.max_column + 1)):
+            sv = ws.cell(row=sub_row, column=ci).value
+            s = str(sv) if sv is not None else ""
+            if "长" in s and lc is None: lc = ci
+            elif "宽" in s and wc is None: wc = ci
+            elif "高" in s and hc is None: hc = ci
+        if lc and wc and hc:
+            dim_cols = (lc, wc, hc)
+            # 子表头那一行不是数据,数据从它下一行开始
+            if data_start <= sub_row:
+                data_start = sub_row + 1
     
     # 找订单标识列：让GPT-4o选，但用代码验证
     order_col = None
@@ -324,7 +344,15 @@ def parse_data(ws, rules):
         row_data = {}
         for name, ci in col_map.items():
             row_data[name] = ws.cell(row=ri, column=ci).value
-        
+
+        # 两行表头:用长/宽/高三格拼出完整尺寸
+        if dim_cols:
+            lv = ws.cell(row=ri, column=dim_cols[0]).value
+            wv = ws.cell(row=ri, column=dim_cols[1]).value
+            hv = ws.cell(row=ri, column=dim_cols[2]).value
+            if all(x is not None and str(x).strip() != "" for x in (lv, wv, hv)):
+                row_data["尺寸"] = f"{lv}×{wv}×{hv}"
+
         order_val = ws.cell(row=ri, column=order_col).value
         order_str = str(order_val).strip() if order_val is not None else ""
         
