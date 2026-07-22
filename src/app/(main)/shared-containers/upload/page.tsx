@@ -71,7 +71,7 @@ export default function UploadSharedContainerPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          items: items.map(i => ({ 品名: i.品名, 总体积: i.总体积, 货型: i.货型, 运输方式: i.运输方式, 运单号: i.运单号, 成本单价: i.单价, 需支付总价: i.单项价格 })),
+          items: items.map(i => ({ 品名: i.品名, 货型: i.货型, 运输方式: i.运输方式, 运单号: i.运单号, 成本单价: i.单价 })),
           type: 'shared-container',
         }),
         signal: controller.signal,
@@ -81,12 +81,15 @@ export default function UploadSharedContainerPage() {
         const abnormalMap = new Map<number, string>();
         (vData.details || []).forEach((d: any) => abnormalMap.set(d.itemId, d.reason));
         setPreview(prev => {
+          // 确定性硬错误(异常)保留,AI 只给没硬错误的项加"提示",绝不覆盖确定性结果
           const updated = prev.map((item, idx) => {
-            const reason = abnormalMap.get(idx);
-            return reason ? { ...item, verdict: '异常', reason } : { ...item, verdict: '通过', reason: '' };
+            if (item.verdict === '异常') return item;
+            const aiReason = abnormalMap.get(idx);
+            if (aiReason) return { ...item, verdict: '提示', reason: aiReason };
+            return item;
           });
-          setTimeout(() => setSummary({ totalItems: updated.length, abnormalCount: vData.abnormalCount || 0 }), 0);
-          return updated;
+          const abn = updated.filter(i => i.verdict === '异常').length;
+          setTimeout(() => setSummary({ totalItems: updated.length, abnormalCount: abn }), 0);
           return updated;
         });
       }).catch(err => { if (err?.name !== 'AbortError') { console.error('AI 验价失败:', err); setResult({ passed: false, msg: 'AI验价请求失败，请重试' }); } })
@@ -128,7 +131,7 @@ export default function UploadSharedContainerPage() {
         订单总价: item.订单总价 || 0,
         运单号: item.运单号 || '',
         结算状态: item.结算状态 || '',
-        ai_verified: item.verdict === '通过' ? 1 : 0,
+        ai_verified: item.verdict === '异常' ? 0 : 1,
         ai_verify_msg: item.reason || '',
       }));
       const totalVol = items.reduce((s: number, i: any) => s + (i.总体积 || i.单项体积 || 0), 0);
@@ -143,6 +146,7 @@ export default function UploadSharedContainerPage() {
   };
 
   const abnormalItems = preview.filter(i => i.verdict === '异常');
+  const noticeItems = preview.filter(i => i.verdict === '提示');
 
   // 按运单号分组用于合并展示
   const grouped: { key: string; items: ScItem[] }[] = [];
@@ -157,9 +161,10 @@ export default function UploadSharedContainerPage() {
     <div className="space-y-6">
       <div className="flex items-center gap-3"><Link href="/shared-containers"><Button variant="ghost" size="icon" className="h-8 w-8"><ArrowLeft className="h-5 w-5" /></Button></Link><h1 className="text-2xl font-bold">上传拼柜表格</h1></div>
       {phase === 'preview' || phase === 'importing' ? (
-        <Card><CardHeader><CardTitle>预览数据 <span className="ml-2 text-sm font-normal text-muted-foreground">共 {summary.totalItems} 条{summary.abnormalCount > 0 ? `，${summary.abnormalCount} 条异常` : '，全部通过'}</span></CardTitle></CardHeader>
+        <Card><CardHeader><CardTitle>预览数据 <span className="ml-2 text-sm font-normal text-muted-foreground">共 {summary.totalItems} 条{summary.abnormalCount > 0 ? `，${summary.abnormalCount} 条异常` : '，无异常'}{noticeItems.length > 0 ? `，${noticeItems.length} 条提示` : ''}</span></CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            {summary.abnormalCount > 0 && <div className="p-3 rounded-lg bg-yellow-50 text-yellow-700 text-sm max-h-32 overflow-auto">{abnormalItems.map((item, i) => (<div key={i}><span>第{item.rowIndex}行 [{item.运单号 || '-'}] {item.唛头 || '-'}：{item.reason}</span></div>))}</div>}
+            {abnormalItems.length > 0 && <div className="p-3 rounded-lg bg-red-50 text-red-700 text-sm max-h-32 overflow-auto"><div className="font-medium mb-1">异常（数据有误，建议核对源表）：</div>{abnormalItems.map((item, i) => (<div key={i}><span>第{item.rowIndex}行 [{item.运单号 || '-'}] {item.唛头 || '-'}：{item.reason}</span></div>))}</div>}
+            {noticeItems.length > 0 && <div className="p-3 rounded-lg bg-yellow-50 text-yellow-700 text-sm max-h-32 overflow-auto"><div className="font-medium mb-1">提示（AI 参考意见，不一定是错，可忽略）：</div>{noticeItems.map((item, i) => (<div key={i}><span>第{item.rowIndex}行 [{item.运单号 || '-'}] {item.唛头 || '-'}：{item.reason}</span></div>))}</div>}
             <div className="border rounded-lg"><Table>
               <TableHeader><TableRow>
                 <TableHead className="w-10 sticky top-0 bg-muted">#</TableHead>
@@ -193,7 +198,7 @@ export default function UploadSharedContainerPage() {
                   {ri === 0 ? <TableCell className="text-right" rowSpan={g.items.length}>{item.订单总价 || '-'}</TableCell> : null}
                   <TableCell className="text-xs max-w-[80px] truncate">{item.备注 || '-'}</TableCell>
                   <TableCell>{item.结算状态 || '-'}</TableCell><TableCell>{item.柜号 || '-'}</TableCell>
-                  <TableCell><Badge className={item.verdict === '通过' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}>{item.verdict}</Badge></TableCell>
+                  <TableCell><Badge className={item.verdict === '通过' ? 'bg-green-100 text-green-700' : item.verdict === '提示' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}>{item.verdict}</Badge></TableCell>
                 </TableRow>
               )))}</TableBody>
             </Table></div>
