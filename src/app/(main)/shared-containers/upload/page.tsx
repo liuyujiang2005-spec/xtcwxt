@@ -160,7 +160,7 @@ export default function UploadSharedContainerPage() {
         <Card><CardHeader><CardTitle>预览数据 <span className="ml-2 text-sm font-normal text-muted-foreground">共 {summary.totalItems} 条{summary.abnormalCount > 0 ? `，${summary.abnormalCount} 条异常` : '，全部通过'}</span></CardTitle></CardHeader>
           <CardContent className="space-y-4">
             {summary.abnormalCount > 0 && <div className="p-3 rounded-lg bg-yellow-50 text-yellow-700 text-sm max-h-32 overflow-auto">{abnormalItems.map((item, i) => (<div key={i}><span>第{item.rowIndex}行 [{item.运单号 || '-'}] {item.唛头 || '-'}：{item.reason}</span></div>))}</div>}
-            <div className="border rounded-lg overflow-auto max-h-80"><Table>
+            <div className="border rounded-lg"><Table>
               <TableHeader><TableRow>
                 <TableHead className="w-10 sticky top-0 bg-muted">#</TableHead>
                 <TableHead className="sticky top-0 bg-muted">日期</TableHead><TableHead className="sticky top-0 bg-muted">唛头</TableHead><TableHead className="sticky top-0 bg-muted">仓库</TableHead>
