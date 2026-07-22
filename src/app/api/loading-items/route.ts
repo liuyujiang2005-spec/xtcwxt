@@ -82,6 +82,10 @@ export async function POST(request: NextRequest) {
       const itemRecvMap = new Map<any, number>();
       for (const [, group] of groups) {
         const first = group[0];
+        // 总体积一律按该运单单项体积之和自算,不信源表那一列(源表可能填错)。覆盖回raw供应收计算和入库共用;没单项体积时兜底退回源表值。
+        const sumVol = group.reduce((s, r) => s + (Number(r.raw.单项体积) || 0), 0);
+        const totalVol = sumVol > 0 ? Math.round(sumVol * 1e6) / 1e6 : (Number(first.raw.总体积) || 0);
+        for (const r of group) r.raw.总体积 = totalVol;
         const { pm, em } = getCust(first.custId);
         const transport = first.raw.运输方式 || '海运';
         const warehouse = first.raw.仓库 || null;
