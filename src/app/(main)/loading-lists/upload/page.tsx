@@ -24,10 +24,35 @@ interface ScItem {
 
 interface ScSummary { totalItems: number; abnormalCount: number; }
 
+/**
+ * 从表格数据推断实际业务月份，用来提醒"选的月份跟表格对不上"。
+ * 优先用运单号里的 YYYYMMDD(如 SEA-JL20260504-144 → 2026-05，带年份最可靠)；
+ * 都没有再用日期列的"X月"配当前年份兜底。取出现次数最多的月份。
+ */
+function detectMonth(items: any[]): string | null {
+  const byOrder = new Map<string, number>();
+  const byDate = new Map<string, number>();
+  const year = new Date().getFullYear();
+  for (const it of items) {
+    const m = String(it.运单号 || '').match(/(20\d{2})(0[1-9]|1[0-2])\d{2}/);
+    if (m) { const k = `${m[1]}-${m[2]}`; byOrder.set(k, (byOrder.get(k) || 0) + 1); continue; }
+    const d = String(it.日期 || '').match(/(\d{1,2})\s*月/);
+    if (d) {
+      const mm = parseInt(d[1], 10);
+      if (mm >= 1 && mm <= 12) { const k = `${year}-${String(mm).padStart(2, '0')}`; byDate.set(k, (byDate.get(k) || 0) + 1); }
+    }
+  }
+  const use = byOrder.size > 0 ? byOrder : byDate;
+  let best: string | null = null, bestN = 0;
+  for (const [k, n] of use) if (n > bestN) { bestN = n; best = k; }
+  return best;
+}
+
 export default function UploadLoadingListPage() {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [uploadMonth, setUploadMonth] = useState(new Date().toISOString().substring(0, 7));
+  const [detectedMonth, setDetectedMonth] = useState<string | null>(null);
   const [phase, setPhase] = useState<'idle' | 'parsing' | 'preview' | 'importing'>('idle');
   const [preview, setPreview] = useState<ScItem[]>([]);
   const [summary, setSummary] = useState<ScSummary>({ totalItems: 0, abnormalCount: 0 });
@@ -64,6 +89,7 @@ export default function UploadLoadingListPage() {
       const custName = items.find(i => i.唛头?.trim())?.唛头;
       if (custName) { try { const r = await fetch('/api/customers', { signal: controller.signal }); const l = await r.json(); const m = (Array.isArray(l) ? l : []).find((c: any) => c.name === custName.trim()); if (m) setCustomerId(m.id); } catch {} }
       setPreview(items);
+      setDetectedMonth(detectMonth(items));
       setSummary({ totalItems: items.length, abnormalCount: items.filter(i => i.verdict === '异常').length });
       setPhase('preview');
 
@@ -99,7 +125,7 @@ export default function UploadLoadingListPage() {
     processingRef.current = false;
   };
 
-  const handleReset = () => { setFile(null); setPreview([]); setSummary({ totalItems: 0, abnormalCount: 0 }); setResult(null); setCustomerId(0); if (fileInputRef.current) fileInputRef.current.value = ''; setPhase('idle'); };
+  const handleReset = () => { setFile(null); setPreview([]); setDetectedMonth(null); setSummary({ totalItems: 0, abnormalCount: 0 }); setResult(null); setCustomerId(0); if (fileInputRef.current) fileInputRef.current.value = ''; setPhase('idle'); };
 
   const handleConfirmImport = async () => {
     if (!file || preview.length === 0 || processingRef.current) return;
@@ -199,7 +225,20 @@ export default function UploadLoadingListPage() {
                 </TableRow>
               )))}</TableBody>
             </Table></div>
-            <div className="flex gap-3"><Button variant="outline" onClick={handleReset} className="flex-1">重新选择文件</Button><Button onClick={handleConfirmImport} disabled={phase === 'importing'} className="flex-1">{phase === 'importing' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}{phase === 'importing' ? '导入中...' : `确认导入（${preview.length} 条）`}</Button></div>
+            <div className={`p-3 rounded-lg border flex items-center gap-3 flex-wrap ${detectedMonth && detectedMonth !== uploadMonth ? 'bg-orange-50 border-orange-300' : 'bg-muted/30'}`}>
+              <Label className="text-sm font-medium">导入月份</Label>
+              <Input type="month" value={uploadMonth} onChange={e => setUploadMonth(e.target.value)} className="h-8 w-36" />
+              {detectedMonth && detectedMonth !== uploadMonth ? (
+                <span className="text-sm text-orange-700 flex items-center gap-2 flex-wrap">
+                  <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+                  表格数据看起来是 <b>{detectedMonth}</b> 的，跟当前选的对不上，确认后再导入
+                  <Button size="sm" variant="outline" className="h-7" onClick={() => setUploadMonth(detectedMonth)}>改成 {detectedMonth}</Button>
+                </span>
+              ) : (
+                <span className="text-sm text-muted-foreground">这批货将归到该业务月份（影响账单和报表归月）</span>
+              )}
+            </div>
+            <div className="flex gap-3"><Button variant="outline" onClick={handleReset} className="flex-1">重新选择文件</Button><Button onClick={handleConfirmImport} disabled={phase === 'importing'} className="flex-1">{phase === 'importing' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}{phase === 'importing' ? '导入中...' : `确认导入到 ${uploadMonth}（${preview.length} 条）`}</Button></div>
             {result && <div className={`p-3 rounded-lg flex items-center gap-2 ${result.passed ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>{result.passed ? <CheckCircle className="h-5 w-5" /> : <AlertTriangle className="h-5 w-5" />}<span>{result.msg}</span></div>}
           </CardContent></Card>
       ) : (
