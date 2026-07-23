@@ -118,12 +118,18 @@ export function mapPythonResult(pyData: any): { items: any[]; summary: { totalIt
       reasons.push('尺寸格式无效');
     }
 
-    // 2. 单项体积 = (长×宽×高÷1e6) × 件数
+    // 2. 单项体积 应是 单件体积(长×宽×高÷1e6) 的整数倍，倍数=这一条自己的件数。
+    //    注意：表格里的"件数"列常常是整个运单的总件数（合并单元格只在首行，且会被前向填充到续行），
+    //    不是这一条自己的件数，所以不能用 单件体积×件数 去校验单条（会整表误报）。
+    //    这里只校验"是不是整数倍"——能抓住尺寸填错/体积填错，又不依赖件数口径。
     if (size && item.单项体积 > 0) {
       const unitVol = round6((size.l * size.w * size.h) / 1000000);
-      const expected = round6(unitVol * (item.件数 || 1));
-      if (Math.abs(item.单项体积 - expected) > 0.001) {
-        reasons.push(`单项体积不符：${unitVol}×${item.件数}=${expected}，表格值=${item.单项体积}`);
+      if (unitVol > 0) {
+        const ratio = item.单项体积 / unitVol;
+        const pieces = Math.round(ratio);
+        if (pieces < 1 || Math.abs(ratio - pieces) > 0.02) {
+          reasons.push(`单项体积与尺寸对不上：单件体积${unitVol}，单项体积${item.单项体积}，推算件数${ratio.toFixed(2)}不是整数`);
+        }
       }
     }
 
@@ -197,7 +203,9 @@ export function mapPythonResult(pyData: any): { items: any[]; summary: { totalIt
     }
 
     // 汇总总重量 vs 头层总重量 (单项重量是行总重量，不乘件数)
-    if (first.总重量 > 0) {
+    // 源表若整列没填单项重量，无从校验，跳过（否则拿 0 去比总重量会整单误报）
+    const hasItemWeights = group.some((i: any) => (i.单项重量 || 0) > 0);
+    if (first.总重量 > 0 && hasItemWeights) {
       const sumW = round6(group.reduce((s: number, i: any) => s + i.单项重量, 0));
       if (Math.abs(sumW - first.总重量) > 0.001) {
         for (const item of group) {
@@ -207,8 +215,9 @@ export function mapPythonResult(pyData: any): { items: any[]; summary: { totalIt
       }
     }
 
-    // 汇总单项价格 vs 订单总价
-    if (first.订单总价 > 0) {
+    // 汇总单项价格 vs 订单总价（源表整列没填单项价格时跳过，同上）
+    const hasItemPrices = group.some((i: any) => (i.单项价格 || 0) > 0);
+    if (first.订单总价 > 0 && hasItemPrices) {
       const sumP = round6(group.reduce((s: number, i: any) => s + i.单项价格, 0));
       if (Math.abs(sumP - first.订单总价) > Math.max(0.01, Math.abs(first.订单总价) * 0.001)) {
         for (const item of group) {
