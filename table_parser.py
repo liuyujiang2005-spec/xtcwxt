@@ -217,6 +217,12 @@ def analyze_structure(ws, filename=""):
 # 核心：解析数据
 # ──────────────────────────────────────────
 
+# 这些是"每条明细自己的"列，续行为空就该留空，不能从运单首行前向填充。
+# 尤其"件数"：多数表里它是整个运单的总件数(合并单元格只写在首行)，
+# 填到每一行会让下游把运单总件数当成单条件数(体积校验/改尺寸算体积都会错)。
+NO_FILL_COLS = {"件数", "单项体积", "单项重量", "计费体积", "单项价格", "尺寸", "备注"}
+
+
 def parse_data(ws, rules):
     """根据GPT-4o规则解析表格"""
     data_start = rules.get("data_start_row", rules.get("header_row", 7) + 1)
@@ -372,8 +378,12 @@ def parse_data(ws, rules):
                 # 先检查是否有明细数据，空行直接跳过
                 if not (row_data.get('品名') or row_data.get('尺寸') or row_data.get('件数')):
                     continue
-                # 前向填充：合并单元格字段用上一行值
+                # 前向填充：合并单元格字段用上一行值。
+                # 但"每条明细自己的"列绝不能从运单首行填过来——尤其"件数"：
+                # 很多表里它是整个运单的总件数(合并单元格只写在首行)，填下去会让每条都变成总件数。
                 for name in col_map:
+                    if name in NO_FILL_COLS:
+                        continue
                     if row_data[name] is None and name in current_order:
                         row_data[name] = current_order[name]
                 current_order["产品明细"].append(dict(row_data))

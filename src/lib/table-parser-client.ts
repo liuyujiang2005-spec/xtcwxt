@@ -67,6 +67,22 @@ export function mapPythonResult(pyData: any): { items: any[]; summary: { totalIt
       const dimStr = row.尺寸 || row.规格 || (row.长 && row.宽 && row.高 ? row.长 + ' × ' + row.宽 + ' × ' + row.高 : '');
       const size = parseSize(dimStr);
 
+      // 这一条自己的件数：表格"件数"列常是整个运单的总件数(合并单元格只写在首行)，
+      // 直接用会让每条都变成运单总件数。用 单项体积 ÷ 单件体积 推算真实件数(整数才采信)，
+      // 推算不出(缺尺寸/体积)再退回表格原值。
+      const itemVolRaw = round6(parseFloat(row.单项体积 || 0));
+      let derivedPieces = 0;
+      if (size && itemVolRaw > 0) {
+        const unitVol = round6((size.l * size.w * size.h) / 1000000);
+        if (unitVol > 0) {
+          const r = itemVolRaw / unitVol;
+          const n = Math.round(r);
+          if (n >= 1 && Math.abs(r - n) <= 0.02) derivedPieces = n;
+        }
+      }
+      const rawCount = (row.件数 != null ? parseInt(String(row.件数), 10) : 0) || row.箱数 || 0;
+      const pieceCount = derivedPieces || rawCount;
+
       allItems.push({
         rowIndex: 0,
         markNo: mark || row.运单号 || row.订单号 || '',
@@ -79,7 +95,7 @@ export function mapPythonResult(pyData: any): { items: any[]; summary: { totalIt
         运单号: row.运单号 || row.国内单号 || row.单号 || '',
         货型: row.货型 || row.货物类型 || '',
         尺寸: dimStr,
-        件数: (row.件数 != null ? parseInt(String(row.件数), 10) : 0) || row.箱数 || 0,
+        件数: pieceCount,
         国内单号: row.国内单号 || row.单号 || '',
         单项体积: round6(parseFloat(row.单项体积 || row.单项体积 || 0)),
         单项重量: round6(parseFloat(row.单项重量 || row.单箱重量 || 0)),
@@ -95,8 +111,8 @@ export function mapPythonResult(pyData: any): { items: any[]; summary: { totalIt
         柜号: row.柜号 || '',
         尺寸_长: size?.l || 0, 尺寸_宽: size?.w || 0, 尺寸_高: size?.h || 0,
          成本单价: round6(parseFloat(row.单价 || row.成本单价 || 0)),
-         单箱数量: (row.件数 != null ? parseInt(String(row.件数), 10) : row.单箱数量) || 0,
-        箱数: (row.件数 != null ? parseInt(String(row.件数), 10) : row.箱数) || 0,
+         单箱数量: pieceCount,
+        箱数: pieceCount,
         pcs数量: 0,
         需支付总价: round6(parseFloat(row.单项价格 || row.订单总价 || row.总价 || row.需支付总价 || 0)),
         cost_status: '待支出',
