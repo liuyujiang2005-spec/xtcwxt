@@ -1,7 +1,7 @@
 import { getCurrentUser } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { db } from '@/db/index';
-import { directIncome, expenses, paymentsReceived, paymentsMade, customerMetrics, customers, sharedContainerItems, loadingItems, marks, sharedContainerBatches, loadingBatches, bills, billItems } from '@/db/schema';
+import { directIncome, expenses, paymentsReceived, paymentsMade, customerMetrics, customers, sharedContainerItems, loadingItems, marks, sharedContainerBatches, loadingBatches, bills, billItems, fullContainerBatches, fullContainerItems } from '@/db/schema';
 import { desc } from 'drizzle-orm';
 import { formatAmount } from '@/lib/format';
 import Link from 'next/link';
@@ -30,6 +30,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const allCustomers = await db.select().from(customers).all();
   const custCurrencyMap = new Map(allCustomers.map(c => [c.id, c.defaultCurrency || 'CNY']));
 
+  // 整柜(FCL)：应收/已收/剩余进收入口径，货款进支出，与拼柜/装柜对称。归月按柜 month_tag，币种按柜 currency，全部柜都算(无待审核流程)
+  const allFcBatches = await db.select().from(fullContainerBatches).all();
+  const allFcItems = await db.select().from(fullContainerItems).all();
+  const fcBatchMonth = new Map(allFcBatches.map(b => [b.id, b.monthTag]));
+  const fcIsTHB = (b: typeof allFcBatches[number]) => (b.currency || 'CNY') === 'THB';
+
   // 营收/成本按"业务月份"(唛头 monthTag)归月，且只统计已确认(非待审核)的批次
   const allMarks = await db.select().from(marks).all();
   const markMonthMap = new Map(allMarks.map(m => [m.id, m.monthTag]));
@@ -37,6 +43,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     ...allMarks.map(m => m.monthTag),
     ...allIncome.map(i => (i.incomeDate || '').substring(0, 7)),
     ...allExpenses.map(e => (e.createdAt || '').substring(0, 7)),
+    ...allFcBatches.map(b => b.monthTag || ''),
   ])].filter(Boolean).sort().reverse();
   const allScBatches = await db.select().from(sharedContainerBatches).all();
   const allLdBatches = await db.select().from(loadingBatches).all();
@@ -69,17 +76,20 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     .reduce((s, i) => s + i.amount, 0)
     + scConfirmed.filter((i) => inMonth(i.markId) && isCNY(i.customerId) && !isBilled(i.markId)).reduce((s, i) => s + (Number(i.客户应收) || 0), 0)
     + ldConfirmed.filter((i) => inMonth(i.markId) && isCNY(i.customerId) && !isBilled(i.markId)).reduce((s, i) => s + (Number(i.客户应收) || 0), 0)
+    + allFcBatches.filter((b) => b.monthTag === currentMonth && !fcIsTHB(b)).reduce((s, b) => s + (Number(b.整柜应收) || 0), 0)
     + billedRecv(true, currentMonth);
   const monthRevenueTHB = allIncome
     .filter((i) => i.incomeDate?.startsWith(currentMonth) && i.currency === 'THB')
     .reduce((s, i) => s + i.amount, 0)
     + scConfirmed.filter((i) => inMonth(i.markId) && !isCNY(i.customerId) && !isBilled(i.markId)).reduce((s, i) => s + (Number(i.客户应收) || 0), 0)
     + ldConfirmed.filter((i) => inMonth(i.markId) && !isCNY(i.customerId) && !isBilled(i.markId)).reduce((s, i) => s + (Number(i.客户应收) || 0), 0)
+    + allFcBatches.filter((b) => b.monthTag === currentMonth && fcIsTHB(b)).reduce((s, b) => s + (Number(b.整柜应收) || 0), 0)
     + billedRecv(false, currentMonth);
 
   const monthCostCNY = allExpenses.filter((e) => e.currency !== 'THB' && e.createdAt?.startsWith(currentMonth)).reduce((s, e) => s + e.amount, 0)
     + scConfirmed.filter((i) => inMonth(i.markId)).reduce((s, i) => s + (i.需支付总价 || 0), 0)
-    + ldConfirmed.filter((i) => inMonth(i.markId)).reduce((s, i) => s + (i.需支付总价 || 0), 0);
+    + ldConfirmed.filter((i) => inMonth(i.markId)).reduce((s, i) => s + (i.需支付总价 || 0), 0)
+    + allFcItems.filter((i) => fcBatchMonth.get(i.batchId) === currentMonth).reduce((s, i) => s + (Number(i.需支付总价) || 0), 0);
   const monthCostTHB = allExpenses.filter((e) => e.currency === 'THB' && e.createdAt?.startsWith(currentMonth)).reduce((s, e) => s + e.amount, 0);
 
   const pendingExpenses = allExpenses.filter((e) => e.status === '待支付');
@@ -93,13 +103,17 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const totalRevenueCNY = allIncome.filter(i => i.currency !== 'THB').reduce((s, i) => s + i.amount, 0)
     + scConfirmed.filter(i => isCNY(i.customerId) && !isBilled(i.markId)).reduce((s, i) => s + (Number(i.客户应收) || 0), 0)
     + ldConfirmed.filter(i => isCNY(i.customerId) && !isBilled(i.markId)).reduce((s, i) => s + (Number(i.客户应收) || 0), 0)
+    + allFcBatches.filter(b => !fcIsTHB(b)).reduce((s, b) => s + (Number(b.整柜应收) || 0), 0)
     + billedRecv(true, null);
-  const totalReceivedCNY = allReceived.filter(p => p.currency !== 'THB').reduce((s, p) => s + p.amount, 0);
+  const totalReceivedCNY = allReceived.filter(p => p.currency !== 'THB').reduce((s, p) => s + p.amount, 0)
+    + allFcBatches.filter(b => !fcIsTHB(b)).reduce((s, b) => s + (Number(b.已付) || 0), 0);
   const totalRevenueTHB = allIncome.filter(i => i.currency === 'THB').reduce((s, i) => s + i.amount, 0)
     + scConfirmed.filter(i => !isCNY(i.customerId) && !isBilled(i.markId)).reduce((s, i) => s + (Number(i.客户应收) || 0), 0)
     + ldConfirmed.filter(i => !isCNY(i.customerId) && !isBilled(i.markId)).reduce((s, i) => s + (Number(i.客户应收) || 0), 0)
+    + allFcBatches.filter(b => fcIsTHB(b)).reduce((s, b) => s + (Number(b.整柜应收) || 0), 0)
     + billedRecv(false, null);
-  const totalReceivedTHB = allReceived.filter(p => p.currency === 'THB').reduce((s, p) => s + p.amount, 0);
+  const totalReceivedTHB = allReceived.filter(p => p.currency === 'THB').reduce((s, p) => s + p.amount, 0)
+    + allFcBatches.filter(b => fcIsTHB(b)).reduce((s, b) => s + (Number(b.已付) || 0), 0);
 
   const topCustomers = await db.select().from(customerMetrics).orderBy(desc(customerMetrics.monthlyVolume)).limit(5).all();
   const customerMap = new Map(allCustomers.map((c) => [c.id, c.name]));

@@ -1,8 +1,9 @@
 import { getCurrentUser } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { db } from '@/db/index';
-import { directIncome, customers } from '@/db/schema';
+import { directIncome, customers, fullContainerBatches } from '@/db/schema';
 import { desc } from 'drizzle-orm';
+import { riskStatus } from '../full-containers/page';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -20,10 +21,17 @@ export default async function RevenuePage({ searchParams }: { searchParams: Prom
   const month = sp.month || '';
 
   const allIncomeRaw = await db.select().from(directIncome).orderBy(desc(directIncome.incomeDate)).all();
-  const availableMonths = [...new Set(allIncomeRaw.map(i => (i.incomeDate || '').substring(0, 7)))].filter(Boolean).sort().reverse();
+  // 整柜应收(计入收入口径，不物理插 direct_income)：只读展示 + 并进按客户汇总。归月按柜 month_tag，币种按柜 currency
+  const allFcBatchesRaw = await db.select().from(fullContainerBatches).orderBy(desc(fullContainerBatches.createdAt)).all();
+  const availableMonths = [...new Set([
+    ...allIncomeRaw.map(i => (i.incomeDate || '').substring(0, 7)),
+    ...allFcBatchesRaw.filter(b => (Number(b.整柜应收) || 0) > 0).map(b => b.monthTag || ''),
+  ])].filter(Boolean).sort().reverse();
   const allIncome = month ? allIncomeRaw.filter(i => (i.incomeDate || '').startsWith(month)) : allIncomeRaw;
   const allCustomers = await db.select().from(customers).all();
   const customerMap = new Map(allCustomers.map((c) => [c.id, c.name]));
+
+  const fcBatches = allFcBatchesRaw.filter(b => (Number(b.整柜应收) || 0) > 0 && (month ? b.monthTag === month : true));
 
   const cnyIncome = allIncome.filter(i => i.currency !== 'THB');
   const thbIncome = allIncome.filter(i => i.currency === 'THB');
@@ -43,6 +51,16 @@ export default async function RevenuePage({ searchParams }: { searchParams: Prom
     if (i.currency === 'THB') e.THB += i.amount;
     else e.CNY += i.amount;
     summary.set(i.customerId, e);
+  });
+  // 整柜应收并进按客户汇总
+  fcBatches.forEach((b) => {
+    if (b.customerId == null) return;
+    const e = summary.get(b.customerId) || { CNY: 0, THB: 0, count: 0 };
+    e.count++;
+    const amt = Number(b.整柜应收) || 0;
+    if ((b.currency || 'CNY') === 'THB') e.THB += amt;
+    else e.CNY += amt;
+    summary.set(b.customerId, e);
   });
 
   return (
@@ -126,6 +144,40 @@ export default async function RevenuePage({ searchParams }: { searchParams: Prom
                   <TableCell className="text-right">{formatAmount(v.THB, 'THB')}</TableCell>
                 </TableRow>
               ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <div className="p-4 border-b"><h2 className="font-semibold">整柜应收（{fcBatches.length} 柜）</h2></div>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>客户</TableHead>
+                <TableHead className="text-right">整柜应收</TableHead>
+                <TableHead>币种</TableHead>
+                <TableHead>月份</TableHead>
+                <TableHead>柜号</TableHead>
+                <TableHead>状态</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {fcBatches.map((b) => {
+                const s = riskStatus(b);
+                return (
+                  <TableRow key={b.id}>
+                    <TableCell className="font-medium">{customerMap.get(b.customerId!) || '-'}</TableCell>
+                    <TableCell className="text-right">{formatAmount(Number(b.整柜应收) || 0, (b.currency || 'CNY') === 'THB' ? 'THB' : 'CNY')}</TableCell>
+                    <TableCell>{b.currency || 'CNY'}</TableCell>
+                    <TableCell className="text-sm">{b.monthTag || '-'}</TableCell>
+                    <TableCell className="text-sm font-mono">{b.batchNo}</TableCell>
+                    <TableCell><span className={`text-xs px-2 py-1 rounded ${s.cls}`}>{s.label}</span></TableCell>
+                  </TableRow>
+                );
+              })}
+              {fcBatches.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">暂无整柜应收</TableCell></TableRow>}
             </TableBody>
           </Table>
         </CardContent>

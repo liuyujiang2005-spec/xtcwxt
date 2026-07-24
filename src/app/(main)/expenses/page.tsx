@@ -1,7 +1,7 @@
 import { getCurrentUser } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { db } from '@/db/index';
-import { expenses, sharedContainerItems, loadingItems, marks } from '@/db/schema';
+import { expenses, sharedContainerItems, loadingItems, marks, fullContainerBatches, fullContainerItems } from '@/db/schema';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -29,10 +29,16 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
   const markMap = new Map(allMarks.map(m => [m.id, m.markNo]));
   const markMonthMap = new Map(allMarks.map(m => [m.id, m.monthTag]));
 
-  // 月份下拉可选值：自建费用createdAt月 + 唛头业务月
+  // 整柜(FCL)货款成本：full_container_items.需支付总价，照抄装柜明细的展示。归月按柜 month_tag
+  const allFcBatches = await db.select().from(fullContainerBatches).all();
+  const allFcItems = await db.select().from(fullContainerItems).all();
+  const fcBatchMap = new Map(allFcBatches.map(b => [b.id, b]));
+
+  // 月份下拉可选值：自建费用createdAt月 + 唛头业务月 + 整柜柜月
   const availableMonths = [...new Set([
     ...allExpensesRaw.map(e => (e.createdAt || '').substring(0, 7)),
     ...allMarks.map(m => m.monthTag),
+    ...allFcBatches.map(b => b.monthTag || ''),
   ])].filter(Boolean).sort().reverse();
 
   // 按月份过滤：自建费用按createdAt月，拼柜/装柜成本按唛头业务月
@@ -68,6 +74,15 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
   ldItems.forEach(i => {
     if (!ldByMark.has(i.markId)) ldByMark.set(i.markId, []);
     ldByMark.get(i.markId)!.push(i);
+  });
+
+  // 整柜货款明细：按柜(batch)分组，月份筛选按柜 month_tag
+  let fcItems = allFcItems;
+  if (month) fcItems = fcItems.filter(i => fcBatchMap.get(i.batchId)?.monthTag === month);
+  const fcByBatch = new Map<number, any[]>();
+  fcItems.forEach(i => {
+    if (!fcByBatch.has(i.batchId)) fcByBatch.set(i.batchId, []);
+    fcByBatch.get(i.batchId)!.push(i);
   });
 
   const byType = new Map<string, { count: number; CNY: number; THB: number }>();
@@ -267,6 +282,50 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
                         </TableCell>
                         <TableCell className="text-right">
                           {item.payment_status !== '已支付' && <PayLdItemButton itemId={item.id} />}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </MarkCollapsibleCard>
+            );
+          })}
+        </div>
+      )}
+
+      {/* 整柜成本按柜 */}
+      {fcByBatch.size > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-lg font-bold">整柜成本 · 按柜</h2>
+          {Array.from(fcByBatch.entries()).map(([batchId, items]) => {
+            const batch = fcBatchMap.get(batchId);
+            const pendingTotal = items.filter(i => i.payment_status !== '已支付').reduce((s, i) => s + (Number(i.需支付总价) || 0), 0);
+            return (
+              <MarkCollapsibleCard key={batchId} header={
+                <>
+                  <span className="font-bold">{batch?.batchNo || `#${batchId}`}</span>
+                  <span className="text-sm text-muted-foreground ml-3">{items.length} 条</span>
+                  {pendingTotal > 0 && <span className="text-sm text-orange-600 ml-3 font-bold">待付 {formatAmount(pendingTotal)}</span>}
+                </>
+              }>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>品名</TableHead><TableHead>仓库</TableHead><TableHead>运输</TableHead><TableHead>货型</TableHead><TableHead>国内单号</TableHead><TableHead className="text-right">金额</TableHead>
+                      <TableHead>状态</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {items.map((item: any) => (
+                      <TableRow key={item.id}>
+                        <TableCell className="max-w-[100px] truncate">{item.品名 || '-'}</TableCell>
+                        <TableCell className="text-xs">{item.仓库 || '-'}</TableCell>
+                        <TableCell className="text-xs">{item.运输方式 || '-'}</TableCell>
+                        <TableCell className="text-xs">{item.货型 || '-'}</TableCell>
+                        <TableCell className="text-xs">{item.国内单号 || '-'}</TableCell>
+                        <TableCell className="text-right">{formatAmount(Number(item.需支付总价) || 0)}</TableCell>
+                        <TableCell>
+                          <span className={`text-xs px-2 py-1 rounded ${item.payment_status === '已支付' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{item.payment_status || '-'}</span>
                         </TableCell>
                       </TableRow>
                     ))}

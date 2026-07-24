@@ -1,7 +1,7 @@
 import { getCurrentUser } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { db } from '@/db/index';
-import { directIncome, expenses, customers, sharedContainerItems, loadingItems, marks, sharedContainerBatches, loadingBatches, paymentsReceived, bills, billItems } from '@/db/schema';
+import { directIncome, expenses, customers, sharedContainerItems, loadingItems, marks, sharedContainerBatches, loadingBatches, paymentsReceived, bills, billItems, fullContainerBatches, fullContainerItems } from '@/db/schema';
 import { sql } from 'drizzle-orm';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -20,6 +20,12 @@ export default async function MonthlyReportPage() {
 
   const allScItems = await db.select().from(sharedContainerItems).all();
   const allLdItems = await db.select().from(loadingItems).all();
+
+  // 整柜(FCL)：应收/已付/剩余进收入，货款进成本，与拼柜/装柜对称。归月按柜 month_tag，币种按柜 currency，全部柜都算
+  const allFcBatches = await db.select().from(fullContainerBatches).all();
+  const allFcItems = await db.select().from(fullContainerItems).all();
+  const fcBatchMonth = new Map(allFcBatches.map(b => [b.id, b.monthTag]));
+  const fcIsTHB = (b: typeof allFcBatches[number]) => (b.currency || 'CNY') === 'THB';
 
   // 按业务月份(唛头monthTag)归月，只统计已确认(非待审核)批次
   const allMarks = await db.select().from(marks).all();
@@ -102,6 +108,22 @@ export default async function MonthlyReportPage() {
     else { e.recCNY += v.amount; rc.CNY += v.amount; }
   }
 
+  // 整柜应收进应收(按柜 month_tag/客户/币种)、整柜货款进成本(按柜 month_tag)
+  for (const b of allFcBatches) {
+    const month = b.monthTag; if (!month) continue;
+    const rec = Number(b.整柜应收) || 0;
+    if (rec > 0) {
+      const e = ensure(month);
+      const rc = b.customerId != null ? ensureRC(month, b.customerId) : null;
+      if (fcIsTHB(b)) { e.recTHB += rec; if (rc) rc.THB += rec; }
+      else { e.recCNY += rec; if (rc) rc.CNY += rec; }
+    }
+  }
+  for (const item of allFcItems) {
+    const month = fcBatchMonth.get(item.batchId); if (!month) continue;
+    ensure(month).costCNY += (Number(item.需支付总价) || 0);
+  }
+
   // 已收: 按收款日期归月(客户收款记录)
   const allReceived = await db.select().from(paymentsReceived).all();
   const recvByMonth = new Map<string, { CNY: number; THB: number }>();
@@ -110,6 +132,12 @@ export default async function MonthlyReportPage() {
     const mo = (p.receivedDate || '').substring(0, 7); if (!mo) continue;
     const e = ensureRcv(mo);
     if (p.currency === 'THB') e.THB += p.amount; else e.CNY += p.amount;
+  }
+  // 整柜已付进已收(按柜 month_tag，币种按柜 currency)
+  for (const b of allFcBatches) {
+    const paid = Number(b.已付) || 0; if (paid <= 0 || !b.monthTag) continue;
+    const e = ensureRcv(b.monthTag);
+    if (fcIsTHB(b)) e.THB += paid; else e.CNY += paid;
   }
 
   // 已付: 货款(sc/ld已付,按付款日期,货款恒CNY) + 费用(已支付,按付款日期)
@@ -125,6 +153,11 @@ export default async function MonthlyReportPage() {
     if (item.payment_status !== '已支付') continue;
     const mo = ((item as any).paidDate || '').substring(0, 7); if (!mo) continue;
     ensurePaid(mo).CNY += (item.需支付总价 || 0);
+  }
+  for (const item of allFcItems) {
+    if (item.payment_status !== '已支付') continue;
+    const mo = ((item as any).paidDate || '').substring(0, 7); if (!mo) continue;
+    ensurePaid(mo).CNY += (Number(item.需支付总价) || 0);
   }
   for (const e of allExpRaw) {
     if (e.status !== '已支付') continue;
@@ -182,10 +215,13 @@ export default async function MonthlyReportPage() {
   // 待收/待付(累计,不分月): 待收=总应收-总已收(全部收款), 待付=总成本-总已付(全部已付)
   const paidAllCNY = allScItems.filter(i => i.cost_status === '已支出').reduce((s, i) => s + (i.需支付总价 || 0), 0)
     + allLdItems.filter(i => i.payment_status === '已支付').reduce((s, i) => s + (i.需支付总价 || 0), 0)
+    + allFcItems.filter(i => i.payment_status === '已支付').reduce((s, i) => s + (Number(i.需支付总价) || 0), 0)
     + allExpRaw.filter(e => e.status === '已支付' && e.currency !== 'THB').reduce((s, e) => s + e.amount, 0);
   const paidAllTHB = allExpRaw.filter(e => e.status === '已支付' && e.currency === 'THB').reduce((s, e) => s + e.amount, 0);
-  const rcvAllCNY = allReceived.filter(p => p.currency !== 'THB').reduce((s, p) => s + p.amount, 0);
-  const rcvAllTHB = allReceived.filter(p => p.currency === 'THB').reduce((s, p) => s + p.amount, 0);
+  const rcvAllCNY = allReceived.filter(p => p.currency !== 'THB').reduce((s, p) => s + p.amount, 0)
+    + allFcBatches.filter(b => !fcIsTHB(b)).reduce((s, b) => s + (Number(b.已付) || 0), 0);
+  const rcvAllTHB = allReceived.filter(p => p.currency === 'THB').reduce((s, p) => s + p.amount, 0)
+    + allFcBatches.filter(b => fcIsTHB(b)).reduce((s, b) => s + (Number(b.已付) || 0), 0);
   const pending = {
     recvCNY: Math.max(0, totalCNY.rev - rcvAllCNY), recvTHB: Math.max(0, totalTHB.rev - rcvAllTHB),
     payCNY: Math.max(0, totalCNY.cost - paidAllCNY), payTHB: Math.max(0, totalTHB.cost - paidAllTHB),
