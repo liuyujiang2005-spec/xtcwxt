@@ -71,12 +71,9 @@ export default function CustomerDialog({ mode, customer, tab }: Props) {
   };
 
   const [prices, setPrices] = useState<Record<string, Record<string, number>>>(initPrices);
-  const [activeWarehouse, setActiveWarehouse] = useState(WAREHOUSES[0]);
 
-  const updatePrice = (key: string, value: string) => {
-    const newPrices = { ...prices };
-    newPrices[activeWarehouse] = { ...newPrices[activeWarehouse], [key]: parseFloat(value) || 0 };
-    setPrices(newPrices);
+  const updatePrice = (warehouse: string, key: string, value: string) => {
+    setPrices(prev => ({ ...prev, [warehouse]: { ...prev[warehouse], [key]: parseFloat(value) || 0 } }));
   };
 
   const handleSubmit = async () => {
@@ -117,16 +114,18 @@ export default function CustomerDialog({ mode, customer, tab }: Props) {
       </div>
       <div className="space-y-2">
         <Label>{isThb ? '泰铢价格 (THB/m³)' : '价格矩阵 (元/m³)'}</Label>
-        <div className="flex gap-1 mb-2">
+        <div className="space-y-3">
           {WAREHOUSES.map(w => (
-            <Button key={w} type="button" variant={activeWarehouse === w ? 'default' : 'outline'} size="sm" onClick={() => setActiveWarehouse(w)}>{w}</Button>
-          ))}
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          {Object.entries(prices[activeWarehouse] || {}).map(([key, value]) => (
-            <div key={key} className="space-y-1">
-              <Label className="text-xs">{PRICE_LABELS[key]}</Label>
-              <Input type="text" inputMode="decimal" value={String(value)} onChange={(e) => updatePrice(key, e.target.value)} className="h-8 text-xs" />
+            <div key={w} className="border rounded-lg p-3 space-y-2">
+              <p className="text-sm font-medium">{w}</p>
+              <div className="grid grid-cols-2 gap-2">
+                {Object.entries(prices[w] || {}).map(([key, value]) => (
+                  <div key={key} className="space-y-1">
+                    <Label className="text-xs">{PRICE_LABELS[key]}</Label>
+                    <Input type="text" inputMode="decimal" value={String(value)} onChange={(e) => updatePrice(w, key, e.target.value)} className="h-8 text-xs" />
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
         </div>
