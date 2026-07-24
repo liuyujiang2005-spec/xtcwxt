@@ -31,7 +31,8 @@ sqlite.exec(`
     price_matrix_thb TEXT,
     enable_min_volume INTEGER DEFAULT 1,
     default_currency TEXT DEFAULT 'CNY',
-    remark TEXT
+    remark TEXT,
+    整柜风控倍数 INTEGER DEFAULT 1
   );
 
   CREATE TABLE IF NOT EXISTS suppliers (
@@ -135,6 +136,54 @@ sqlite.exec(`
     created_at TEXT DEFAULT (datetime('now'))
   );
 
+  CREATE TABLE IF NOT EXISTS full_container_batches (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    batch_no TEXT NOT NULL UNIQUE,
+    original_filename TEXT,
+    customer_id INTEGER REFERENCES customers(id),
+    month_tag TEXT,
+    currency TEXT DEFAULT 'CNY',
+    status TEXT DEFAULT '待验证',
+    柜型 TEXT,
+    整柜应收 REAL,
+    已付 REAL DEFAULT 0,
+    剩余 REAL,
+    货物申报价值 REAL,
+    国内收货日期 TEXT,
+    泰国到货日期 TEXT,
+    出账单日期 TEXT,
+    实付日期 TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS full_container_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    batch_id INTEGER NOT NULL REFERENCES full_container_batches(id),
+    mark_id INTEGER NOT NULL REFERENCES marks(id),
+    customer_id INTEGER NOT NULL REFERENCES customers(id),
+    品名 TEXT,
+    尺寸_长 REAL,
+    尺寸_宽 REAL,
+    尺寸_高 REAL,
+    单项体积 REAL,
+    总体积 REAL NOT NULL,
+    国内单号 TEXT,
+    单箱数量 INTEGER,
+    总重量 REAL,
+    箱数 INTEGER,
+    pcs数量 INTEGER,
+    仓库 TEXT,
+    运单号 TEXT,
+    单价 REAL,
+    成本单价 REAL,
+    需支付总价 REAL,
+    货型 TEXT,
+    运输方式 TEXT,
+    payment_status TEXT DEFAULT '待支付',
+    paid_date TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
   CREATE TABLE IF NOT EXISTS direct_income (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     mark_id INTEGER REFERENCES marks(id),
@@ -153,6 +202,7 @@ sqlite.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     loading_batch_id INTEGER REFERENCES loading_batches(id),
     shared_container_batch_id INTEGER REFERENCES shared_container_batches(id),
+    full_container_batch_id INTEGER REFERENCES full_container_batches(id),
     expense_type TEXT NOT NULL,
     amount INTEGER NOT NULL,
     currency TEXT DEFAULT 'CNY',
@@ -164,7 +214,8 @@ sqlite.exec(`
     receipt_url TEXT,
     created_at TEXT DEFAULT (datetime('now')),
     UNIQUE(loading_batch_id, expense_type),
-    UNIQUE(shared_container_batch_id, expense_type)
+    UNIQUE(shared_container_batch_id, expense_type),
+    UNIQUE(full_container_batch_id, expense_type)
   );
 
   CREATE TABLE IF NOT EXISTS payments_received (
@@ -247,9 +298,12 @@ sqlite.exec(`
     monthly_shipments INTEGER,
     overdue_count INTEGER,
     overall_rating TEXT,
+    合作月数 INTEGER,
     last_updated TEXT
   );
 
+  CREATE INDEX IF NOT EXISTS fci_batch_id_idx ON full_container_items(batch_id);
+  CREATE INDEX IF NOT EXISTS fci_mark_id_idx ON full_container_items(mark_id);
   CREATE INDEX IF NOT EXISTS marks_month_tag_idx ON marks(month_tag);
   CREATE INDEX IF NOT EXISTS marks_customer_id_idx ON marks(customer_id);
   CREATE INDEX IF NOT EXISTS sci_batch_id_idx ON shared_container_items(batch_id);

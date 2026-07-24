@@ -55,6 +55,7 @@ export async function PUT(request: NextRequest) {
     if (body.priceMatrixThb !== undefined) up.priceMatrixThb = body.priceMatrixThb;
     if (body.defaultCurrency !== undefined) up.defaultCurrency = body.defaultCurrency;
     if (body.enableMinVolume !== undefined) up.enableMinVolume = body.enableMinVolume;
+    if (body.整柜风控倍数 !== undefined) up.整柜风控倍数 = body.整柜风控倍数;
     if (body.remark !== undefined) up.remark = body.remark;
     await db.update(customers).set(up)
       .where(eq(customers.id, body.id));

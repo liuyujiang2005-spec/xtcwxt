@@ -17,6 +17,8 @@ import {
   ChevronLeft,
   Shield,
   HandCoins,
+  Container,
+  ShieldAlert,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -51,6 +53,13 @@ const navigation = [
     title: '装柜管理',
     items: [
       { name: '装柜批次', href: '/loading-lists', icon: Truck },
+    ],
+  },
+  {
+    title: '整柜管理',
+    items: [
+      { name: '整柜批次', href: '/full-containers', icon: Container },
+      { name: '风控看板', href: '/full-containers/risk', icon: ShieldAlert },
     ],
   },
   {

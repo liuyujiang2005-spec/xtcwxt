@@ -25,6 +25,7 @@ export const customers = sqliteTable('customers', {
   enableMinVolume: integer('enable_min_volume').default(1),
   defaultCurrency: text('default_currency').default('CNY'),
   remark: text('remark'),
+  整柜风控倍数: integer('整柜风控倍数').default(1), // 每1个在途柜允许几个未结算柜(风控红线,可调)
 });
 
 export const suppliers = sqliteTable('suppliers', {
@@ -138,6 +139,60 @@ export const loadingItems = sqliteTable('loading_items', {
   markIdIdx: index('li_mark_id_idx').on(table.markId),
 }));
 
+// 整柜批次 = 一个柜(一个客户包整柜)。计价是柜级手填一口价,不按方算。
+// 4个日期节点驱动风控状态:在途(泰国到货日期空)/未结算(到货且剩余>0)/已结算(付清)。
+export const fullContainerBatches = sqliteTable('full_container_batches', {
+  id: integer('id').primaryKey(),
+  batchNo: text('batch_no').notNull().unique(),
+  originalFilename: text('original_filename'),
+  customerId: integer('customer_id').references(() => customers.id),
+  monthTag: text('month_tag'),
+  currency: text('currency').default('CNY'),
+  status: text('status').default('待验证'),
+  柜型: text('柜型'),
+  整柜应收: real('整柜应收'),            // 手填运费一口价
+  已付: real('已付').default(0),         // 分次付累加
+  剩余: real('剩余'),                    // 应收-已付
+  货物申报价值: real('货物申报价值'),      // 手填,风控筹码
+  国内收货日期: text('国内收货日期'),
+  泰国到货日期: text('泰国到货日期'),      // 填了=确认到货,在途→未结
+  出账单日期: text('出账单日期'),          // 生成请款单时记
+  实付日期: text('实付日期'),              // 付清那次
+  createdAt: text('created_at').default(sql`(datetime('now'))`),
+});
+
+// 整柜明细:镜像装柜货物字段,只落成本,不含应收(应收在柜级)。
+export const fullContainerItems = sqliteTable('full_container_items', {
+  id: integer('id').primaryKey(),
+  batchId: integer('batch_id').references(() => fullContainerBatches.id).notNull(),
+  markId: integer('mark_id').references(() => marks.id).notNull(),
+  customerId: integer('customer_id').references(() => customers.id).notNull(),
+  品名: text('品名'),
+  尺寸_长: real('尺寸_长'),
+  尺寸_宽: real('尺寸_宽'),
+  尺寸_高: real('尺寸_高'),
+  单项体积: real('单项体积'),
+  总体积: real('总体积').notNull(),
+  国内单号: text('国内单号'),
+  单箱数量: integer('单箱数量'),
+  总重量: real('总重量'),
+  箱数: integer('箱数'),
+  pcs数量: integer('pcs数量'),
+  单价: real('单价'),
+  成本单价: real('成本单价'),
+  需支付总价: real('需支付总价'),
+  仓库: text('仓库'),
+  运单号: text('运单号'),
+  货型: text('货型'),
+  运输方式: text('运输方式'),
+  payment_status: text('payment_status').default('待支付'),
+  paidDate: text('paid_date'),
+  createdAt: text('created_at').default(sql`(datetime('now'))`),
+}, (table) => ({
+  batchIdIdx: index('fci_batch_id_idx').on(table.batchId),
+  markIdIdx: index('fci_mark_id_idx').on(table.markId),
+}));
+
 export const directIncome = sqliteTable('direct_income', {
   id: integer('id').primaryKey(),
   markId: integer('mark_id').references(() => marks.id),
@@ -159,6 +214,7 @@ export const expenses = sqliteTable('expenses', {
   id: integer('id').primaryKey(),
   loadingBatchId: integer('loading_batch_id').references(() => loadingBatches.id),
   sharedContainerBatchId: integer('shared_container_batch_id').references(() => sharedContainerBatches.id),
+  fullContainerBatchId: integer('full_container_batch_id').references(() => fullContainerBatches.id),
   expenseType: text('expense_type').notNull(),
   amount: integer('amount').notNull(),
   currency: text('currency').default('CNY'),
@@ -174,6 +230,7 @@ export const expenses = sqliteTable('expenses', {
   statusIdx: index('exp_status_idx').on(table.status),
   batchTypeUnique: unique('expenses_batch_type_unique').on(table.loadingBatchId, table.expenseType),
   batchTypeScUnique: unique('expenses_sc_batch_type_unique').on(table.sharedContainerBatchId, table.expenseType),
+  batchTypeFcUnique: unique('expenses_fc_batch_type_unique').on(table.fullContainerBatchId, table.expenseType),
 }));
 
 export const paymentsReceived = sqliteTable('payments_received', {
@@ -264,5 +321,6 @@ export const customerMetrics = sqliteTable('customer_metrics', {
   monthlyShipments: integer('monthly_shipments'),
   overdueCount: integer('overdue_count'),
   overallRating: text('overall_rating'),
+  合作月数: integer('合作月数'), // 从该客户最早订单到现在的月数,供整柜风控评分
   lastUpdated: text('last_updated'),
 });

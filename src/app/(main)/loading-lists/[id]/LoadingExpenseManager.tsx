@@ -16,7 +16,7 @@ export function LoadingExpenseManager({
 }: {
   batchId: number;
   initialExpenses: { id: number; expenseType: string; amount: number; currency: string; status: string }[];
-  batchType?: 'loading' | 'shared-container';
+  batchType?: 'loading' | 'shared-container' | 'full-container';
 }) {
   const router = useRouter();
   const expenseMap = new Map(initialExpenses.map((e) => [e.expenseType, e]));
@@ -53,6 +53,7 @@ export function LoadingExpenseManager({
         } else if (amount > 0) {
           const body: any = { expenseType: type, amount, currency: entry.currency };
           if (batchType === 'shared-container') body.sharedContainerBatchId = batchId;
+          else if (batchType === 'full-container') body.fullContainerBatchId = batchId;
           else body.loadingBatchId = batchId;
           const res = await fetch('/api/expenses', {
             method: 'POST',
